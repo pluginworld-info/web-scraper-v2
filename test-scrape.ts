@@ -1,6 +1,6 @@
-import { SweetwaterScraper } from './lib/scrapers/sweetwater';
-import { PluginBoutiqueScraper } from './lib/scrapers/pluginboutique'; // <--- Import new one
-import { prisma } from './lib/db/prisma';
+import { SweetwaterScraper } from './src/lib/scrapers/sweetwater';
+import { PluginBoutiqueScraper } from './src/lib/scrapers/pluginboutique'; // <--- Import new one
+import { prisma } from './src/lib/db/prisma';
 
 async function main() {
   console.log('🧪 Starting Dual-Site Test...');

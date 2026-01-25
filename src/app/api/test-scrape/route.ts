@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { SweetwaterScraper } from '@/lib/scrapers/sweetwater';
 import { PluginBoutiqueScraper } from '@/lib/scrapers/pluginboutique';
 
+// ... rest of your file
+
 // Force dynamic execution (no caching)
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Allow 60 seconds
