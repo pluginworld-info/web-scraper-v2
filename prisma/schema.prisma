@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. The Master Product (The "Container")
+// This powers the page: /product/fabfilter-pro-q-3
+model Product {
+  id          String   @id @default(cuid())
+  title       String   // "FabFilter Pro-Q 3"
+  slug        String   @unique // "fabfilter-pro-q-3"
+  description String?  @db.Text
+  image       String?
+  brand       String?  // "FabFilter"
+  
+  // Categorization (e.g., "Equalizer", "Compressor")
+  category    String? 
+  
+  // Relations
+  listings    Listing[] // Links to the 12 store pages
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+}
+
+// 2. The Retailer Config
+// We manage anti-bot settings here.
+model Retailer {
+  id          String    @id @default(cuid())
+  name        String    @unique // "Sweetwater"
+  domain      String    // "sweetwater.com"
+  logo        String?
+  
+  // Anti-Blocking Control
+  isEnabled   Boolean   @default(true)
+  scrapeDelay Int       @default(5000) // milliseconds to wait between hits
+  
+  listings    Listing[]
+}
+
+// 3. The Specific Store Page
+// This is what your scraper actually targets.
+model Listing {
+  id          String   @id @default(cuid())
+  url         String   @unique
+  
+  // The raw data from the site
+  title       String   // "FabFilter Pro-Q 3 - EQ Plug-in" (Raw title)
+  price       Float    // 169.00
+  currency    String   @default("USD")
+  inStock     Boolean  @default(true)
+  
+  // Linking it to the Master Product
+  product     Product?  @relation(fields: [productId], references: [id])
+  productId   String?   // If NULL, this item appears in "Unmatched" for you to review
+  
+  retailer    Retailer  @relation(fields: [retailerId], references: [id])
+  retailerId  String
+  
+  // The graph data source
+  history     PriceHistory[]
+  
+  lastScraped DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 4. Price History Log
+// Every scrape inserts a row here instead of just updating the Listing.
+model PriceHistory {
+  id        String   @id @default(cuid())
+  price     Float
+  date      DateTime @default(now())
+  
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId String
+  
+  @@index([listingId, date])
+}
