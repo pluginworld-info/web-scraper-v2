@@ -10,7 +10,7 @@ const cleanEnv = (val: string | undefined) => {
   return val.replace(/(https?:\/\/|socks5:\/\/)/g, '').replace(/\/$/, '').trim();
 };
 
-// 3. Human Pause Helper (THIS WAS MISSING BEFORE)
+// 3. Human Pause Helper
 const delay = (time: number) => new Promise(resolve => setTimeout(resolve, time));
 
 export class JrrShopScraper {
@@ -78,9 +78,15 @@ export class JrrShopScraper {
       const pageTitle = await page.title();
       console.log(`🔎 Loaded Title: "${pageTitle}"`);
 
-      // 10. Extract Data
+      // 10. Extract Data (UPDATED WITH ROBUST SELECTORS)
       const data = await page.evaluate(() => {
-        const title = document.querySelector('h1')?.textContent?.trim();
+        // --- UPDATED TITLE LOGIC ---
+        // Try multiple places to find the name
+        const title = document.querySelector('h1')?.textContent?.trim() ||
+                      document.querySelector('.product-name h1')?.textContent?.trim() ||
+                      document.querySelector('[itemprop="name"]')?.textContent?.trim() ||
+                      // Fallback: Use the Page Title (e.g. "JRRshop.com | Product Name")
+                      document.title.split('|').pop()?.trim();
 
         // JRR Price Logic
         const specialPrice = document.querySelector('.special-price .price')?.textContent?.trim();
