@@ -4,8 +4,8 @@ import { SweetwaterScraper } from '@/lib/scrapers/sweetwater';
 import { PluginBoutiqueScraper } from '@/lib/scrapers/pluginboutique';
 import { JrrShopScraper } from '@/lib/scrapers/jrrshop';
 import { AudioDeluxeScraper } from '@/lib/scrapers/audiodeluxe';
-// IMPORT NEW SCRAPER
 import { EveryPluginScraper } from '@/lib/scrapers/everyplugin';
+// import { BestServiceScraper } from '@/lib/scrapers/bestservice'; // COMMENTED OUT FOR NOW
 
 // Force dynamic execution (no caching)
 export const dynamic = 'force-dynamic';
@@ -13,42 +13,39 @@ export const maxDuration = 60; // Allow 60 seconds
 
 export async function GET() {
   try {
-    console.log("⚠️ TRIGGER RECEIVED: Starting Cloud Test (Phase 2: Tier 2 & Tier 3 Sites)...");
+    console.log("⚠️ TRIGGER RECEIVED: Starting Cloud Test (Focus: EveryPlugin Fix)...");
 
     // Initialize scrapers
-    // const pb = new PluginBoutiqueScraper();
     const jrr = new JrrShopScraper();
     const ad = new AudioDeluxeScraper();
-    // NEW INSTANCE
     const ep = new EveryPluginScraper();
+    // const bs = new BestServiceScraper(); // COMMENTED OUT
 
-    // 1. SKIP SWEETWATER (Tier 1 - Requires Residential Proxy)
-    // We create a "dummy" result so your frontend structure doesn't break
+    // 1. SKIP SWEETWATER
     const swResult = { title: 'Skipped (Tier 1 Security)', price: 0, success: false };
     
-    // 2. SKIP PLUGIN BOUTIQUE (Tier 2 - Blocks Data Center IPs)
+    // 2. SKIP PLUGIN BOUTIQUE
     const pbResult = { title: 'Skipped (Tier 2 Security)', price: 0, success: false };
 
-    /* // OLD PB CODE (Kept for later when you get PacketStream)
-    console.log("👉 Scraper 1: Plugin Boutique...");
-    const pbResult = await pb.scrapeURL('https://www.pluginboutique.com/product/2-Effects/16-EQ/5114-FabFilter-Pro-Q-3') as any;
-    */
-
-    // 3. RUN JRR SHOP (Tier 3 - Should work with Free Webshare)
+    // 3. RUN JRR SHOP (Already Working)
     console.log("👉 Scraper 1: JRR Shop...");
     const jrrUrl = 'https://www.jrrshop.com/xln-audio-xo-pak-uk-garage.html';
     const jrrResult = await jrr.scrapeURL(jrrUrl) as any;
 
-    // 4. RUN AUDIODELUXE (Tier 3 - Working)
+    // 4. RUN AUDIODELUXE (Already Working)
     console.log("👉 Scraper 2: AudioDeluxe...");
     const adUrl = 'https://audiodeluxe.com/collections/on-sale/products/uvi-beatbox-anthology-2';
     const adResult = await ad.scrapeURL(adUrl) as any;
 
-    // 5. RUN EVERYPLUGIN (Tier 3 - New Target)
+    // 5. RUN EVERYPLUGIN (Testing Homepage Warmup Bypass)
     console.log("👉 Scraper 3: EveryPlugin...");
-    // Target: FabFilter Pro-Q 3 (Good standard test)
-    const epUrl = 'https://everyplugin.com/pro-c-3.html';
+    // Target: FabFilter Pro-Q 3
+    const epUrl = 'https://everyplugin.com/pro-q-3.html';
     const epResult = await ep.scrapeURL(epUrl) as any;
+
+    // 6. BEST SERVICE (SKIPPED)
+    // const bsUrl = 'https://www.bestservice.com/en/fabfilter_pro_q_3.html';
+    // const bsResult = await bs.scrapeURL(bsUrl) as any;
 
     return NextResponse.json({
       status: 'completed',
@@ -56,37 +53,43 @@ export async function GET() {
       results: {
         sweetwater: {
           success: false,
-          title: swResult.title,
-          price: swResult.price,
           note: "Skipped until Residential Proxies are active"
         },
         plugin_boutique: {
           success: false,
-          note: "Skipped - Requires Residential Proxy for reliable access"
+          note: "Skipped - Requires Residential Proxy"
         },
         jrr_shop: {
           success: !!jrrResult && !!jrrResult.title && !jrrResult.title.includes('Whoops'),
-          debug_page_title: jrrResult?.debug_title || 'No Page Loaded',
           title: jrrResult?.title || 'No Title Found',
           price: jrrResult?.price || 0,
           image: jrrResult?.image || 'No Image',
           url: jrrUrl
         },
         audio_deluxe: {
-          success: !!adResult && !!adResult.title && adResult.title !== 'Error' && !adResult.title.includes('Page Not Found'),
-          debug_page_title: adResult?.debug_title || 'No Page Loaded',
+          success: !!adResult && !!adResult.title && !adResult.title.includes('Page Not Found'),
           title: adResult?.title || 'No Title Found',
           price: adResult?.price || 0,
           image: adResult?.image || 'No Image',
           url: adUrl
         },
         every_plugin: {
-          success: !!epResult && !!epResult.title && epResult.title !== 'Error',
+          // STRICT CHECK: Fail if we are still stuck on Cloudflare loading screen
+          success: !!epResult && 
+                   !!epResult.title && 
+                   epResult.title !== 'Error' && 
+                   !epResult.title.includes('Just a moment') && 
+                   epResult.title !== 'everyplugin.com',
+
           debug_page_title: epResult?.debug_title || 'No Page Loaded',
           title: epResult?.title || 'No Title Found',
           price: epResult?.price || 0,
           image: epResult?.image || 'No Image',
           url: epUrl
+        },
+        best_service: {
+          success: false,
+          note: "Skipped to focus on EveryPlugin"
         }
       }
     });
