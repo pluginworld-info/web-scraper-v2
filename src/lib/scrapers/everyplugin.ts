@@ -68,29 +68,35 @@ export class EveryPluginScraper {
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
 
       console.log(`🚀 Navigating to EveryPlugin: ${url}`);
+      // Increase initial load timeout for Cloudflare
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-      // --- ADDED: HUMAN CHECK BYPASS ---
-      // This waits specifically for the "Product Name" to appear.
-      // If the "Checking if you are human" screen is up, this line pauses the code
-      // until that screen disappears (up to 20 seconds).
-      console.log("⏳ Waiting for Human Verification / Cloudflare to resolve...");
+      // --- ADDED: HUMAN CHECK BYPASS (Advanced) ---
+      console.log("⏳ Waiting for Human Verification (Mouse Jiggle)...");
+      
+      // Attempt to solve challenge by acting human
       try {
-        await page.waitForSelector('.product-name, h1', { timeout: 20000 });
-        console.log("✅ Challenge passed (or didn't exist). Content loaded.");
+        // Move mouse randomly 3 times
+        for (let i = 0; i < 3; i++) {
+           await page.mouse.move(Math.random() * 1000, Math.random() * 800);
+           await delay(1000); 
+        }
+
+        // Wait up to 25s for the actual product content to load
+        await page.waitForSelector('.product-name, .price-box', { timeout: 25000 });
+        console.log("✅ Challenge passed. Content loaded.");
       } catch (e) {
-        console.warn("⚠️ Wait timeout: Content might not have loaded, or challenge failed.");
+        console.warn("⚠️ Wait timeout: Still stuck on 'Just a moment' or content failed to load.");
       }
 
-      // 9. Human Pause
-      const randomWait = Math.floor(Math.random() * 2000) + 2000;
-      await delay(randomWait);
+      // 9. Human Pause (Post-load)
+      await delay(2000);
 
       // Debugging
       const pageTitle = await page.title();
       console.log(`🔎 Loaded Title: "${pageTitle}"`);
 
-      // 10. Extract Data (EveryPlugin Specific Selectors)
+      // 10. Extract Data
       const data = await page.evaluate(() => {
         // Title Fallbacks
         const title = document.querySelector('.product-name h1')?.textContent?.trim() ||
