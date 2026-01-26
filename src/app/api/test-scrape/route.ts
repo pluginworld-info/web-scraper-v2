@@ -3,22 +3,27 @@ import { NextResponse } from 'next/server';
 import { SweetwaterScraper } from '@/lib/scrapers/sweetwater';
 import { PluginBoutiqueScraper } from '@/lib/scrapers/pluginboutique';
 
-// ... rest of your file
-
 // Force dynamic execution (no caching)
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Allow 60 seconds
 
 export async function GET() {
   try {
-    console.log("⚠️ TRIGGER RECEIVED: Starting Cloud Test...");
+    console.log("⚠️ TRIGGER RECEIVED: Starting Cloud Test (Phase 2: Tier 2 Sites)...");
 
-    const sw = new SweetwaterScraper();
+    // Initialize scrapers
+    // const sw = new SweetwaterScraper(); // Commented out to save resources
     const pb = new PluginBoutiqueScraper();
 
-    // ERROR FIX: We add "as any" to tell TypeScript "Trust me, this has data"
-    const swResult = await sw.scrapeURL('https://www.sweetwater.com/store/detail/SM58--shure-sm58-cardioid-dynamic-vocal-microphone') as any;
+    // 1. SKIP SWEETWATER (Tier 1 - Requires Residential Proxy)
+    // We comment this out so the request doesn't fail on the strict firewall.
+    /* const swResult = await sw.scrapeURL('https://www.sweetwater.com/store/detail/SM58--shure-sm58-cardioid-dynamic-vocal-microphone') as any;
+    */
+    // We create a "dummy" result so your frontend structure doesn't break
+    const swResult = { title: 'Skipped (Tier 1 Security)', price: 0, success: false };
     
+    // 2. RUN PLUGIN BOUTIQUE (Tier 2 - Should work with Webshare)
+    console.log("👉 Scraper 1: Plugin Boutique...");
     const pbResult = await pb.scrapeURL('https://www.pluginboutique.com/product/2-Effects/16-EQ/5114-FabFilter-Pro-Q-3') as any;
 
     return NextResponse.json({
@@ -26,15 +31,17 @@ export async function GET() {
       environment: process.env.NODE_ENV,
       results: {
         sweetwater: {
-          success: !!swResult,
-          // Use optional chaining (?.) to prevent crashing if null
-          title: swResult?.title || 'No Title Found',
-          price: swResult?.price || 0,
+          success: false,
+          title: swResult.title,
+          price: swResult.price,
+          note: "Skipped until Residential Proxies are active"
         },
         plugin_boutique: {
           success: !!pbResult,
+          // Use optional chaining (?.) to prevent crashing if null
           title: pbResult?.title || 'No Title Found',
           price: pbResult?.price || 0,
+          image: pbResult?.image || 'No Image'
         }
       }
     });
