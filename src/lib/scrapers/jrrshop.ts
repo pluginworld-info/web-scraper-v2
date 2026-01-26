@@ -78,29 +78,48 @@ export class JrrShopScraper {
       const pageTitle = await page.title();
       console.log(`🔎 Loaded Title: "${pageTitle}"`);
 
-      // 10. Extract Data (UPDATED WITH ROBUST SELECTORS)
+      // 10. Extract Data (UPDATED IMAGE LOGIC)
       const data = await page.evaluate(() => {
-        // --- UPDATED TITLE LOGIC ---
-        // Try multiple places to find the name
+        // Title Logic
         const title = document.querySelector('h1')?.textContent?.trim() ||
                       document.querySelector('.product-name h1')?.textContent?.trim() ||
                       document.querySelector('[itemprop="name"]')?.textContent?.trim() ||
-                      // Fallback: Use the Page Title (e.g. "JRRshop.com | Product Name")
                       document.title.split('|').pop()?.trim();
 
-        // JRR Price Logic
+        // Price Logic
         const specialPrice = document.querySelector('.special-price .price')?.textContent?.trim();
         const regularPrice = document.querySelector('.regular-price .price')?.textContent?.trim();
         const standardPrice = document.querySelector('.price-box .price')?.textContent?.trim();
-
         const priceText = specialPrice || regularPrice || standardPrice;
         const price = priceText ? parseFloat(priceText.replace(/[^0-9.]/g, '')) : 0;
 
-        const image = document.querySelector('#image-main')?.getAttribute('src') || 
-                      document.querySelector('.product-image img')?.getAttribute('src');
+        // --- UPDATED IMAGE LOGIC ---
+        // 1. Try the Zoom Link (Href usually points to full size)
+        const zoomImage = document.querySelector('#zoom1')?.getAttribute('href');
+        // 2. Try the Main Image
+        const mainImage = document.querySelector('#image-main')?.getAttribute('src');
+        // 3. Fallback
+        const fallbackImage = document.querySelector('.product-image img')?.getAttribute('src');
+
+        let image = zoomImage || mainImage || fallbackImage;
 
         return { title, price, image };
       });
+
+      // --- NEW: POST-PROCESS IMAGE URL ---
+      // If we got a "cache" thumbnail URL, strip the cache part to get the original
+      if (data.image && data.image.includes('/cache/')) {
+        // Magento cache URL hack: removes the /cache/x/thumbnail/50x/ part
+        // Converts: .../product/cache/1/thumbnail/50x/.../image.jpg
+        // To:       .../product/image.jpg
+        // We use a regex to remove everything between 'product/' and the filename
+        const cleanImage = data.image.replace(/\/cache\/.*(?=\/)/, ''); 
+        
+        // Only apply if the regex worked (didn't make it empty)
+        if (cleanImage.length > 10) {
+            data.image = cleanImage;
+        }
+      }
 
       return { ...data, debug_title: pageTitle };
 
