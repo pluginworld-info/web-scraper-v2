@@ -70,6 +70,18 @@ export class EveryPluginScraper {
       console.log(`🚀 Navigating to EveryPlugin: ${url}`);
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
+      // --- ADDED: HUMAN CHECK BYPASS ---
+      // This waits specifically for the "Product Name" to appear.
+      // If the "Checking if you are human" screen is up, this line pauses the code
+      // until that screen disappears (up to 20 seconds).
+      console.log("⏳ Waiting for Human Verification / Cloudflare to resolve...");
+      try {
+        await page.waitForSelector('.product-name, h1', { timeout: 20000 });
+        console.log("✅ Challenge passed (or didn't exist). Content loaded.");
+      } catch (e) {
+        console.warn("⚠️ Wait timeout: Content might not have loaded, or challenge failed.");
+      }
+
       // 9. Human Pause
       const randomWait = Math.floor(Math.random() * 2000) + 2000;
       await delay(randomWait);
@@ -85,7 +97,7 @@ export class EveryPluginScraper {
                       document.querySelector('h1')?.textContent?.trim() ||
                       document.title.split('|')[0]?.trim();
 
-        // Price Logic (EveryPlugin is simple, usually just .price)
+        // Price Logic
         const specialPrice = document.querySelector('.special-price .price')?.textContent?.trim();
         const regularPrice = document.querySelector('.regular-price .price')?.textContent?.trim();
         const standardPrice = document.querySelector('.price-box .price')?.textContent?.trim();
@@ -94,9 +106,7 @@ export class EveryPluginScraper {
         const price = priceText ? parseFloat(priceText.replace(/[^0-9.]/g, '')) : 0;
 
         // Image Logic
-        // 1. Try Zoom/Link (Highest Quality)
         const zoomImage = document.querySelector('#zoom1')?.getAttribute('href');
-        // 2. Try Main Image
         const mainImage = document.querySelector('.product-img-box .product-image img')?.getAttribute('src') ||
                           document.querySelector('#image-main')?.getAttribute('src');
         
@@ -105,13 +115,10 @@ export class EveryPluginScraper {
         return { title, price, image };
       });
 
-      // --- IMAGE CLEANING (EveryPlugin/Magento) ---
-      // Similar to JRR, they might use cache URLs. We attempt to clean them.
+      // --- IMAGE CLEANING ---
       if (data.image && data.image.includes('/cache/')) {
-         // Attempt to strip the cache path to get the original
          const match = data.image.match(/\/([a-zA-Z0-9])\/([a-zA-Z0-9])\/([^\/]+)$/);
          if (match) {
-             // Reconstruct standard Magento media path
              data.image = `https://everyplugin.com/media/catalog/product${match[0]}`;
          }
       }
