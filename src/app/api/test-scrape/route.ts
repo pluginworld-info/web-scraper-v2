@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import { SweetwaterScraper } from '@/lib/scrapers/sweetwater';
 import { PluginBoutiqueScraper } from '@/lib/scrapers/pluginboutique';
 import { JrrShopScraper } from '@/lib/scrapers/jrrshop';
-// IMPORT NEW SCRAPER
 import { AudioDeluxeScraper } from '@/lib/scrapers/audiodeluxe';
 
 // Force dynamic execution (no caching)
@@ -17,7 +16,6 @@ export async function GET() {
     // Initialize scrapers
     // const pb = new PluginBoutiqueScraper();
     const jrr = new JrrShopScraper();
-    // NEW INSTANCE
     const ad = new AudioDeluxeScraper();
 
     // 1. SKIP SWEETWATER (Tier 1 - Requires Residential Proxy)
@@ -40,7 +38,11 @@ export async function GET() {
 
     // 4. RUN AUDIODELUXE (Tier 3 - New Target)
     console.log("👉 Scraper 2: AudioDeluxe...");
-    const adUrl = 'https://www.audiodeluxe.com/products/audio-plugins/fabfilter-pro-q-3';
+    
+    // --- FIXED URL (Removed 'audio-plugins/' category from path) ---
+    // You can paste your specific URL here if this one is still not the one you want.
+    const adUrl = 'https://www.audiodeluxe.com/products/fabfilter-pro-q-3';
+    
     const adResult = await ad.scrapeURL(adUrl) as any;
 
     return NextResponse.json({
@@ -70,7 +72,7 @@ export async function GET() {
           url: jrrUrl
         },
         audio_deluxe: {
-          success: !!adResult && !!adResult.title && adResult.title !== 'Error',
+          success: !!adResult && !!adResult.title && adResult.title !== 'Error' && !adResult.title.includes('Page Not Found'),
           
           debug_page_title: adResult?.debug_title || 'No Page Loaded',
           
