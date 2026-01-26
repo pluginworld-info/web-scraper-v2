@@ -93,19 +93,29 @@ export class AudioDeluxeScraper {
         const priceText = salePrice || regularPrice || anyPrice;
         const price = priceText ? parseFloat(priceText.replace(/[^0-9.]/g, '')) : 0;
 
-        // Image: Look for the main product image inside the gallery container
-        const mainImage = document.querySelector('.product-media img')?.getAttribute('src') ||
-                          document.querySelector('.field--name-field-image img')?.getAttribute('src');
+        // --- UPDATED IMAGE LOGIC (Meta Tag Strategy) ---
+        // 1. Try Open Graph Image (Most Reliable High-Res)
+        const metaImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+        
+        // 2. Try Standard Gallery Images
+        const galleryImage = document.querySelector('.product-media img')?.getAttribute('src') ||
+                             document.querySelector('.field--name-field-image img')?.getAttribute('src') ||
+                             document.querySelector('.slick-slide img')?.getAttribute('src'); // Slider fallback
 
-        return { title, price, image: mainImage };
+        let image = metaImage || galleryImage;
+
+        return { title, price, image };
       });
 
       // --- IMAGE CLEANING (AudioDeluxe) ---
-      // AudioDeluxe images are usually relative or have styles. We ensure it's a full CDN link.
       if (data.image) {
         // If it starts with relative path (e.g. /sites/default/files...), add domain
         if (data.image.startsWith('/')) {
             data.image = `https://www.audiodeluxe.com${data.image}`;
+        }
+        // Force HTTPS if missing
+        if (data.image.startsWith('http://')) {
+            data.image = data.image.replace('http://', 'https://');
         }
       }
 
