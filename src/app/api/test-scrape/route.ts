@@ -32,16 +32,16 @@ export async function GET() {
 
     // 3. RUN JRR SHOP (Tier 3 - Should work with Free Webshare)
     console.log("👉 Scraper 1: JRR Shop...");
-    // --- UPDATED URL HERE ---
+    // --- JRR URL (Working) ---
     const jrrUrl = 'https://www.jrrshop.com/xln-audio-xo-pak-uk-garage.html';
     const jrrResult = await jrr.scrapeURL(jrrUrl) as any;
 
     // 4. RUN AUDIODELUXE (Tier 3 - New Target)
     console.log("👉 Scraper 2: AudioDeluxe...");
     
-    // --- FIXED URL (Removed 'audio-plugins/' category from path) ---
-    // You can paste your specific URL here if this one is still not the one you want.
-    const adUrl = 'https://www.audiodeluxe.com/products/fabfilter-pro-q-3';
+    // --- UPDATED URL HERE ---
+    // Using the valid URL you provided
+    const adUrl = 'https://audiodeluxe.com/collections/on-sale/products/uvi-beatbox-anthology-2';
     
     const adResult = await ad.scrapeURL(adUrl) as any;
 
@@ -72,6 +72,7 @@ export async function GET() {
           url: jrrUrl
         },
         audio_deluxe: {
+          // Success if title found and NOT "Page Not Found"
           success: !!adResult && !!adResult.title && adResult.title !== 'Error' && !adResult.title.includes('Page Not Found'),
           
           debug_page_title: adResult?.debug_title || 'No Page Loaded',
