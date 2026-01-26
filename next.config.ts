@@ -1,16 +1,23 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // 1. Enable Standalone output (Shrinks Docker image size drastically)
+  // 1. Enable Standalone output (Required for Docker)
   output: "standalone",
 
-  // 2. Allow images from external retailers (for your dashboard)
+  // 2. TELL NEXT.JS NOT TO BUNDLE THESE LIBRARIES
+  serverExternalPackages: [
+    'puppeteer', 
+    'puppeteer-extra', 
+    'puppeteer-extra-plugin-stealth', 
+    'cheerio'
+  ],
+
+  // 3. Allow images from external retailers
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "media.sweetwater.com" },
       { protocol: "https", hostname: "cdn.pluginboutique.com" },
-      { protocol: "https", hostname: "static.kvraudio.com" }, // Common for audio plugins
-      // Add other retailer image domains here as you discover them
+      { protocol: "https", hostname: "static.kvraudio.com" },
     ],
   },
 };
