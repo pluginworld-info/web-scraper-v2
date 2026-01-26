@@ -78,9 +78,9 @@ export class JrrShopScraper {
       const pageTitle = await page.title();
       console.log(`🔎 Loaded Title: "${pageTitle}"`);
 
-      // 10. Extract Data (UPDATED IMAGE LOGIC)
+      // 10. Extract Data
       const data = await page.evaluate(() => {
-        // Title Logic
+        // Title Logic (Robust Fallbacks)
         const title = document.querySelector('h1')?.textContent?.trim() ||
                       document.querySelector('.product-name h1')?.textContent?.trim() ||
                       document.querySelector('[itemprop="name"]')?.textContent?.trim() ||
@@ -93,12 +93,9 @@ export class JrrShopScraper {
         const priceText = specialPrice || regularPrice || standardPrice;
         const price = priceText ? parseFloat(priceText.replace(/[^0-9.]/g, '')) : 0;
 
-        // --- UPDATED IMAGE LOGIC ---
-        // 1. Try the Zoom Link (Href usually points to full size)
+        // Image Logic
         const zoomImage = document.querySelector('#zoom1')?.getAttribute('href');
-        // 2. Try the Main Image
         const mainImage = document.querySelector('#image-main')?.getAttribute('src');
-        // 3. Fallback
         const fallbackImage = document.querySelector('.product-image img')?.getAttribute('src');
 
         let image = zoomImage || mainImage || fallbackImage;
@@ -106,18 +103,16 @@ export class JrrShopScraper {
         return { title, price, image };
       });
 
-      // --- NEW: POST-PROCESS IMAGE URL ---
-      // If we got a "cache" thumbnail URL, strip the cache part to get the original
+      // --- FIXED: MAGENTO IMAGE CLEANER ---
       if (data.image && data.image.includes('/cache/')) {
-        // Magento cache URL hack: removes the /cache/x/thumbnail/50x/ part
-        // Converts: .../product/cache/1/thumbnail/50x/.../image.jpg
-        // To:       .../product/image.jpg
-        // We use a regex to remove everything between 'product/' and the filename
-        const cleanImage = data.image.replace(/\/cache\/.*(?=\/)/, ''); 
+        // We look for the last 3 parts of the URL (Folder/Folder/Filename.jpg)
+        // Example: .../hash/x/l/xlnelectricgrand.jpg -> matches "x", "l", "xlnelectricgrand.jpg"
+        const match = data.image.match(/\/([a-zA-Z0-9])\/([a-zA-Z0-9])\/([^\/]+)$/);
         
-        // Only apply if the regex worked (didn't make it empty)
-        if (cleanImage.length > 10) {
-            data.image = cleanImage;
+        if (match) {
+          // match[0] is "/x/l/xlnelectricgrand.jpg"
+          // We attach this to the standard JRR media base URL
+          data.image = `https://www.jrrshop.com/media/catalog/product${match[0]}`;
         }
       }
 
