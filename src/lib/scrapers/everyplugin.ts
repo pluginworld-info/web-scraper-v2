@@ -54,7 +54,7 @@ export class EveryPluginScraper {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
       });
 
-      // 7. Bandwidth Saver (Allow scripts this time for Cloudflare challenge)
+      // 7. Bandwidth Saver
       await page.setRequestInterception(true);
       page.on('request', (req) => {
         if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
@@ -71,15 +71,8 @@ export class EveryPluginScraper {
       console.log("🔥 Warming up session on EveryPlugin Homepage...");
       try {
         await page.goto('https://everyplugin.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
-        
-        // Wait for Cloudflare "Checking..." to resolve on the homepage
-        console.log("⏳ Waiting for Cloudflare clearance on Homepage...");
-        await delay(5000); 
-
-        // Mouse Jiggle on Homepage to prove humanity
+        await delay(3000); 
         await page.mouse.move(Math.random() * 500, Math.random() * 500);
-        await delay(2000);
-
       } catch (e) {
         console.warn("Homepage warm-up warning (proceeding anyway):", e);
       }
@@ -88,7 +81,6 @@ export class EveryPluginScraper {
       console.log(`🚀 Navigating to Product: ${url}`);
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-      // Wait again in case the challenge re-appears
       try {
          await page.waitForSelector('.product-name, h1', { timeout: 15000 });
          console.log("✅ Content loaded.");
@@ -104,33 +96,59 @@ export class EveryPluginScraper {
       const pageTitle = await page.title();
       console.log(`🔎 Loaded Title: "${pageTitle}"`);
 
-      // 10. Extract Data
+      // 10. Extract Data (SURGICAL SELECTORS BASED ON PAGE SOURCE)
       const data = await page.evaluate(() => {
-        const title = document.querySelector('.product-name h1')?.textContent?.trim() ||
-                      document.querySelector('h1')?.textContent?.trim() ||
-                      document.title.split('|')[0]?.trim();
+        // --- TITLE ---
+        // Based on source: <h1 itemprop="name">Pro-Q 4</h1>
+        const h1Title = document.querySelector('h1[itemprop="name"]')?.textContent?.trim();
+        const boxTitle = document.querySelector('.product-name h1')?.textContent?.trim();
+        const metaTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content');
+        
+        const title = h1Title || boxTitle || metaTitle || document.title.split('|')[0]?.trim();
 
+        // --- PRICE ---
+        // Based on source: Prices can be in .price-box .price (regular) 
+        // OR hidden behind "Log in" text.
         const specialPrice = document.querySelector('.special-price .price')?.textContent?.trim();
         const regularPrice = document.querySelector('.regular-price .price')?.textContent?.trim();
-        const standardPrice = document.querySelector('.price-box .price')?.textContent?.trim();
-
-        const priceText = specialPrice || regularPrice || standardPrice;
-        const price = priceText ? parseFloat(priceText.replace(/[^0-9.]/g, '')) : 0;
-
-        const zoomImage = document.querySelector('#zoom1')?.getAttribute('href');
-        const mainImage = document.querySelector('.product-img-box .product-image img')?.getAttribute('src') ||
-                          document.querySelector('#image-main')?.getAttribute('src');
+        const anyPrice = document.querySelector('.price-box .price')?.textContent?.trim(); 
         
-        let image = zoomImage || mainImage;
+        const priceText = specialPrice || regularPrice || anyPrice;
+        let price = priceText ? parseFloat(priceText.replace(/[^0-9.]/g, '')) : 0;
+
+        // Check if price is hidden (Map Pricing)
+        const priceBoxText = document.querySelector('.price-box')?.textContent?.toLowerCase() || '';
+        if (price === 0 && (priceBoxText.includes('log in') || priceBoxText.includes('too low'))) {
+             // Return -1 to indicate "Login Required" instead of "Free"
+             price = -1; 
+        }
+
+        // --- IMAGE ---
+        // Based on source: <img id="image" ... src="..."> (This is 900x900)
+        const idImage = document.querySelector('img#image')?.getAttribute('src');
+        const zoomImage = document.querySelector('a#cloudZoom')?.getAttribute('href');
+        const metaImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+
+        let image = idImage || zoomImage || metaImage;
 
         return { title, price, image };
       });
 
       // --- IMAGE CLEANING ---
-      if (data.image && data.image.includes('/cache/')) {
-         const match = data.image.match(/\/([a-zA-Z0-9])\/([a-zA-Z0-9])\/([^\/]+)$/);
-         if (match) {
-             data.image = `https://everyplugin.com/media/catalog/product${match[0]}`;
+      if (data.image) {
+         // Fix relative URLs
+         if (data.image.startsWith('/')) {
+             data.image = `https://everyplugin.com${data.image}`;
+         }
+         // Clean Cache URLs if found (Source had: /cache/1/image/900x900/...)
+         if (data.image.includes('/cache/')) {
+            // Logic: Remove everything before the first /p/ or /x/ folder structure usually
+            // Source example: .../cache/.../9df.../p/r/pro-q.jpg
+            // We want: .../media/catalog/product/p/r/pro-q.jpg
+            const match = data.image.match(/\/([a-zA-Z0-9])\/([a-zA-Z0-9])\/([^\/]+)$/);
+            if (match) {
+                data.image = `https://everyplugin.com/media/catalog/product${match[0]}`;
+            }
          }
       }
 
