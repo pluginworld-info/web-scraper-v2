@@ -1,11 +1,14 @@
 // FILE: src/app/product/[slug]/page.tsx
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Ensures you see real-time price changes from the scraper
+
 import { prisma } from '@/lib/db/prisma';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import PriceChart from '@/components/PriceChart'; 
 import AlertModalTrigger from '@/components/AlertModalTrigger';
+import RelatedProducts from '@/components/RelatedProducts'; 
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
   // 1. Safety check for the slug to prevent Prisma "undefined" error
@@ -49,7 +52,9 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
               src={product.image} 
               alt={product.title} 
               fill 
+              unoptimized={true} // FIXED: Prevents blurry images from GCS
               className="object-contain"
+              priority={true}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-300">No Image</div>
@@ -74,7 +79,6 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
           </div>
 
           <div className="flex gap-3">
-             {/* The "Set Alert" Button */}
              <AlertModalTrigger product={product} />
           </div>
         </div>
@@ -114,10 +118,15 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
       <div className="mb-12">
         <h3 className="font-bold text-xl mb-4">📉 Price History</h3>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-80">
-          {/* We grab history from the first listing (usually the main one) */}
           <PriceChart history={product.listings[0]?.history || []} />
         </div>
       </div>
+
+      {/* --- RELATED DEALS SECTION --- */}
+      {/* Now showing other plugins in the same category */}
+      {product.category && (
+        <RelatedProducts currentId={product.id} category={product.category} />
+      )}
 
     </div>
   );

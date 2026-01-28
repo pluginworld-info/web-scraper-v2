@@ -1,11 +1,16 @@
 // FILE: src/app/product/page.tsx
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Forces fresh data on every visit
+
 import { prisma } from '@/lib/db/prisma';
 import ProductGrid from '@/components/ProductGrid';
 
 export default async function AllProductsPage() {
-  // 1. Fetch products (Limit to 12 for speed)
+  // 1. Get the total number of products for pagination logic
+  const totalCount = await prisma.product.count();
+
+  // 2. Fetch products (Initial batch of 12)
   const products = await prisma.product.findMany({
     take: 12,
     include: {
@@ -15,7 +20,7 @@ export default async function AllProductsPage() {
     orderBy: { updatedAt: 'desc' }
   });
 
-  // 2. Process Data (Calculate Lowest Price & Rating)
+  // 3. Process Data
   const processedProducts = products.map(p => {
     const prices = p.listings.map(l => l.price).filter(p => p > 0);
     const lowestPrice = prices.length > 0 ? Math.min(...prices) : 0;
@@ -31,8 +36,11 @@ export default async function AllProductsPage() {
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-800 mb-8">All Plugins</h1>
         
-        {/* Reuse the Grid Component */}
-        <ProductGrid initialProducts={processedProducts} />
+        {/* Now passing totalCount to fix the TypeScript error */}
+        <ProductGrid 
+          initialProducts={processedProducts} 
+          totalCount={totalCount} 
+        />
       </div>
     </main>
   );
