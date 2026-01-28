@@ -31,7 +31,7 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
     setLoading(true);
     try {
       const skip = products.length;
-      const response = await fetch(`/api/products?skip=${skip}`);
+      const response = await fetch(`/api/products?skip=${skip}`); 
       const data = await response.json();
       
       if (data.products) {
