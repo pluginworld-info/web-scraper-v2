@@ -71,6 +71,10 @@ model Retailer {
   domain    String       
   logo      String?      
   role      RetailerRole @default(PRICE_CHECKER)
+  
+  // ✅ ADDED THIS LINE FOR RATE LIMITING
+  scrapeDelay Int        @default(5000)
+
   isEnabled Boolean      @default(true)
   
   listings  Listing[]

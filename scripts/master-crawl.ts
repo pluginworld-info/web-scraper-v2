@@ -19,10 +19,18 @@ const KEY_PATH = path.join(process.cwd(), 'service-account.json');
 // HELPER: Random Integer
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-// HELPER: Human Delay
-const humanDelay = async (min = 1000, max = 3000) => {
-    const ms = randomInt(min, max);
-    await new Promise(r => setTimeout(r, ms));
+// ✅ NEW: The "Humanizer" Function (Replaces simple humanDelay)
+const sleepWithJitter = (minDelay: number) => {
+  // Random jitter between 0 and 5000ms (0 to 5 seconds) added to the base delay
+  const jitter = Math.floor(Math.random() * 5000); 
+  const totalDelay = minDelay + jitter;
+  
+  // Only log if the delay is significant (ignores small UI delays)
+  if (totalDelay > 2000) {
+    console.log(`      💤 Cooling down for ${(totalDelay/1000).toFixed(1)}s...`);
+  }
+  
+  return new Promise(resolve => setTimeout(resolve, totalDelay));
 };
 
 // HELPER: Mouse Jitter
@@ -34,7 +42,7 @@ async function randomMouseMoves(page: any) {
         const x = randomInt(100, width - 100);
         const y = randomInt(100, height - 100);
         await mouse.move(x, y, { steps: randomInt(10, 30) });
-        if (Math.random() > 0.6) await humanDelay(200, 600);
+        if (Math.random() > 0.6) await sleepWithJitter(500); // Small micro-pauses
     }
 }
 
@@ -57,21 +65,17 @@ async function deepScrapeDetails(browser: any, url: string) {
         const $ = cheerio.load(content);
 
         // 1. TARGETED SELECTION
-        // Try to get text ONLY from paragraphs inside the description tab
         const descContainer = $('#tab-description');
         
         if (descContainer.length > 0) {
-            // Join all paragraph text with double newlines
             description = descContainer.find('p').map((i, el) => $(el).text().trim()).get().join('\n\n');
         }
 
-        // Fallback if paragraphs are empty (some sites use divs)
         if (!description || description.length < 50) {
             description = $('.elementor-widget-text-editor').first().text().trim();
         }
 
-        // 2. TEXT CLEANING (The Filter)
-        // Remove common "garbage" strings from sliders/videos
+        // 2. TEXT CLEANING
         description = description
             .replace(/Subscribe« Prev1 \/ 1Next »/g, '')
             .replace(/« Prev/g, '')
@@ -80,7 +84,6 @@ async function deepScrapeDetails(browser: any, url: string) {
             .replace(/OverviewVideo.*/g, '')
             .trim();
 
-        // Limit length
         description = description.substring(0, 2000); 
 
         // 3. Get Category
@@ -90,15 +93,16 @@ async function deepScrapeDetails(browser: any, url: string) {
         await page.close();
 
     } catch (e) {
-        // console.warn(`      ⚠️ Deep scrape failed for ${url}`);
+        // console.warn(`      ⚠️ Deep scrape failed for ${url}`);
     }
 
     return { description, category };
 }
 
 // HELPER: Infinite Scroll Engine
-async function infiniteScrollAndScrape(page: any, browser: any, retailerId: string) {
-    console.log("   📜 Starting Infinite Scroll Engine...");
+// ✅ UPDATED: Now accepts 'scrapeDelay'
+async function infiniteScrollAndScrape(page: any, browser: any, retailerId: string, scrapeDelay: number) {
+    console.log("   📜 Starting Infinite Scroll Engine...");
     
     let previousHeight = 0;
     let sameHeightCount = 0;
@@ -108,10 +112,13 @@ async function infiniteScrollAndScrape(page: any, browser: any, retailerId: stri
     while (true) {
         const distance = randomInt(600, 900);
         await page.evaluate((y: number) => window.scrollBy(0, y), distance);
-        await humanDelay(2000, 4000); 
+        
+        // Use the DB delay between major scrolls
+        await sleepWithJitter(2000); 
 
         // Scrape Visible
-        const count = await scrapeVisibleProducts(page, browser, retailerId, processedUrls);
+        // ✅ UPDATED: Pass scrapeDelay down
+        const count = await scrapeVisibleProducts(page, browser, retailerId, processedUrls, scrapeDelay);
         totalProductsFound = count; 
 
         const metrics = await page.evaluate(() => ({
@@ -125,13 +132,13 @@ async function infiniteScrollAndScrape(page: any, browser: any, retailerId: stri
         if (currentBottom >= metrics.scrollHeight - 100) {
             if (metrics.scrollHeight === previousHeight) {
                 sameHeightCount++;
-                console.log(`      ⏳ Waiting for load... (${sameHeightCount}/4)`);
+                console.log(`      ⏳ Waiting for load... (${sameHeightCount}/4)`);
                 if (sameHeightCount >= 4) {
-                    console.log("      ✅ Page stopped growing. Infinite Scroll Complete.");
+                    console.log("      ✅ Page stopped growing. Infinite Scroll Complete.");
                     break; 
                 }
             } else {
-                console.log("      ⬇️ New content loaded! Continuing...");
+                console.log("      ⬇️ New content loaded! Continuing...");
                 sameHeightCount = 0;
             }
             previousHeight = metrics.scrollHeight;
@@ -141,7 +148,8 @@ async function infiniteScrollAndScrape(page: any, browser: any, retailerId: stri
 }
 
 // CORE SCRAPER FUNCTION
-async function scrapeVisibleProducts(page: any, browser: any, retailerId: string, processedUrls: Set<string>) {
+// ✅ UPDATED: Now accepts 'scrapeDelay'
+async function scrapeVisibleProducts(page: any, browser: any, retailerId: string, processedUrls: Set<string>, scrapeDelay: number) {
     const content = await page.content();
     const $ = cheerio.load(content);
     const products = $('.jet-listing-grid__item');
@@ -159,7 +167,6 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
         let imgRaw = $el.find('.elementor-widget-image img').attr('data-src') || 
                      $el.find('.elementor-widget-image img').attr('src');
 
-        // Fallbacks
         if (!title) title = $el.find('h6.elementor-heading-title').text().trim();
         if (!priceRaw) {
                 const priceText = $el.find('.apd-listing-base-price').text();
@@ -188,28 +195,29 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
         // --- DEEP SCRAPE LOGIC ---
         const existingProduct = await prisma.product.findUnique({ where: { slug } });
         
-        // Force update if description is missing OR looks like "Subscribe" garbage
         let description = existingProduct?.description || "";
         let category = existingProduct?.category || "Plugin";
         
         const isGarbageDesc = !description || description.includes("Subscribe") || description === "Imported from APD";
 
         if (isGarbageDesc) {
-            console.log(`      🕵️ Fixing Description: ${cleanTitle}`);
+            console.log(`      🕵️ Fixing Description: ${cleanTitle}`);
             const details = await deepScrapeDetails(browser, link);
             if (details.description && details.description.length > 20) {
                 description = details.description;
             }
             if (details.category) category = details.category;
+
+            // ✅ CRITICAL: Wait after a deep scrape to prevent banning
+            await sleepWithJitter(scrapeDelay);
         }
 
         // --- IMAGE LOGIC ---
         let finalImage = existingProduct?.image;
         
-        // Retry image if null
         if ((!finalImage || finalImage === 'null') && imgRaw) {
              if (fs.existsSync(KEY_PATH)) {
-                 process.stdout.write(`      📥 Uploading Image... `); 
+                 process.stdout.write(`      📥 Uploading Image... `); 
                  try {
                     finalImage = await processAndUploadImage(imgRaw, slug);
                     console.log("Done.");
@@ -219,9 +227,8 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
              }
         }
 
-        // Only log updates
         if (isGarbageDesc || !existingProduct) {
-            console.log(`      👉 UPDATING: ${cleanTitle}`);
+            console.log(`      👉 UPDATING: ${cleanTitle}`);
         }
 
         // --- DATABASE SAVE ---
@@ -266,10 +273,10 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
 
 async function startMasterCrawl() {
     console.log(`🚀 STARTING V3 MASTER CRAWL (Garbage Collector Edition)`);
-    console.log(`   Target: ${BASE_URL}`);
+    console.log(`   Target: ${BASE_URL}`);
 
     if (!fs.existsSync(KEY_PATH)) {
-        console.error("   ❌ ERROR: 'service-account.json' missing from ROOT.");
+        console.error("   ❌ ERROR: 'service-account.json' missing from ROOT.");
         return;
     }
 
@@ -280,8 +287,11 @@ async function startMasterCrawl() {
             name: "Audio Plugin Deals",
             domain: TARGET_DOMAIN,
             role: RetailerRole.MASTER,
+            scrapeDelay: 5000 // Default value
         }
     });
+
+    console.log(`   ⏱️ Scrape Delay set to: ${retailer.scrapeDelay}ms + Jitter`);
 
     const browser = await puppeteer.launch({
         headless: false, 
@@ -296,9 +306,11 @@ async function startMasterCrawl() {
 
         await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
         await randomMouseMoves(page);
-        const total = await infiniteScrollAndScrape(page, browser, retailer.id);
+        
+        // ✅ UPDATED: Pass retailer.scrapeDelay
+        const total = await infiniteScrollAndScrape(page, browser, retailer.id, retailer.scrapeDelay);
 
-        console.log(`   ✅ DONE! Total Products: ${total}`);
+        console.log(`   ✅ DONE! Total Products: ${total}`);
 
     } catch (error: any) {
         console.error("❌ Critical Error:", error.message);
