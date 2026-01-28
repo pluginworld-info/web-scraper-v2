@@ -27,7 +27,7 @@ const sleepWithJitter = (minDelay: number) => {
   
   // Only log if the delay is significant (ignores small UI delays)
   if (totalDelay > 2000) {
-    console.log(`      💤 Cooling down for ${(totalDelay/1000).toFixed(1)}s...`);
+    console.log(`      💤 Cooling down for ${(totalDelay/1000).toFixed(1)}s...`);
   }
   
   return new Promise(resolve => setTimeout(resolve, totalDelay));
@@ -93,16 +93,15 @@ async function deepScrapeDetails(browser: any, url: string) {
         await page.close();
 
     } catch (e) {
-        // console.warn(`      ⚠️ Deep scrape failed for ${url}`);
+        // console.warn(`      ⚠️ Deep scrape failed for ${url}`);
     }
 
     return { description, category };
 }
 
 // HELPER: Infinite Scroll Engine
-// ✅ UPDATED: Now accepts 'scrapeDelay'
 async function infiniteScrollAndScrape(page: any, browser: any, retailerId: string, scrapeDelay: number) {
-    console.log("   📜 Starting Infinite Scroll Engine...");
+    console.log("   📜 Starting Infinite Scroll Engine...");
     
     let previousHeight = 0;
     let sameHeightCount = 0;
@@ -117,7 +116,6 @@ async function infiniteScrollAndScrape(page: any, browser: any, retailerId: stri
         await sleepWithJitter(2000); 
 
         // Scrape Visible
-        // ✅ UPDATED: Pass scrapeDelay down
         const count = await scrapeVisibleProducts(page, browser, retailerId, processedUrls, scrapeDelay);
         totalProductsFound = count; 
 
@@ -132,13 +130,13 @@ async function infiniteScrollAndScrape(page: any, browser: any, retailerId: stri
         if (currentBottom >= metrics.scrollHeight - 100) {
             if (metrics.scrollHeight === previousHeight) {
                 sameHeightCount++;
-                console.log(`      ⏳ Waiting for load... (${sameHeightCount}/4)`);
+                console.log(`      ⏳ Waiting for load... (${sameHeightCount}/4)`);
                 if (sameHeightCount >= 4) {
-                    console.log("      ✅ Page stopped growing. Infinite Scroll Complete.");
+                    console.log("      ✅ Page stopped growing. Infinite Scroll Complete.");
                     break; 
                 }
             } else {
-                console.log("      ⬇️ New content loaded! Continuing...");
+                console.log("      ⬇️ New content loaded! Continuing...");
                 sameHeightCount = 0;
             }
             previousHeight = metrics.scrollHeight;
@@ -148,7 +146,6 @@ async function infiniteScrollAndScrape(page: any, browser: any, retailerId: stri
 }
 
 // CORE SCRAPER FUNCTION
-// ✅ UPDATED: Now accepts 'scrapeDelay'
 async function scrapeVisibleProducts(page: any, browser: any, retailerId: string, processedUrls: Set<string>, scrapeDelay: number) {
     const content = await page.content();
     const $ = cheerio.load(content);
@@ -161,19 +158,36 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
 
         const btn = $el.find('a.cart-button'); 
         let title = btn.attr('data-product-title') || btn.attr('data-product_title');
-        let priceRaw = btn.attr('data-base-price') || btn.attr('data-price');
         let link = $el.find('h6.elementor-heading-title a').attr('href');
         
         let imgRaw = $el.find('.elementor-widget-image img').attr('data-src') || 
                      $el.find('.elementor-widget-image img').attr('src');
 
         if (!title) title = $el.find('h6.elementor-heading-title').text().trim();
-        if (!priceRaw) {
-                const priceText = $el.find('.apd-listing-base-price').text();
-                priceRaw = priceText.replace(/[^0-9.]/g, '');
-        }
 
+        // 1. GET SALE PRICE
+        let priceRaw = btn.attr('data-base-price') || btn.attr('data-price');
+        if (!priceRaw) {
+             const priceText = $el.find('.apd-listing-base-price').text();
+             priceRaw = priceText.replace(/[^0-9.]/g, '');
+        }
         const price = parseFloat(priceRaw || '0');
+
+        // 2. 🔴 GET ORIGINAL PRICE (The Strikethrough Price)
+        let originalPriceRaw = 
+            $el.find('del .woocommerce-Price-amount').text() || // Standard Woo
+            $el.find('.price del').text() ||                    // Generic
+            $el.find('.elementor-widget-heading del').text();   // Elementor
+
+        // Clean the text
+        originalPriceRaw = originalPriceRaw.replace(/[^0-9.]/g, '');
+        let originalPrice = parseFloat(originalPriceRaw);
+
+        // Fallback: If no original price, or it's smaller than sale price (logic error), 
+        // treat original as same as sale price
+        if (isNaN(originalPrice) || originalPrice < price) {
+            originalPrice = price; 
+        }
 
         if (!title || !link) continue;
         if (link.startsWith('/')) link = `https://audioplugin.deals${link}`;
@@ -201,14 +215,14 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
         const isGarbageDesc = !description || description.includes("Subscribe") || description === "Imported from APD";
 
         if (isGarbageDesc) {
-            console.log(`      🕵️ Fixing Description: ${cleanTitle}`);
+            console.log(`      🕵️ Fixing Description: ${cleanTitle}`);
             const details = await deepScrapeDetails(browser, link);
             if (details.description && details.description.length > 20) {
                 description = details.description;
             }
             if (details.category) category = details.category;
 
-            // ✅ CRITICAL: Wait after a deep scrape to prevent banning
+            // Wait after deep scrape
             await sleepWithJitter(scrapeDelay);
         }
 
@@ -217,7 +231,7 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
         
         if ((!finalImage || finalImage === 'null') && imgRaw) {
              if (fs.existsSync(KEY_PATH)) {
-                 process.stdout.write(`      📥 Uploading Image... `); 
+                 process.stdout.write(`      📥 Uploading Image... `); 
                  try {
                     finalImage = await processAndUploadImage(imgRaw, slug);
                     console.log("Done.");
@@ -228,7 +242,7 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
         }
 
         if (isGarbageDesc || !existingProduct) {
-            console.log(`      👉 UPDATING: ${cleanTitle}`);
+            console.log(`      👉 UPDATING: ${cleanTitle} | $${price} (Reg: $${originalPrice})`);
         }
 
         // --- DATABASE SAVE ---
@@ -256,9 +270,18 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
 
             const listing = await tx.listing.upsert({
                 where: { url: link },
-                update: { price, lastScraped: new Date() },
+                update: { 
+                    price, 
+                    originalPrice, // Saving Original Price
+                    lastScraped: new Date() 
+                },
                 create: {
-                    url: link, title, price, retailerId: retailerId, productId: product.id 
+                    url: link, 
+                    title, 
+                    price, 
+                    originalPrice, // Saving Original Price
+                    retailerId: retailerId, 
+                    productId: product.id 
                 }
             });
 
@@ -273,10 +296,10 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
 
 async function startMasterCrawl() {
     console.log(`🚀 STARTING V3 MASTER CRAWL (Garbage Collector Edition)`);
-    console.log(`   Target: ${BASE_URL}`);
+    console.log(`   Target: ${BASE_URL}`);
 
     if (!fs.existsSync(KEY_PATH)) {
-        console.error("   ❌ ERROR: 'service-account.json' missing from ROOT.");
+        console.error("   ❌ ERROR: 'service-account.json' missing from ROOT.");
         return;
     }
 
@@ -291,7 +314,7 @@ async function startMasterCrawl() {
         }
     });
 
-    console.log(`   ⏱️ Scrape Delay set to: ${retailer.scrapeDelay}ms + Jitter`);
+    console.log(`   ⏱️ Scrape Delay set to: ${retailer.scrapeDelay}ms + Jitter`);
 
     const browser = await puppeteer.launch({
         headless: false, 
@@ -307,10 +330,9 @@ async function startMasterCrawl() {
         await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
         await randomMouseMoves(page);
         
-        // ✅ UPDATED: Pass retailer.scrapeDelay
         const total = await infiniteScrollAndScrape(page, browser, retailer.id, retailer.scrapeDelay);
 
-        console.log(`   ✅ DONE! Total Products: ${total}`);
+        console.log(`   ✅ DONE! Total Products: ${total}`);
 
     } catch (error: any) {
         console.error("❌ Critical Error:", error.message);

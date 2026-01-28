@@ -18,6 +18,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "media.sweetwater.com" },
       { protocol: "https", hostname: "cdn.pluginboutique.com" },
       { protocol: "https", hostname: "static.kvraudio.com" },
+      { protocol: "https", hostname: "audioplugin.deals" },
+      { protocol: "https", hostname: "*.audioplugin.deals" },
     ],
   },
 };

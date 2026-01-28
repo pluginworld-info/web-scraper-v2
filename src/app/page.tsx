@@ -7,7 +7,9 @@ export const revalidate = 60; // Refresh data every minute
 
 export default async function HomePage() {
   // 1. Fetch Products with all listings to find best price
+  // 🔴 UPDATED: Added 'take: 12' to prevent loading thousands of products at once
   const products = await prisma.product.findMany({
+    take: 12, 
     include: {
       listings: true,
       reviews: true

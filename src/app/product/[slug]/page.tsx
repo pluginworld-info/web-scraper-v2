@@ -1,15 +1,14 @@
+// FILE: src/app/product/[slug]/page.tsx
+
+export const dynamic = 'force-dynamic';
 import { prisma } from '@/lib/db/prisma';
 import Image from 'next/image';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import PriceChart from '@/components/PriceChart'; // Ensure you have this component
-import AlertModalTrigger from '@/components/AlertModalTrigger'; // Ensure you have this component
-
-// 🔴 CRITICAL: This fixes the Cloud Run Build Error
-export const dynamic = 'force-dynamic';
+import PriceChart from '@/components/PriceChart'; 
+import AlertModalTrigger from '@/components/AlertModalTrigger'; 
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
-  // 1. Get the slug from the URL (e.g., "serum-vst")
+  // 1. Get the slug from the URL
   const { slug } = params;
 
   // 2. Find the product in the database

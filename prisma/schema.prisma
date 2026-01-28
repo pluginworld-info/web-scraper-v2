@@ -45,7 +45,8 @@ model Listing {
   url            String   @unique 
   
   title          String   
-  price          Float    
+  price          Float
+  originalPrice  Float?   // The MSRP    
   currency       String   @default("USD")
   inStock        Boolean  @default(true)
   
