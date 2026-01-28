@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,139 +7,96 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==========================================
-// 1. THE HUB (Universal Product Data)
-// ==========================================
 model Product {
-  id          String   @id @default(cuid())
-  slug        String   @unique 
-  title       String   
-  description String?  @db.Text
-  image       String?  
-  
-  // Filtering & AI Tags
-  brand       String?  
-  category    String?  
-  tags        String[] 
-  
-  // Relations
-  listings    Listing[] 
-  reviews     Review[] 
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?
+  image       String?
+  brand       String?
+  category    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  tags        String[]
+  listings    Listing[]
+  reviews     Review[]
 
-  // INDEXES: Makes search and filtering 100x faster
   @@index([title])
   @@index([brand])
   @@index([category])
 }
 
-// ==========================================
-// 2. THE SPOKES (Store-Specific Data)
-// ==========================================
 model Listing {
-  id             String   @id @default(cuid())
-  url            String   @unique 
-  
-  title          String   
-  price          Float
-  originalPrice  Float?   // The MSRP    
-  currency       String   @default("USD")
-  inStock        Boolean  @default(true)
-  
-  // Relations
-  product        Product? @relation(fields: [productId], references: [id])
-  productId      String?
-  
-  retailer       Retailer @relation(fields: [retailerId], references: [id])
-  retailerId     String
-  
-  history        PriceHistory[]
-  
-  lastScraped    DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String         @id @default(cuid())
+  url           String         @unique
+  title         String
+  price         Float
+  currency      String         @default("USD")
+  inStock       Boolean        @default(true)
+  productId     String?
+  retailerId    String
+  lastScraped   DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  originalPrice Float?
+  product       Product?       @relation(fields: [productId], references: [id])
+  retailer      Retailer       @relation(fields: [retailerId], references: [id])
+  history       PriceHistory[]
 }
 
-// ==========================================
-// 3. RETAILERS (The Stores)
-// ==========================================
 model Retailer {
-  id        String       @id @default(cuid())
-  name      String       @unique 
-  domain    String       
-  logo      String?      
-  role      RetailerRole @default(PRICE_CHECKER)
-  
-  // ✅ ADDED THIS LINE FOR RATE LIMITING
-  scrapeDelay Int        @default(5000)
-
-  isEnabled Boolean      @default(true)
-  
-  listings  Listing[]
+  id          String       @id @default(cuid())
+  name        String       @unique
+  domain      String
+  isEnabled   Boolean      @default(true)
+  role        RetailerRole @default(PRICE_CHECKER)
+  logo        String?
+  scrapeDelay Int          @default(5000)
+  listings    Listing[]
 }
 
-enum RetailerRole {
-  MASTER           
-  PRICE_CHECKER    
-}
-
-// ==========================================
-// 4. ANALYTICS (Price Charts)
-// ==========================================
 model PriceHistory {
   id        String   @id @default(cuid())
   price     Float
   date      DateTime @default(now())
-  
-  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   listingId String
-  
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
   @@index([listingId, date])
 }
 
-// ==========================================
-// 5. USERS & REVIEWS
-// ==========================================
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
   avatar    String?
-  
-  reviews   Review[]
-  
   createdAt DateTime @default(now())
+  reviews   Review[]
 }
 
 model Review {
   id        String   @id @default(cuid())
-  rating    Int      // 1-5 Stars
-  comment   String?  @db.Text
-  
-  user      User     @relation(fields: [userId], references: [id])
+  rating    Int
+  comment   String?
   userId    String
-  
-  product   Product  @relation(fields: [productId], references: [id])
   productId String
-  
   createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
-// ==========================================
-// 6. AI & TRACKING (NEW)
-// ==========================================
-// This tracks browsing style for Requirement #6 (AI Recommendations)
 model UserEvent {
   id        String   @id @default(cuid())
-  sessionId String   // Anonymous Cookie ID (if user not logged in)
-  userId    String?  // Optional: Link to logged-in User
-  
-  action    String   // "VIEW", "SEARCH", "CLICK_DEAL", "FILTER"
-  targetId  String?  // Product ID or Search Term
-  metadata  Json?    // Extra info (e.g., { category: "Synth", price: 29.99 })
-  
+  sessionId String
+  userId    String?
+  action    String
+  targetId  String?
+  metadata  Json?
   createdAt DateTime @default(now())
 
   @@index([sessionId])
+}
+
+enum RetailerRole {
+  MASTER
+  PRICE_CHECKER
 }
