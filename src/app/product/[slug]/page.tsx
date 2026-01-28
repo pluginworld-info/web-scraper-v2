@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db/prisma';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import PriceChart from '@/components/PriceChart'; 
-import AlertModalTrigger from '@/components/AlertModalTrigger'; 
+import AlertModalTrigger from '@/components/AlertModalTrigger';
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
   // 1. Get the slug from the URL
