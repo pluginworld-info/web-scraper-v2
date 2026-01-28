@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
     'cheerio'
   ],
 
-  // 3. Allow images from external retailers
+  // 3. Allow images from external retailers and your own GCS bucket
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "media.sweetwater.com" },
@@ -20,6 +20,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "static.kvraudio.com" },
       { protocol: "https", hostname: "audioplugin.deals" },
       { protocol: "https", hostname: "*.audioplugin.deals" },
+      // ADDED: Google Cloud Storage Bucket domain
+      { 
+        protocol: "https", 
+        hostname: "storage.googleapis.com", 
+        pathname: "/plugin-scraper-images/**" 
+      },
     ],
   },
 };

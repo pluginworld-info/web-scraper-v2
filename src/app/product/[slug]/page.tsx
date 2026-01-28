@@ -8,21 +8,25 @@ import PriceChart from '@/components/PriceChart';
 import AlertModalTrigger from '@/components/AlertModalTrigger';
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
-  // 1. Get the slug from the URL
-  const { slug } = params;
+  // 1. Safety check for the slug to prevent Prisma "undefined" error
+  const slug = params?.slug;
+
+  if (!slug) {
+    return notFound();
+  }
 
   // 2. Find the product in the database
   const product = await prisma.product.findUnique({
-    where: { slug },
+    where: { slug: slug },
     include: {
       listings: {
         include: {
           retailer: true,
           history: {
-            orderBy: { date: 'asc' } // Needed for the chart
+            orderBy: { date: 'asc' } 
           }
         },
-        orderBy: { price: 'asc' } // Show cheapest price first
+        orderBy: { price: 'asc' } 
       }
     }
   });
