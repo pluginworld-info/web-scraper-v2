@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { prisma } from '@/lib/db/prisma';
 import Image from 'next/image';
 import PriceChart from '@/components/PriceChart';

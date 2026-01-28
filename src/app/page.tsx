@@ -1,6 +1,7 @@
+export const dynamic = 'force-dynamic';
+import AIRecommendations from '@/components/AIRecommendations';
 import { prisma } from '@/lib/db/prisma';
 import ProductGrid from '@/components/ProductGrid';
-import AIRecommendations from '@/components/AIRecommendations';
 
 export const revalidate = 60; // Refresh data every minute
 
