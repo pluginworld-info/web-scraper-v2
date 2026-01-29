@@ -5,7 +5,7 @@ import AlertModal from './AlertModal';
 
 // Use a flexible interface that allows extra Prisma fields
 interface AlertProps {
-  product: any; // 👈 Changing this to 'any' is the fastest way to kill the error
+  product: any; // Changing this to 'any' is the fastest way to kill the error
   isSmall?: boolean; 
 }
 

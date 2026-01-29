@@ -28,7 +28,7 @@ WORKDIR /app
 # 4. Copy Manifests AND Prisma Schema
 COPY package.json package-lock.json* ./
 
-# 🔴 FIX: Copy the prisma folder BEFORE running npm install
+# FIX: Copy the prisma folder BEFORE running npm install
 # This ensures "prisma generate" (which runs during install) can find the schema.
 COPY prisma ./prisma
 
