@@ -8,18 +8,22 @@ datasource db {
 }
 
 model Product {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
-  slug        String    @unique
+  slug        String   @unique
   description String?
   image       String?
   brand       String?
   category    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   tags        String[]
   listings    Listing[]
   reviews     Review[]
+
+  // Analytics Relations
+  views       ProductView[]
+  wishlisted  WishlistItem[]
 
   @@index([title])
   @@index([brand])
@@ -27,20 +31,20 @@ model Product {
 }
 
 model Listing {
-  id            String         @id @default(cuid())
-  url           String         @unique
-  title         String
-  price         Float
-  currency      String         @default("USD")
-  inStock       Boolean        @default(true)
-  productId     String?
-  retailerId    String
-  lastScraped   DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id           String         @id @default(cuid())
+  url          String         @unique
+  title        String
+  price        Float
+  currency     String         @default("USD")
+  inStock      Boolean        @default(true)
+  productId    String?
+  retailerId   String
+  lastScraped  DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   originalPrice Float?
-  product       Product?       @relation(fields: [productId], references: [id])
-  retailer      Retailer       @relation(fields: [retailerId], references: [id])
-  history       PriceHistory[]
+  product      Product?       @relation(fields: [productId], references: [id])
+  retailer     Retailer       @relation(fields: [retailerId], references: [id])
+  history      PriceHistory[]
 }
 
 model Retailer {
@@ -71,6 +75,11 @@ model User {
   avatar    String?
   createdAt DateTime @default(now())
   reviews   Review[]
+
+  // Analytics Relations
+  searches  SearchLog[]
+  views     ProductView[]
+  wishlist  WishlistItem[]
 }
 
 model Review {
@@ -94,6 +103,51 @@ model UserEvent {
   createdAt DateTime @default(now())
 
   @@index([sessionId])
+}
+
+// --- NEW ANALYTICS MODELS ---
+
+model SearchLog {
+  id           String   @id @default(cuid())
+  query        String
+  userId       String?
+  guestId      String?  // From Cookie
+  resultsCount Int?
+  createdAt    DateTime @default(now())
+
+  user         User?    @relation(fields: [userId], references: [id])
+  
+  @@index([createdAt])
+}
+
+model ProductView {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String?
+  guestId   String?
+  source    String?  // e.g., "search_result", "homepage"
+  duration  Int?     // Time spent in seconds
+  createdAt DateTime @default(now())
+
+  product   Product  @relation(fields: [productId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([productId])
+  @@index([guestId])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String?
+  guestId   String?
+  createdAt DateTime @default(now())
+
+  product   Product  @relation(fields: [productId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+
+  // Ensures a registered user can't wishlist the same item twice
+  @@unique([userId, productId])
 }
 
 enum RetailerRole {
