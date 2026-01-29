@@ -1,7 +1,7 @@
 import { Storage } from '@google-cloud/storage';
 import axios from 'axios';
 import sharp from 'sharp';
-import path from 'path';
+import path from 'path'; 
 
 // CONFIG: Replace with your actual bucket name
 const BUCKET_NAME = 'plugin-scraper-images'; 
@@ -17,20 +17,25 @@ export async function processAndUploadImage(imageUrl: string, slug: string): Pro
         if (!imageUrl) return null;
 
         // 1. Download
-        const response = await axios({ url: imageUrl, responseType: 'arraybuffer', timeout: 10000 });
+        const response = await axios({ url: imageUrl, responseType: 'arraybuffer', timeout: 15000 });
         const buffer = Buffer.from(response.data);
 
-        // 2. Optimize (WebP + Resize)
+        // 2. Optimize (WebP + Resize + Trim)
+        // INCREASED QUALITY: 1200px width and 90% quality for crisp retina displays
         const optimizedBuffer = await sharp(buffer)
-            .resize({ width: 800, withoutEnlargement: true })
-            .webp({ quality: 80 })
+            .trim() // Removes transparent whitespace around the image
+            .resize({ 
+                width: 1200, 
+                withoutEnlargement: true, 
+                fit: 'inside' // Ensures aspect ratio is preserved
+            })
+            .webp({ quality: 90 }) 
             .toBuffer();
 
         // 3. Upload
         const destination = `products/${slug}.webp`;
         const file = bucket.file(destination);
 
-        // FIX: Removed "public: true" because we use Uniform Bucket Access
         await file.save(optimizedBuffer, {
             contentType: 'image/webp',
             resumable: false 

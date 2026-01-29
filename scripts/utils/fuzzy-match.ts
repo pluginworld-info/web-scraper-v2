@@ -7,7 +7,7 @@ function normalize(str: string): string {
         .replace(/[^a-z0-9\s]/g, '') // Remove symbols like - ( ) [ ]
         .replace(/\s+/g, ' ')        // Collapse spaces
         .replace(/\b(vst|plugin|software|download|edition|bundle)\b/g, '') // Remove filler
-        .trim();
+        .trim(); 
 }
 
 // Calculate Levenshtein Distance (How many edits to turn String A into String B)
@@ -34,7 +34,13 @@ export function getSimilarity(s1: string, s2: string): number {
     const a = normalize(s1);
     const b = normalize(s2);
     
-    if (a.includes(b) || b.includes(a)) return 0.95; // High score if one contains the other
+    // FIX: Only allow partial inclusion if the shorter term is specific enough (>= 4 chars)
+    // Prevents matching "Pro" with "Logic Pro" or "Go" with "Godzilla"
+    const minLen = Math.min(a.length, b.length);
+    
+    if (minLen >= 4 && (a.includes(b) || b.includes(a))) {
+        return 0.95; 
+    }
 
     const distance = levenshteinDistance(a, b);
     const maxLength = Math.max(a.length, b.length);

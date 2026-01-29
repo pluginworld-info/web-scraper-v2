@@ -6,7 +6,6 @@ import fs from 'fs';
 import path from 'path';
 import { prisma } from '../src/lib/db/prisma'; 
 import { RetailerRole } from '@prisma/client';
-import { processAndUploadImage } from './utils/image-uploader';
 import { getSimilarity } from './utils/fuzzy-match';
 
 puppeteer.use(StealthPlugin());
@@ -50,60 +49,15 @@ async function clickLoadMore(page: any): Promise<boolean> {
 
     if (clicked) {
         console.log("   🖱️ Clicked button. Waiting for load...");
-        await new Promise(r => setTimeout(r, 4000)); // Fixed wait time for simplicity
+        await new Promise(r => setTimeout(r, 4000)); 
         return true;
     }
     
     return false;
 }
 
-// HELPER: Deep Scrape for PB Details
-async function deepScrapeDetails(browser: any, url: string) {
-    let description = "";
-    let brand = "Unknown";
-    let category = "Plugin"; 
-
-    try {
-        const page = await browser.newPage();
-        await page.setRequestInterception(true);
-        page.on('request', (req: any) => {
-            if (['font', 'media', 'stylesheet', 'image'].includes(req.resourceType())) req.abort();
-            else req.continue();
-        });
-
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        const content = await page.content();
-        const $ = cheerio.load(content);
-
-        // 1. Description
-        // PB usually puts description in a tab or main content area
-        const descContainer = $('#product-description, .product-description, .description');
-        
-        if (descContainer.length > 0) {
-            description = descContainer.find('p').map((i, el) => $(el).text().trim()).get().join('\n\n');
-        }
-        if (!description) description = descContainer.text().trim();
-
-        // Cleanup
-        description = description.substring(0, 2000); 
-
-        // 2. Metadata (Brand/Category)
-        const breadcrumbs = $('.breadcrumb li').map((i, el) => $(el).text().trim()).get();
-        if (breadcrumbs.length > 2) category = breadcrumbs[2]; 
-        
-        brand = $('.manufacturer-header h1').text().trim() || "Unknown";
-
-        await page.close();
-
-    } catch (e) {
-        // console.warn(`      ⚠️ Deep scrape failed for ${url}`);
-    }
-
-    return { description, brand, category };
-}
-
 async function startScrape() {
-    console.log(`🚀 STARTING ${RETAILER_NAME} CRAWL`);
+    console.log(`🚀 STARTING ${RETAILER_NAME} CRAWL (Price & Title Only)`);
 
     if (!fs.existsSync(KEY_PATH)) {
         console.error("   ❌ ERROR: 'service-account.json' missing from root.");
@@ -129,12 +83,9 @@ async function startScrape() {
             '--no-sandbox', 
             '--disable-setuid-sandbox', 
             '--window-size=1920,1080',
-            // SAFETY FLAGS TO STOP ANTIVIRUS WARNINGS
             '--disable-features=AudioService,OutOfBlinkCors', 
             '--no-first-run', 
             '--disable-notifications', 
-            '--disable-media-session-api', 
-            '--disable-system-media-controls',
             '--mute-audio'
         ],
         ignoreDefaultArgs: ['--enable-automation']
@@ -150,7 +101,7 @@ async function startScrape() {
         await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
         await humanDelay(2000, 4000);
 
-        // 2. Load Existing Products
+        // 2. Load Existing Products (For Matching)
         console.log("   🧠 Loading database for matching...");
         const existingProducts = await prisma.product.findMany({ 
             select: { id: true, title: true, slug: true } 
@@ -179,17 +130,28 @@ async function startScrape() {
                 const $el = $(el);
 
                 let title = $el.find('[data-testid^="product-name-"]').text().trim();
-                let priceText = $el.find('.text-right.text-gray-900.text-base.font-semibold').first().text().trim();
                 let link = $el.find('a[data-product-tile-target="mainLink"]').attr('href');
-                let imgRaw = $el.find('img[alt="Product image"]').attr('src');
+                
+                // --- PRICE PARSING ---
+                // Sale Price (Current)
+                let priceText = $el.find('.text-right.text-gray-900.text-base.font-semibold').first().text().trim();
+                const price = parseFloat(priceText.replace(/[^0-9.]/g, '')) || 0;
 
-                if (!title || !priceText || !link) continue;
+                // Original Price (Strikethrough - Looking for <del> or .line-through classes)
+                let originalPriceText = $el.find('.line-through').text() || $el.find('del').text();
+                let originalPrice = parseFloat(originalPriceText.replace(/[^0-9.]/g, '')) || 0;
+
+                // Fallback: If no original price found, assume it equals sale price
+                if (originalPrice === 0 || originalPrice < price) {
+                    originalPrice = price;
+                }
+
+                if (!title || !link) continue;
                 if (!link.startsWith('http')) link = `https://www.pluginboutique.com${link}`;
                 
-                const price = parseFloat(priceText.replace(/[^0-9.]/g, '')) || 0;
                 const rawSlug = slugify(title, { lower: true, strict: true });
 
-                // --- MATCHING ---
+                // --- MATCHING LOGIC ---
                 let matchId: string | null = null;
                 let matchType = "NONE";
 
@@ -210,59 +172,53 @@ async function startScrape() {
                     else matchId = null;
                 }
 
-                // --- DEEP SCRAPE & IMAGE (Only if NEW) ---
-                let description = "Imported from Plugin Boutique";
-                let brand = "Unknown";
-                let category = "Plugin";
-                let finalImage = null;
-
-                if (!matchId) {
-                    console.log(`      ✨ NEW: ${title}`);
-                    
-                    const details = await deepScrapeDetails(browser, link);
-                    if (details.description) description = details.description;
-                    if (details.brand !== "Unknown") brand = details.brand;
-                    if (details.category) category = details.category;
-
-                    if (imgRaw && fs.existsSync(KEY_PATH)) {
-                         process.stdout.write(`         📥 Image... `); 
-                         try {
-                            finalImage = await processAndUploadImage(imgRaw, rawSlug);
-                            console.log("Done.");
-                         } catch(e) { console.log("Fail."); }
-                    }
+                if (matchId) {
+                    // console.log(`      🔗 LINKING: ${title} -> Existing (${matchType})`);
                 } else {
-                    console.log(`      🔗 LINKING: ${title} -> Existing (${matchType})`);
+                    // console.log(`      ✨ NEW SKELETON: ${title}`);
                 }
 
                 // --- SAVE ---
                 await prisma.$transaction(async (tx) => {
                     let productId = matchId;
 
+                    // If New: Create Skeleton Product (Title Only)
                     if (!productId) {
                         const newProduct = await tx.product.create({
                             data: {
                                 title,
                                 slug: rawSlug,
-                                image: finalImage,
-                                description,
-                                brand,
-                                category,
-                                tags: [category]
+                                image: null, // Spokes don't provide images
+                                description: "Description pending...",
+                                brand: "Unknown",
+                                category: "Plugin",
+                                tags: ["Plugin"]
                             }
                         });
                         productId = newProduct.id;
                         existingProducts.push({ id: newProduct.id, title, slug: rawSlug });
                     }
 
+                    // Update/Create Listing with Original Price
                     await tx.listing.upsert({
                         where: { url: link },
-                        update: { price, lastScraped: new Date(), productId },
+                        update: { 
+                            price, 
+                            originalPrice, // Updating the Discount logic
+                            lastScraped: new Date(), 
+                            productId 
+                        },
                         create: {
-                            url: link, title, price, retailerId: retailer.id, productId: productId! 
+                            url: link, 
+                            title, 
+                            price, 
+                            originalPrice, // Creating with Discount logic
+                            retailerId: retailer.id, 
+                            productId: productId! 
                         }
                     });
 
+                    // Update History
                     const listing = await tx.listing.findUnique({ where: { url: link } });
                     if (listing) {
                         await tx.priceHistory.create({ data: { listingId: listing.id, price } });
@@ -275,7 +231,7 @@ async function startScrape() {
             
             if (clickedNext) {
                 pageNum++;
-                await page.evaluate(() => window.scrollBy(0, -100)); // Small scroll to trigger lazy load if needed
+                await page.evaluate(() => window.scrollBy(0, -100)); 
             } else {
                 console.log("   ✅ No 'Next' button found. Crawl Complete.");
                 hasNextPage = false;

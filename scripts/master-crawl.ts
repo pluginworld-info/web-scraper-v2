@@ -19,17 +19,13 @@ const KEY_PATH = path.join(process.cwd(), 'service-account.json');
 // HELPER: Random Integer
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-// ✅ NEW: The "Humanizer" Function (Replaces simple humanDelay)
+// HELPER: Humanizer Delay
 const sleepWithJitter = (minDelay: number) => {
-  // Random jitter between 0 and 5000ms (0 to 5 seconds) added to the base delay
   const jitter = Math.floor(Math.random() * 5000); 
   const totalDelay = minDelay + jitter;
-  
-  // Only log if the delay is significant (ignores small UI delays)
   if (totalDelay > 2000) {
     console.log(`      💤 Cooling down for ${(totalDelay/1000).toFixed(1)}s...`);
   }
-  
   return new Promise(resolve => setTimeout(resolve, totalDelay));
 };
 
@@ -42,20 +38,24 @@ async function randomMouseMoves(page: any) {
         const x = randomInt(100, width - 100);
         const y = randomInt(100, height - 100);
         await mouse.move(x, y, { steps: randomInt(10, 30) });
-        if (Math.random() > 0.6) await sleepWithJitter(500); // Small micro-pauses
+        if (Math.random() > 0.6) await sleepWithJitter(500); 
     }
 }
 
-// HELPER: Deep Scrape (Aggressive Cleaning)
+// HELPER: Deep Scrape (Targeted for APD Page Structure)
 async function deepScrapeDetails(browser: any, url: string) {
     let description = "";
     let category = "Plugin"; 
+    let brand = "Unknown";
+    let originalPrice = 0;
+    let highResImage = null;
 
     try {
         const page = await browser.newPage();
         await page.setRequestInterception(true);
         page.on('request', (req: any) => {
-            if (['font', 'media', 'stylesheet', 'image'].includes(req.resourceType())) req.abort();
+            // Allow images here because we want to catch the high-res URL if possible
+            if (['font', 'media', 'stylesheet'].includes(req.resourceType())) req.abort();
             else req.continue();
         });
 
@@ -64,31 +64,42 @@ async function deepScrapeDetails(browser: any, url: string) {
         const content = await page.content();
         const $ = cheerio.load(content);
 
-        // 1. TARGETED SELECTION
-        const descContainer = $('#tab-description');
-        
+        // 1. EXTRACT DESCRIPTION
+        // Targeted Selector based on your HTML: .woocommerce-product-details__short-description
+        const descContainer = $('.woocommerce-product-details__short-description');
         if (descContainer.length > 0) {
             description = descContainer.find('p').map((i, el) => $(el).text().trim()).get().join('\n\n');
+        } else {
+             // Fallback
+            description = $('#tab-description').text().trim();
         }
 
-        if (!description || description.length < 50) {
-            description = $('.elementor-widget-text-editor').first().text().trim();
-        }
-
-        // 2. TEXT CLEANING
+        // Clean Description
         description = description
             .replace(/Subscribe« Prev1 \/ 1Next »/g, '')
-            .replace(/« Prev/g, '')
-            .replace(/Next »/g, '')
             .replace(/Click here to.*/g, '')
-            .replace(/OverviewVideo.*/g, '')
-            .trim();
+            .trim()
+            .substring(0, 2000); 
 
-        description = description.substring(0, 2000); 
+        // 2. EXTRACT HIGH-RES IMAGE
+        // Targeted Selector: .jet-listing-dynamic-image__img (The full size one inside the single page)
+        const imgEl = $('.jet-listing-dynamic-image__img');
+        if (imgEl.length > 0) {
+            highResImage = imgEl.attr('src') || imgEl.attr('data-src');
+        }
 
-        // 3. Get Category
-        const catText = $('.posted_in').text(); 
-        if (catText.includes(':')) category = catText.split(':')[1].trim();
+        // 3. EXTRACT BRAND (Parsing Title)
+        const title = $('h1.product_title').text().trim();
+        if (title.toLowerCase().includes(" by ")) {
+            brand = title.split(/ by /i)[1].trim();
+        }
+
+        // 4. EXTRACT ORIGINAL PRICE (Backup check on page)
+        // Targeted Selector: .productpricecustom del OR .elementor-heading-title del
+        let opRaw = $('.productpricecustom del .woocommerce-Price-amount').text() || 
+                    $('.elementor-heading-title del .woocommerce-Price-amount').text();
+        
+        if (opRaw) originalPrice = parseFloat(opRaw.replace(/[^0-9.]/g, ''));
 
         await page.close();
 
@@ -96,7 +107,7 @@ async function deepScrapeDetails(browser: any, url: string) {
         // console.warn(`      ⚠️ Deep scrape failed for ${url}`);
     }
 
-    return { description, category };
+    return { description, category, brand, originalPrice, highResImage };
 }
 
 // HELPER: Infinite Scroll Engine
@@ -111,8 +122,6 @@ async function infiniteScrollAndScrape(page: any, browser: any, retailerId: stri
     while (true) {
         const distance = randomInt(600, 900);
         await page.evaluate((y: number) => window.scrollBy(0, y), distance);
-        
-        // Use the DB delay between major scrolls
         await sleepWithJitter(2000); 
 
         // Scrape Visible
@@ -149,6 +158,7 @@ async function infiniteScrollAndScrape(page: any, browser: any, retailerId: stri
 async function scrapeVisibleProducts(page: any, browser: any, retailerId: string, processedUrls: Set<string>, scrapeDelay: number) {
     const content = await page.content();
     const $ = cheerio.load(content);
+    // Selector based on your HTML: .jet-listing-grid__item
     const products = $('.jet-listing-grid__item');
 
     if (products.length === 0) return processedUrls.size;
@@ -156,36 +166,32 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
     for (const el of products) {
         const $el = $(el);
 
-        const btn = $el.find('a.cart-button'); 
-        let title = btn.attr('data-product-title') || btn.attr('data-product_title');
-        let link = $el.find('h6.elementor-heading-title a').attr('href');
+        // 1. EXTRACT LINK & TITLE
+        // Based on HTML: Title is inside h2.elementor-heading-title > a
+        const titleEl = $el.find('h2.elementor-heading-title a');
+        let title = titleEl.text().trim();
+        let link = titleEl.attr('href');
+
+        // 2. EXTRACT GRID IMAGE (Usually Low Res 300x300)
+        // Based on HTML: .elementor-widget-image img
+        let imgRaw = $el.find('.elementor-widget-image img').attr('src') || 
+                     $el.find('.elementor-widget-image img').attr('data-src');
+
+        // 3. EXTRACT PRICES (Specific HTML Structure)
+        // Container: .deal-card-price-content
+        // Sale: ins .woocommerce-Price-amount
+        // Original: del .woocommerce-Price-amount
+        const priceContainer = $el.find('.deal-card-price-content');
         
-        let imgRaw = $el.find('.elementor-widget-image img').attr('data-src') || 
-                     $el.find('.elementor-widget-image img').attr('src');
+        let priceRaw = priceContainer.find('ins .woocommerce-Price-amount').text();
+        let originalPriceRaw = priceContainer.find('del .woocommerce-Price-amount').text();
 
-        if (!title) title = $el.find('h6.elementor-heading-title').text().trim();
+        // Cleaning
+        const price = parseFloat(priceRaw.replace(/[^0-9.]/g, '') || '0');
+        let originalPrice = parseFloat(originalPriceRaw.replace(/[^0-9.]/g, '') || '0');
 
-        // 1. GET SALE PRICE
-        let priceRaw = btn.attr('data-base-price') || btn.attr('data-price');
-        if (!priceRaw) {
-             const priceText = $el.find('.apd-listing-base-price').text();
-             priceRaw = priceText.replace(/[^0-9.]/g, '');
-        }
-        const price = parseFloat(priceRaw || '0');
-
-        // 2. 🔴 GET ORIGINAL PRICE (The Strikethrough Price)
-        let originalPriceRaw = 
-            $el.find('del .woocommerce-Price-amount').text() || // Standard Woo
-            $el.find('.price del').text() ||                    // Generic
-            $el.find('.elementor-widget-heading del').text();   // Elementor
-
-        // Clean the text
-        originalPriceRaw = originalPriceRaw.replace(/[^0-9.]/g, '');
-        let originalPrice = parseFloat(originalPriceRaw);
-
-        // Fallback: If no original price, or it's smaller than sale price (logic error), 
-        // treat original as same as sale price
-        if (isNaN(originalPrice) || originalPrice < price) {
+        // Logic check: If original price is missing or lower than sale price, assume no discount
+        if (isNaN(originalPrice) || originalPrice < price || originalPrice === 0) {
             originalPrice = price; 
         }
 
@@ -197,7 +203,7 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
 
         const slug = slugify(title, { lower: true, strict: true });
         
-        // Parse Brand
+        // Initial Brand Parse from Title
         let brand = "Unknown";
         let cleanTitle = title;
         if (title.toLowerCase().includes(" by ")) {
@@ -206,43 +212,45 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
             brand = parts[1].trim();
         }
 
-        // --- DEEP SCRAPE LOGIC ---
+        // --- CHECK DATABASE & DECIDE DEEP SCRAPE ---
         const existingProduct = await prisma.product.findUnique({ where: { slug } });
         
         let description = existingProduct?.description || "";
         let category = existingProduct?.category || "Plugin";
+        let finalImage = existingProduct?.image || null;
         
+        // FORCE DEEP SCRAPE conditions:
+        // 1. Description is garbage/missing
+        // 2. We don't have a high-res image (existing is null or matches the low-res grid thumb)
         const isGarbageDesc = !description || description.includes("Subscribe") || description === "Imported from APD";
+        const isLowQualImage = !finalImage || finalImage.includes("300x300"); // Avoid thumbnails
 
-        if (isGarbageDesc) {
-            console.log(`      🕵️ Fixing Description: ${cleanTitle}`);
+        if (isGarbageDesc || isLowQualImage) {
+            console.log(`      🕵️ Deep Scraping Details: ${cleanTitle}`);
             const details = await deepScrapeDetails(browser, link);
-            if (details.description && details.description.length > 20) {
-                description = details.description;
-            }
-            if (details.category) category = details.category;
+            
+            if (details.description && details.description.length > 20) description = details.description;
+            if (details.brand && details.brand !== "Unknown") brand = details.brand;
+            
+            // Prefer the High Res Image from the single page
+            if (details.highResImage) imgRaw = details.highResImage;
 
             // Wait after deep scrape
             await sleepWithJitter(scrapeDelay);
         }
 
-        // --- IMAGE LOGIC ---
-        let finalImage = existingProduct?.image;
-        
+        // --- IMAGE UPLOAD LOGIC ---
         if ((!finalImage || finalImage === 'null') && imgRaw) {
              if (fs.existsSync(KEY_PATH)) {
                  process.stdout.write(`      📥 Uploading Image... `); 
                  try {
+                    // Upload the (hopefully high-res) image
                     finalImage = await processAndUploadImage(imgRaw, slug);
                     console.log("Done.");
                  } catch (err) {
                     console.log("Failed.");
                  }
              }
-        }
-
-        if (isGarbageDesc || !existingProduct) {
-            console.log(`      👉 UPDATING: ${cleanTitle} | $${price} (Reg: $${originalPrice})`);
         }
 
         // --- DATABASE SAVE ---
@@ -272,14 +280,14 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
                 where: { url: link },
                 update: { 
                     price, 
-                    originalPrice, // Saving Original Price
+                    originalPrice, 
                     lastScraped: new Date() 
                 },
                 create: {
                     url: link, 
                     title, 
                     price, 
-                    originalPrice, // Saving Original Price
+                    originalPrice, 
                     retailerId: retailerId, 
                     productId: product.id 
                 }
@@ -295,7 +303,7 @@ async function scrapeVisibleProducts(page: any, browser: any, retailerId: string
 }
 
 async function startMasterCrawl() {
-    console.log(`🚀 STARTING V3 MASTER CRAWL (Garbage Collector Edition)`);
+    console.log(`🚀 STARTING V3 MASTER CRAWL (Targeted Structure)`);
     console.log(`   Target: ${BASE_URL}`);
 
     if (!fs.existsSync(KEY_PATH)) {
@@ -310,7 +318,7 @@ async function startMasterCrawl() {
             name: "Audio Plugin Deals",
             domain: TARGET_DOMAIN,
             role: RetailerRole.MASTER,
-            scrapeDelay: 5000 // Default value
+            scrapeDelay: 5000 
         }
     });
 
