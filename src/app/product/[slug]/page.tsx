@@ -1,5 +1,3 @@
-// FILE: src/app/product/[slug]/page.tsx
-
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; 
 
@@ -22,7 +20,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
     include: {
       listings: {
         include: {
-          retailer: true,
+          retailer: true, // This now includes the 'logo' field
           history: { orderBy: { date: 'asc' } }
         },
         orderBy: { price: 'asc' } 
@@ -120,8 +118,8 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
           </div>
 
           <div className="flex gap-4">
-             {/* Passes full product object to handle modal pricing */}
-             <AlertModalTrigger product={product} />
+              {/* Passes full product object to handle modal pricing */}
+              <AlertModalTrigger product={product} />
           </div>
         </div>
       </div>
@@ -136,18 +134,37 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
           {product.listings.map((listing) => (
             <div key={listing.id} className="flex items-center justify-between p-6 hover:bg-gray-50/50 transition">
               <div className="flex items-center gap-4">
-                <span className="font-black text-gray-900 uppercase text-sm tracking-tight">{listing.retailer.name}</span>
-                {listing.price === salePrice && (
-                  <span className="bg-green-100 text-green-700 text-[9px] px-2 py-1 rounded font-black uppercase">Cheapest</span>
-                )}
+                {/* RETAILER LOGO SECTION */}
+                <div className="w-10 h-10 relative flex-shrink-0 bg-white rounded-lg border border-gray-100 flex items-center justify-center overflow-hidden">
+                  {listing.retailer.logo ? (
+                    <Image 
+                      src={listing.retailer.logo} 
+                      alt={listing.retailer.name} 
+                      fill 
+                      className="object-contain p-1"
+                    />
+                  ) : (
+                    <span className="text-xs font-bold text-gray-400">
+                      {listing.retailer.name.charAt(0)}
+                    </span>
+                  )}
+                </div>
+                {/* RETAILER NAME */}
+                <div className="flex flex-col">
+                    <span className="font-black text-gray-900 uppercase text-sm tracking-tight">{listing.retailer.name}</span>
+                    {listing.price === salePrice && (
+                    <span className="bg-green-100 text-green-700 text-[9px] px-2 py-0.5 rounded w-fit font-black uppercase mt-1">Cheapest</span>
+                    )}
+                </div>
               </div>
+              
               <div className="flex items-center gap-6">
                 <span className="font-black text-xl text-gray-900">${listing.price.toFixed(2)}</span>
                 <a 
                   href={listing.url} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="bg-black text-white px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-gray-800 transition shadow-md"
+                  className="bg-black text-white px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-gray-800 transition shadow-md whitespace-nowrap"
                 >
                   Go to Store
                 </a>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import AlertModal from './AlertModal'; 
 
 // Use a flexible interface that allows extra Prisma fields
@@ -12,6 +12,14 @@ interface AlertProps {
 export default function AlertModalTrigger({ product, isSmall }: AlertProps) {
   const [isOpen, setIsOpen] = useState(false);
 
+  // HANDLER: Robust click handler to prevent bubbling issues
+  const handleOpen = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();  // Stop default button behavior
+    e.stopPropagation(); // Stop click from triggering parent elements (like card links)
+    console.log("🔔 Opening Alert Modal for:", product?.title);
+    setIsOpen(true);
+  }, [product]);
+
   // Safety check: ensure product and listings exist before rendering
   if (!product || !product.listings) return null;
 
@@ -19,7 +27,7 @@ export default function AlertModalTrigger({ product, isSmall }: AlertProps) {
     <>
       {/* 1. THE TRIGGER BUTTON */}
       <button 
-        onClick={() => setIsOpen(true)}
+        onClick={handleOpen}
         className={
           isSmall 
             ? "flex items-center justify-center gap-1.5 bg-white hover:bg-gray-100 text-black text-[10px] font-black py-2.5 px-4 rounded-full transition-colors shadow-sm tracking-tighter w-full" 
@@ -33,11 +41,14 @@ export default function AlertModalTrigger({ product, isSmall }: AlertProps) {
       </button>
 
       {/* 2. THE MODAL */}
-      <AlertModal 
-        product={product} 
-        isOpen={isOpen} 
-        onClose={() => setIsOpen(false)} 
-      />
+      {/* Conditional rendering ensures the modal mounts fresh when opened */}
+      {isOpen && (
+        <AlertModal 
+          product={product} 
+          isOpen={isOpen} 
+          onClose={() => setIsOpen(false)} 
+        />
+      )}
     </>
   );
 }
