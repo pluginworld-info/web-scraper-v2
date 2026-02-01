@@ -13,7 +13,8 @@ export default function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-header text-white shadow-md">
+    // ✅ FIX: Using explicit hex code #555555 so it works guaranteed
+    <header className="sticky top-0 z-50 w-full bg-[#555555] text-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* LOGO */}

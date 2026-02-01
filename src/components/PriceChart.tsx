@@ -103,4 +103,4 @@ export default function PriceChart({ history }: { history: any[] }) {
       </ResponsiveContainer>
     </div>
   );
-}
+} 

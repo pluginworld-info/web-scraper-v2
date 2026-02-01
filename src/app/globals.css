@@ -30,7 +30,7 @@ html {
 }
 
 .recharts-default-tooltip {
-  transition: all 0.2s ease;
+  transition: all 0.2s ease; 
 }
 
 /* Pulse animation for the live price dot (optional usage) */

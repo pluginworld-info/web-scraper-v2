@@ -17,7 +17,8 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
   const discount = product.maxDiscount || (originalPrice > lowestPrice ? Math.round(((originalPrice - lowestPrice) / originalPrice) * 100) : 0);
 
   return (
-    <div className="group relative bg-card-dark rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-800 flex flex-col h-full">
+    // ✅ FIX: Using explicit hex code #1e1e1e so the card is definitely dark
+    <div className="group relative bg-[#1e1e1e] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-800 flex flex-col h-full">
       
       {/* IMAGE AREA */}
       <div className="relative aspect-square w-full overflow-hidden bg-white p-4">
