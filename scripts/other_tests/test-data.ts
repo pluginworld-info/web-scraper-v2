@@ -1,4 +1,4 @@
-import { prisma } from '../src/lib/db/prisma';
+import { prisma } from '../../src/lib/db/prisma';
 
 async function checkData() {
     console.log("🔍 INSPECTING LATEST 5 PRODUCTS...\n");

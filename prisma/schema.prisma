@@ -9,15 +9,26 @@ datasource db {
 
 model Product {
   id          String   @id @default(cuid())
+  
+  // Core Identity (Managed by MASTER retailers)
   title       String
   slug        String   @unique
-  description String?
-  image       String?
-  brand       String?
-  category    String?
+  description String?  // Only MASTER feeds can overwrite this
+  image       String?  // Only MASTER feeds can overwrite this
+  brand       String?  @default("Unknown")
+  category    String?  @default("Plugin")
+  
+  // ⚡ SMART PRICE CACHE (New Fields for AI Section)
+  // Auto-calculated during ingestion. Allows instant sorting/filtering.
+  minPrice         Float    @default(0)   // Lowest "Sale Price" currently available
+  maxRegularPrice  Float    @default(0)   // Highest "Original Price" (Anchor Price)
+  maxDiscount      Int      @default(0)   // Highest % off available (e.g. 85)
+
+  tags        String[]
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  tags        String[]
+  
   listings    Listing[]
   reviews     Review[]
 
@@ -31,30 +42,41 @@ model Product {
 }
 
 model Listing {
-  id           String         @id @default(cuid())
-  url          String         @unique
-  title        String
-  price        Float
-  currency     String         @default("USD")
-  inStock      Boolean        @default(true)
-  productId    String?
-  retailerId   String
-  lastScraped  DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id            String   @id @default(cuid())
+  
+  // The "Visit Site" destination
+  url           String   @unique
+  title         String   // The specific title on THIS site
+  
+  // The Raw Numbers for the Comparison Table
+  price         Float
   originalPrice Float?
-  product      Product?       @relation(fields: [productId], references: [id])
-  retailer     Retailer       @relation(fields: [retailerId], references: [id])
-  history      PriceHistory[]
+  currency      String   @default("USD")
+  
+  inStock       Boolean  @default(true)
+  lastScraped   DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  product       Product? @relation(fields: [productId], references: [id])
+  productId     String?
+  
+  retailer      Retailer @relation(fields: [retailerId], references: [id])
+  retailerId    String
+  
+  history       PriceHistory[]
 }
 
 model Retailer {
   id          String       @id @default(cuid())
   name        String       @unique
   domain      String
-  isEnabled   Boolean      @default(true)
-  role        RetailerRole @default(PRICE_CHECKER)
   logo        String?
+  
+  // The Guardian Field
+  role        RetailerRole @default(SPOKE) 
+  isEnabled   Boolean      @default(true)
   scrapeDelay Int          @default(5000)
+  
   listings    Listing[]
 }
 
@@ -62,8 +84,9 @@ model PriceHistory {
   id        String   @id @default(cuid())
   price     Float
   date      DateTime @default(now())
-  listingId String
+  
   listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId String
 
   @@index([listingId, date])
 }
@@ -74,6 +97,7 @@ model User {
   name      String?
   avatar    String?
   createdAt DateTime @default(now())
+  
   reviews   Review[]
 
   // Analytics Relations
@@ -86,11 +110,14 @@ model Review {
   id        String   @id @default(cuid())
   rating    Int
   comment   String?
+  
   userId    String
-  productId String
-  createdAt DateTime @default(now())
-  product   Product  @relation(fields: [productId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+  
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  
+  createdAt DateTime @default(now())
 }
 
 model UserEvent {
@@ -105,18 +132,18 @@ model UserEvent {
   @@index([sessionId])
 }
 
-// --- NEW ANALYTICS MODELS ---
+// --- ANALYTICS MODELS ---
 
 model SearchLog {
   id           String   @id @default(cuid())
   query        String
   userId       String?
-  guestId      String?  // From Cookie
+  guestId      String?
   resultsCount Int?
   createdAt    DateTime @default(now())
 
   user         User?    @relation(fields: [userId], references: [id])
-  
+   
   @@index([createdAt])
 }
 
@@ -125,8 +152,8 @@ model ProductView {
   productId String
   userId    String?
   guestId   String?
-  source    String?  // e.g., "search_result", "homepage"
-  duration  Int?     // Time spent in seconds
+  source    String?
+  duration  Int?
   createdAt DateTime @default(now())
 
   product   Product  @relation(fields: [productId], references: [id])
@@ -146,11 +173,11 @@ model WishlistItem {
   product   Product  @relation(fields: [productId], references: [id])
   user      User?    @relation(fields: [userId], references: [id])
 
-  // Ensures a registered user can't wishlist the same item twice
+  // Ensures a user can't wishlist the same item twice
   @@unique([userId, productId])
 }
 
 enum RetailerRole {
-  MASTER
-  PRICE_CHECKER
+  MASTER // Authority: Can update Title, Image, Description
+  SPOKE  // Contributor: Can ONLY update Price/URL
 }

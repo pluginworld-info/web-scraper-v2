@@ -4,11 +4,11 @@ import * as cheerio from 'cheerio';
 import slugify from 'slugify';
 import fs from 'fs'; 
 import path from 'path';
-import { prisma } from '../src/lib/db/prisma'; 
+import { prisma } from '../../src/lib/db/prisma'; 
 import { RetailerRole } from '@prisma/client';
-import { getSimilarity } from './utils/fuzzy-match';
+import { getSimilarity } from '../utils/fuzzy-match';
 // ✅ ADDED: Image Uploader Import
-import { processAndUploadImage } from './utils/image-uploader';
+import { processAndUploadImage } from '../utils/image-uploader';
 
 puppeteer.use(StealthPlugin());
 
