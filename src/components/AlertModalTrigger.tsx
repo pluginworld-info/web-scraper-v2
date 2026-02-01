@@ -3,35 +3,34 @@
 import { useState, useCallback } from 'react';
 import AlertModal from './AlertModal'; 
 
-// Use a flexible interface that allows extra Prisma fields
 interface AlertProps {
-  product: any; // Changing this to 'any' is the fastest way to kill the error
-  isSmall?: boolean; 
+  product: any;
+  isSmall?: boolean;
+  currentPrice?: number; // ✅ ADDED: Accepts the calculated price
 }
 
-export default function AlertModalTrigger({ product, isSmall }: AlertProps) {
+export default function AlertModalTrigger({ product, isSmall, currentPrice }: AlertProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // HANDLER: Robust click handler to prevent bubbling issues
+  // HANDLER: Robust click handler
   const handleOpen = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();  // Stop default button behavior
-    e.stopPropagation(); // Stop click from triggering parent elements (like card links)
+    e.preventDefault();  
+    e.stopPropagation(); 
     console.log("🔔 Opening Alert Modal for:", product?.title);
     setIsOpen(true);
   }, [product]);
 
-  // Safety check: ensure product and listings exist before rendering
-  if (!product || !product.listings) return null;
+  if (!product) return null;
 
   return (
     <>
-      {/* 1. THE TRIGGER BUTTON */}
+      {/* 1. THE TRIGGER BUTTON (Dark Mode Styled) */}
       <button 
         onClick={handleOpen}
         className={
           isSmall 
-            ? "flex items-center justify-center gap-1.5 bg-white hover:bg-gray-100 text-black text-[10px] font-black py-2.5 px-4 rounded-full transition-colors shadow-sm tracking-tighter w-full" 
-            : "flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-900 px-6 py-3 rounded-xl font-bold transition shadow-sm border border-gray-200"
+            ? "flex items-center justify-center gap-1.5 bg-[#333] hover:bg-[#444] text-white text-[10px] font-black py-2.5 px-4 rounded-full transition-colors border border-[#444] tracking-tighter w-full" 
+            : "flex items-center gap-2 bg-[#333] hover:bg-[#444] text-white px-6 py-3 rounded-xl font-bold transition border border-[#444]"
         }
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className={isSmall ? "w-3.5 h-3.5" : "w-5 h-5"}>
@@ -41,10 +40,11 @@ export default function AlertModalTrigger({ product, isSmall }: AlertProps) {
       </button>
 
       {/* 2. THE MODAL */}
-      {/* Conditional rendering ensures the modal mounts fresh when opened */}
+      {/* We pass the currentPrice down so the modal logic matches the page logic */}
       {isOpen && (
         <AlertModal 
           product={product} 
+          currentPrice={currentPrice} // ✅ Pass it down
           isOpen={isOpen} 
           onClose={() => setIsOpen(false)} 
         />

@@ -10,11 +10,14 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, onClick }: ProductCardProps) {
   const viewCount = product.views?.length || 0;
-  const isHot = viewCount > 50; 
   
+  // LOGIC: Same as Detail Page
   const lowestPrice = product.lowestPrice || product.minPrice || 0;
   const originalPrice = product.maxRegularPrice || product.originalPrice || lowestPrice;
   const discount = product.maxDiscount || (originalPrice > lowestPrice ? Math.round(((originalPrice - lowestPrice) / originalPrice) * 100) : 0);
+  
+  // Hot = 40% off or more
+  const isHot = discount >= 40; 
 
   return (
     <div className="group relative bg-[#1e1e1e] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-800 flex flex-col h-full">
@@ -131,7 +134,12 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
            >
              View
            </Link>
-           <AlertModalTrigger product={product} isSmall />
+           {/* ✅ FIX: Pass the exact displayed price to the Alert Modal */}
+           <AlertModalTrigger 
+             product={product} 
+             isSmall 
+             currentPrice={lowestPrice}
+           />
         </div>
       </div>
     </div>

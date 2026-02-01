@@ -9,11 +9,36 @@ interface NavigationProps {
   categories: string[];
 }
 
-export default function Navigation({ brands, categories }: NavigationProps) {
+export default function Navigation({ brands: initialBrands, categories: initialCategories }: NavigationProps) {
   const pathname = usePathname();
   const [wishlistCount, setWishlistCount] = useState(0);
 
-  // Helper to read storage
+  // ✅ STATE for Menu Data (Initialized with server props, updated by client fetch)
+  const [menuBrands, setMenuBrands] = useState<string[]>(initialBrands || []);
+  const [menuCategories, setMenuCategories] = useState<string[]>(initialCategories || []);
+
+  // 1. ROBUST DATA FETCHING: Ensure dropdowns never disappear
+  useEffect(() => {
+    async function fetchMenuData() {
+      try {
+        const res = await fetch('/api/metadata');
+        const data = await res.json();
+        if (data.brands && data.brands.length > 0) {
+          setMenuBrands(data.brands);
+        }
+        if (data.categories && data.categories.length > 0) {
+          setMenuCategories(data.categories);
+        }
+      } catch (error) {
+        console.error("Menu fetch failed, using fallback data");
+      }
+    }
+    
+    // Fetch fresh data on mount to ensure list is populated
+    fetchMenuData();
+  }, []);
+
+  // 2. WISHLIST LOGIC (LocalStorage)
   const updateCount = () => {
     if (typeof window === 'undefined') return;
     const saved = localStorage.getItem('wishlist_items');
@@ -29,15 +54,14 @@ export default function Navigation({ brands, categories }: NavigationProps) {
     }
   };
 
-  // Setup Listeners
   useEffect(() => {
-    // 1. Check on load
+    // Check on load
     updateCount();
 
-    // 2. Listen for custom event (We will trigger this in WishlistToggle)
+    // Listen for custom event (from WishlistToggle button)
     window.addEventListener('wishlist-updated', updateCount);
     
-    // 3. Listen for cross-tab updates
+    // Listen for cross-tab updates (if user has 2 tabs open)
     window.addEventListener('storage', updateCount);
 
     return () => {
@@ -87,7 +111,7 @@ export default function Navigation({ brands, categories }: NavigationProps) {
               
               <div className="absolute left-0 top-full w-56 bg-[#1a1a1a] text-gray-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 border-t-2 border-blue-600 overflow-hidden z-50">
                 <div className="max-h-80 overflow-y-auto py-2 custom-scrollbar">
-                  {brands.length > 0 ? brands.map((brand) => (
+                  {menuBrands.length > 0 ? menuBrands.map((brand) => (
                     <Link 
                       key={brand} 
                       href={`/product?search=${encodeURIComponent(brand)}`} 
@@ -116,7 +140,7 @@ export default function Navigation({ brands, categories }: NavigationProps) {
 
               <div className="absolute left-0 top-full w-56 bg-[#1a1a1a] text-gray-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 border-t-2 border-blue-600 overflow-hidden z-50">
                 <div className="max-h-80 overflow-y-auto py-2 custom-scrollbar">
-                   {categories.length > 0 ? categories.map((cat) => (
+                   {menuCategories.length > 0 ? menuCategories.map((cat) => (
                     <Link 
                       key={cat} 
                       href={`/product?search=${encodeURIComponent(cat)}`} 

@@ -13,20 +13,18 @@ export default async function HomePage() {
     include: {
       listings: {
         include: {
-          retailer: true // ✅ INCLUDES RETAILER LOGO & NAME
+          retailer: true 
         },
         orderBy: { price: 'asc' },
-        take: 1 // We only need the top listing for the logo, prices come from cache
+        take: 1 
       },
       reviews: true
     },
-    // SORTING: In the future, you can change this to: orderBy: { maxDiscount: 'desc' }
     orderBy: { updatedAt: 'desc' }
   });
 
   const processedProducts = products.map(p => {
-    // ⚡ SMART PRICE LOGIC:
-    // Use cached fields. Fallback to first listing if cache is empty (legacy support).
+    // ⚡ SMART PRICE LOGIC
     const bestListing = p.listings[0];
     
     const lowestPrice = p.minPrice > 0 
@@ -48,7 +46,6 @@ export default async function HomePage() {
       originalPrice, 
       avgRating, 
       reviewCount,
-      // Pass the discount % so grid cards can show "🔥 80% OFF"
       maxDiscount: p.maxDiscount,
       brand: p.brand || "Unknown", 
       category: p.category || "Plugin"
@@ -56,19 +53,18 @@ export default async function HomePage() {
   });
 
   return (
-    <main className="p-4 bg-gray-50 min-h-screen">
+    // ✅ REMOVED bg-gray-50 (Global CSS is black)
+    <main className="p-4 min-h-screen">
       
-      {/* 1. HEADER SECTION */}
-      <div className="mb-8 p-10 bg-white rounded-3xl shadow-sm border border-gray-100 text-center">
-        <h1 className="text-5xl font-black text-gray-900 mb-3 tracking-tighter">Plugin Deals Tracker</h1>
-        <p className="text-gray-500 font-medium">Real-time price monitoring for the world's best audio software.</p>
+      {/* 1. HEADER SECTION (Dark Mode) */}
+      <div className="mb-8 p-10 bg-[#222222] rounded-3xl shadow-sm border border-[#333] text-center">
+        <h1 className="text-5xl font-black text-white mb-3 tracking-tighter">Plugin Deals Tracker</h1>
+        <p className="text-[#aaaaaa] font-medium">Real-time price monitoring for the world's best audio software.</p>
       </div>
 
       {/* 2. AI RECOMMENDATIONS */}
       <section className="mb-12">
-         {/* We pass the first 4 products. 
-             Tip: You could create a separate DB query here to fetch "orderBy: { maxDiscount: 'desc' }" 
-             to show the REAL best deals in this carousel! */}
+         {/* Using first 4 products for now */}
          <AIRecommendations initialProducts={processedProducts.slice(0, 4)} /> 
       </section>
 
@@ -76,4 +72,4 @@ export default async function HomePage() {
       <ProductGrid initialProducts={processedProducts} totalCount={totalCount} />
     </main>
   );
-} 
+}
