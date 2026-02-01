@@ -13,7 +13,7 @@ export default function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#555555] text-white shadow-md">
+    <header className="sticky top-0 z-50 w-full bg-header text-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* LOGO */}
@@ -43,7 +43,7 @@ export default function Header() {
             })}
           </nav>
 
-          {/* MOBILE MENU ICON (Placeholder) */}
+          {/* MOBILE MENU ICON */}
           <div className="md:hidden">
             <button className="text-gray-200 hover:text-white p-2">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
