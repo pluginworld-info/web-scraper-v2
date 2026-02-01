@@ -1,23 +1,47 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function WishlistToggle({ productId }: { productId: string }) {
   const [isWishlisted, setIsWishlisted] = useState(false);
 
+  // 1. Check status on load
+  useEffect(() => {
+    const saved = localStorage.getItem('wishlist_items');
+    if (saved) {
+      const ids = JSON.parse(saved);
+      if (ids.includes(productId)) setIsWishlisted(true);
+    }
+  }, [productId]);
+
+  // 2. Toggle Logic
   const toggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsWishlisted(!isWishlisted);
-    // TODO: Call API to save to DB
-    console.log('Wishlist toggled for:', productId);
+    
+    const saved = localStorage.getItem('wishlist_items');
+    let ids: string[] = saved ? JSON.parse(saved) : [];
+
+    if (isWishlisted) {
+      // Remove
+      ids = ids.filter(id => id !== productId);
+      setIsWishlisted(false);
+    } else {
+      // Add
+      if (!ids.includes(productId)) ids.push(productId);
+      setIsWishlisted(true);
+    }
+
+    localStorage.setItem('wishlist_items', JSON.stringify(ids));
   };
 
   return (
     <button
       onClick={toggle}
-      className="absolute top-3 left-3 z-20 p-2 rounded-full bg-gray-100/80 hover:bg-white shadow-sm backdrop-blur-sm transition-all transform hover:scale-110 group"
-      title="Add to Wishlist"
+      className={`absolute top-3 left-3 z-20 p-2 rounded-full shadow-sm backdrop-blur-sm transition-all transform hover:scale-110 group ${
+          isWishlisted ? "bg-red-50" : "bg-gray-100/80 hover:bg-white"
+      }`}
+      title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
