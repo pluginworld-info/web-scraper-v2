@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation'; // ✅ IMPORT THIS
+import { useSearchParams } from 'next/navigation'; 
 import { useAnalytics } from '@/hooks/use-analytics';
 import ProductCard from './ProductCard'; 
 
@@ -11,12 +11,12 @@ interface ProductGridProps {
 }
 
 export default function ProductGrid({ initialProducts, totalCount }: ProductGridProps) {
-  const searchParams = useSearchParams(); // ✅ Get URL params
-  const initialSearch = searchParams.get('search') || ''; // ✅ Read ?search=...
+  const searchParams = useSearchParams(); 
+  const initialSearch = searchParams.get('search') || ''; 
 
   const [products, setProducts] = useState(initialProducts);
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState(initialSearch); // ✅ Initialize state with URL param
+  const [search, setSearch] = useState(initialSearch); 
   const [sort, setSort] = useState('newest');
   const [displayCount, setDisplayCount] = useState(totalCount);
   
@@ -28,21 +28,29 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
     setDisplayCount(totalCount);
   }, [initialProducts, totalCount]);
 
-  // ✅ NEW: Listen to URL changes (for Header Dropdowns)
+  // ✅ LISTEN TO URL CHANGES (Header Dropdowns)
   useEffect(() => {
     const urlSearch = searchParams.get('search');
-    if (urlSearch && urlSearch !== search) {
+    // If URL param exists and is different, update search AND trigger loading
+    if (urlSearch !== null && urlSearch !== search) {
         setSearch(urlSearch);
+        setLoading(true); // <--- Show blur immediately
+    } else if (urlSearch === null && search !== '') {
+        setSearch('');
+        setLoading(true);
     }
   }, [searchParams]);
 
   // Search Logic
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
-      if (search.length > 0) {
+      // If we have a search term OR if we are resetting to empty (and previously had a search)
+      if (search.length > 0 || (search === '' && products.length !== initialProducts.length)) {
         setLoading(true);
         try {
-          const res = await fetch(`/api/products?search=${encodeURIComponent(search)}`);
+          // If search is empty, fetch default list, else fetch search results
+          const query = search ? `search=${encodeURIComponent(search)}` : '';
+          const res = await fetch(`/api/products?${query}`);
           const data = await res.json();
           
           if (data.products) {
@@ -58,13 +66,14 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
           setLoading(false);
         }
       } else {
-        // Only reset to initial if search is explicitly cleared, otherwise keep current state
+        // Reset to initial if needed
         if (search === '') {
             setProducts(initialProducts);
             setDisplayCount(totalCount);
+            setLoading(false);
         }
       }
-    }, 500); // Faster debounce (500ms) for snappy feel
+    }, 500); 
 
     return () => clearTimeout(delayDebounceFn);
   }, [search, initialProducts, totalCount, trackEvent]);
@@ -84,7 +93,8 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
 
   // Load More Logic
   async function loadMore() {
-    setLoading(true);
+    // Don't set main loading to true here, usually we want a spinner on the button only
+    // But for simplicity, we can just fetch
     try {
       const skip = products.length;
       const response = await fetch(`/api/products?skip=${skip}&search=${encodeURIComponent(search)}`); 
@@ -95,8 +105,6 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
       }
     } catch (error) {
       console.error("Failed to load more products:", error);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -112,17 +120,17 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
           <input 
             type="text" 
             placeholder="Search brands, categories..." 
-            className="p-3 pl-10 bg-white border border-gray-200 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none transition font-medium"
+            className="p-3 pl-10 bg-[#1a1a1a] border border-gray-800 text-white rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none transition font-medium placeholder-gray-500"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <svg className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="absolute left-3 top-3.5 h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
 
         <select 
-          className="p-3 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer font-medium text-sm text-gray-700"
+          className="p-3 bg-[#1a1a1a] border border-gray-800 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer font-medium text-sm"
           onChange={(e) => setSort(e.target.value)}
           value={sort}
         >
@@ -132,33 +140,48 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
         </select>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {sortedProducts.length > 0 ? (
-            sortedProducts.map(product => (
-            <ProductCard 
-                key={product.id} 
-                product={product} 
-                onClick={handleProductClick} 
-            />
-            ))
-        ) : (
-            <div className="col-span-full text-center py-20">
-                <p className="text-gray-400 text-lg font-medium">No products found matching "{search}"</p>
-                <button onClick={() => setSearch('')} className="mt-4 text-blue-600 font-bold hover:underline">Clear Search</button>
+      {/* RELATIVE CONTAINER FOR GRID & LOADING OVERLAY */}
+      <div className="relative min-h-[400px]">
+        
+        {/* ✅ LOADING OVERLAY */}
+        {loading && (
+            <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center rounded-2xl transition-all duration-300">
+                <div className="flex flex-col items-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                    <span className="text-white font-bold tracking-widest uppercase text-sm animate-pulse">Searching...</span>
+                </div>
             </div>
         )}
+
+        {/* Grid */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 transition-opacity duration-300 ${loading ? 'opacity-20' : 'opacity-100'}`}>
+            {sortedProducts.length > 0 ? (
+                sortedProducts.map(product => (
+                <ProductCard 
+                    key={product.id} 
+                    product={product} 
+                    onClick={handleProductClick} 
+                />
+                ))
+            ) : (
+                !loading && (
+                    <div className="col-span-full text-center py-20">
+                        <p className="text-gray-400 text-lg font-medium">No products found matching "{search}"</p>
+                        <button onClick={() => setSearch('')} className="mt-4 text-blue-500 font-bold hover:underline">Clear Search</button>
+                    </div>
+                )
+            )}
+        </div>
       </div>
 
       {/* Load More */}
-      {products.length < displayCount && (
+      {products.length < displayCount && !loading && (
         <div className="mt-20 flex justify-center pb-12">
           <button
             onClick={loadMore}
-            disabled={loading}
-            className="group relative inline-flex items-center justify-center px-12 py-4 font-black text-white transition-all duration-200 bg-blue-600 rounded-full hover:bg-blue-700 disabled:bg-gray-800 disabled:text-gray-600 tracking-widest text-xs uppercase"
+            className="group relative inline-flex items-center justify-center px-12 py-4 font-black text-white transition-all duration-200 bg-blue-600 rounded-full hover:bg-blue-700 tracking-widest text-xs uppercase"
           >
-            {loading ? "FETCHING..." : "LOAD MORE PLUGINS"}
+            LOAD MORE PLUGINS
           </button>
         </div>
       )}

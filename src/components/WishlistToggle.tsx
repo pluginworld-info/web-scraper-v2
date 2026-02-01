@@ -21,20 +21,25 @@ export default function WishlistToggle({ productId }: { productId: string }) {
     let ids: string[] = saved ? JSON.parse(saved) : [];
 
     if (isWishlisted) {
+      // Remove
       ids = ids.filter(id => id !== productId);
       setIsWishlisted(false);
     } else {
+      // Add
       if (!ids.includes(productId)) ids.push(productId);
       setIsWishlisted(true);
     }
 
     localStorage.setItem('wishlist_items', JSON.stringify(ids));
+    
+    // ✅ CRITICAL FIX: Trigger event so Navigation & Wishlist Page update instantly
+    window.dispatchEvent(new Event('wishlist-updated'));
   };
 
   return (
     <button
       onClick={toggle}
-      // ✅ MOVED: absolute bottom-3 right-3
+      // ✅ Correct Position: Bottom Right
       className={`absolute bottom-3 right-3 z-20 p-2 rounded-full shadow-sm backdrop-blur-sm transition-all transform hover:scale-110 group ${
           isWishlisted ? "bg-red-50" : "bg-gray-100/80 hover:bg-white"
       }`}
