@@ -9,9 +9,11 @@
 /* Base Styles */
 body {
   color: rgb(var(--foreground-rgb));
-  background: #000000; 
+  background: #000000 !important; 
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
+
+.bg-black{background: #000000 !important;}
 
 /* Smooth Scrolling */
 html {

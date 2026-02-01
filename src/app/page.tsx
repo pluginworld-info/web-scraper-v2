@@ -53,8 +53,8 @@ export default async function HomePage() {
   });
 
   return (
-    // ✅ REMOVED bg-gray-50 (Global CSS is black)
-    <main className="p-4 min-h-screen">
+    // REMOVED bg-gray-50 (Global CSS is black)
+    <main className="p-4 min-h-screen bg-black">
       
       {/* 1. HEADER SECTION (Dark Mode) */}
       <div className="mb-8 p-10 bg-[#222222] rounded-3xl shadow-sm border border-[#333] text-center">

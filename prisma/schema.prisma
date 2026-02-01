@@ -7,6 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- CORE PRODUCT DATA ---
+
 model Product {
   id          String   @id @default(cuid())
   
@@ -18,11 +20,10 @@ model Product {
   brand       String?  @default("Unknown")
   category    String?  @default("Plugin")
   
-  // ⚡ SMART PRICE CACHE (New Fields for AI Section)
-  // Auto-calculated during ingestion. Allows instant sorting/filtering.
-  minPrice         Float    @default(0)   // Lowest "Sale Price" currently available
-  maxRegularPrice  Float    @default(0)   // Highest "Original Price" (Anchor Price)
-  maxDiscount      Int      @default(0)   // Highest % off available (e.g. 85)
+  // ⚡ SMART PRICE CACHE
+  minPrice        Float    @default(0)
+  maxRegularPrice Float    @default(0)
+  maxDiscount     Int      @default(0)
 
   tags        String[]
   
@@ -32,7 +33,7 @@ model Product {
   listings    Listing[]
   reviews     Review[]
 
-  // Analytics Relations
+  // Analytics
   views       ProductView[]
   wishlisted  WishlistItem[]
 
@@ -44,11 +45,9 @@ model Product {
 model Listing {
   id            String   @id @default(cuid())
   
-  // The "Visit Site" destination
   url           String   @unique
-  title         String   // The specific title on THIS site
+  title         String   
   
-  // The Raw Numbers for the Comparison Table
   price         Float
   originalPrice Float?
   currency      String   @default("USD")
@@ -78,6 +77,25 @@ model Retailer {
   scrapeDelay Int          @default(5000)
   
   listings    Listing[]
+  feeds       Feed[]       // ✅ NEW: Link to Feeds
+}
+
+// ✅ NEW MODEL: Stores the URLs we need to monitor
+model Feed {
+  id           String       @id @default(cuid())
+  name         String       // e.g. "Main JSON Feed"
+  url          String       // The dynamic URL to monitor
+  type         FeedType     @default(JSON)
+  
+  status       FeedStatus   @default(IDLE)
+  lastSyncedAt DateTime?
+  errorMessage String?
+  
+  retailer     Retailer     @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  retailerId   String
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 }
 
 model PriceHistory {
@@ -91,6 +109,8 @@ model PriceHistory {
   @@index([listingId, date])
 }
 
+// --- USER & SOCIAL ---
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -99,8 +119,6 @@ model User {
   createdAt DateTime @default(now())
   
   reviews   Review[]
-
-  // Analytics Relations
   searches  SearchLog[]
   views     ProductView[]
   wishlist  WishlistItem[]
@@ -173,11 +191,25 @@ model WishlistItem {
   product   Product  @relation(fields: [productId], references: [id])
   user      User?    @relation(fields: [userId], references: [id])
 
-  // Ensures a user can't wishlist the same item twice
   @@unique([userId, productId])
 }
+
+// --- ENUMS ---
 
 enum RetailerRole {
   MASTER // Authority: Can update Title, Image, Description
   SPOKE  // Contributor: Can ONLY update Price/URL
+}
+
+enum FeedType {
+  JSON
+  CSV
+  XML
+}
+
+enum FeedStatus {
+  IDLE
+  SYNCING
+  SUCCESS
+  ERROR
 }
