@@ -86,11 +86,38 @@ export default function AdminFeedsPage() {
     fetchFeeds();
   };
 
-  // 4. Handle Manual Sync Trigger
+  // 4. Handle Manual Sync Trigger (✅ CONNECTED TO API)
   const handleSync = async (feedId: string) => {
-    // Optimistic UI update
-    alert("Triggering sync... (Backend logic needed)");
-    // Call your scraper API here (e.g. /api/scraper/trigger?feedId=...)
+    // A. Optimistic UI update: Set status to SYNCING immediately
+    const updatedRetailers = retailers.map(r => ({
+      ...r,
+      feeds: r.feeds.map(f => f.id === feedId ? { ...f, status: 'SYNCING' as FeedStatus } : f)
+    }));
+    setRetailers(updatedRetailers);
+
+    try {
+      // B. Call the Sync API
+      const res = await fetch('/api/admin/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedId })
+      });
+      
+      const data = await res.json();
+
+      if (res.ok) {
+        // Wait 1s for DB to settle, then refresh
+        console.log(`Synced ${data.processed} products.`);
+        setTimeout(fetchFeeds, 1000); 
+      } else {
+        alert(`Sync failed: ${data.error}`);
+        fetchFeeds(); // Revert UI on failure
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Network error triggering sync");
+      fetchFeeds();
+    }
   };
 
   if (loading) return <div className="p-10 text-center text-[#aaaaaa]">Loading Dashboard...</div>;

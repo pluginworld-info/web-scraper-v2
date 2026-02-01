@@ -33,9 +33,12 @@ model Product {
   listings    Listing[]
   reviews     Review[]
 
-  // Analytics
+  // Analytics & Alerts
   views       ProductView[]
   wishlisted  WishlistItem[]
+  
+  // ✅ ADDED: Link to Price Alerts (Required for relation)
+  priceAlerts PriceAlert[] 
 
   @@index([title])
   @@index([brand])
@@ -77,10 +80,10 @@ model Retailer {
   scrapeDelay Int          @default(5000)
   
   listings    Listing[]
-  feeds       Feed[]       // ✅ NEW: Link to Feeds
+  feeds       Feed[]       
 }
 
-// ✅ NEW MODEL: Stores the URLs we need to monitor
+// Stores the URLs we need to monitor
 model Feed {
   id           String       @id @default(cuid())
   name         String       // e.g. "Main JSON Feed"
@@ -150,7 +153,24 @@ model UserEvent {
   @@index([sessionId])
 }
 
-// --- ANALYTICS MODELS ---
+// --- ANALYTICS & ALERTS MODELS ---
+
+// ✅ ADDED: This was missing in your file!
+model PriceAlert {
+  id           String   @id @default(cuid())
+  email        String
+  targetPrice  Float
+  
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId    String
+  
+  isTriggered  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  triggeredAt  DateTime?
+
+  @@index([email])
+  @@index([productId])
+}
 
 model SearchLog {
   id           String   @id @default(cuid())
