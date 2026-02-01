@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation'; // ✅ IMPORT THIS
 import { useAnalytics } from '@/hooks/use-analytics';
-import ProductCard from './ProductCard'; // ✅ Uses the new component
+import ProductCard from './ProductCard'; 
 
 interface ProductGridProps {
   initialProducts: any[];
@@ -10,9 +11,12 @@ interface ProductGridProps {
 }
 
 export default function ProductGrid({ initialProducts, totalCount }: ProductGridProps) {
+  const searchParams = useSearchParams(); // ✅ Get URL params
+  const initialSearch = searchParams.get('search') || ''; // ✅ Read ?search=...
+
   const [products, setProducts] = useState(initialProducts);
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch); // ✅ Initialize state with URL param
   const [sort, setSort] = useState('newest');
   const [displayCount, setDisplayCount] = useState(totalCount);
   
@@ -23,6 +27,14 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
     setProducts(initialProducts);
     setDisplayCount(totalCount);
   }, [initialProducts, totalCount]);
+
+  // ✅ NEW: Listen to URL changes (for Header Dropdowns)
+  useEffect(() => {
+    const urlSearch = searchParams.get('search');
+    if (urlSearch && urlSearch !== search) {
+        setSearch(urlSearch);
+    }
+  }, [searchParams]);
 
   // Search Logic
   useEffect(() => {
@@ -46,10 +58,13 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
           setLoading(false);
         }
       } else {
-        setProducts(initialProducts);
-        setDisplayCount(totalCount);
+        // Only reset to initial if search is explicitly cleared, otherwise keep current state
+        if (search === '') {
+            setProducts(initialProducts);
+            setDisplayCount(totalCount);
+        }
       }
-    }, 1000);
+    }, 500); // Faster debounce (500ms) for snappy feel
 
     return () => clearTimeout(delayDebounceFn);
   }, [search, initialProducts, totalCount, trackEvent]);
@@ -96,8 +111,8 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
         <div className="relative w-full md:w-1/3">
           <input 
             type="text" 
-            placeholder="Search thousands of plugins..." 
-            className="p-3 pl-10 bg-white border border-gray-200 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+            placeholder="Search brands, categories..." 
+            className="p-3 pl-10 bg-white border border-gray-200 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none transition font-medium"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -119,13 +134,20 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
 
       {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {sortedProducts.map(product => (
-          <ProductCard 
-            key={product.id} 
-            product={product} 
-            onClick={handleProductClick} 
-          />
-        ))}
+        {sortedProducts.length > 0 ? (
+            sortedProducts.map(product => (
+            <ProductCard 
+                key={product.id} 
+                product={product} 
+                onClick={handleProductClick} 
+            />
+            ))
+        ) : (
+            <div className="col-span-full text-center py-20">
+                <p className="text-gray-400 text-lg font-medium">No products found matching "{search}"</p>
+                <button onClick={() => setSearch('')} className="mt-4 text-blue-600 font-bold hover:underline">Clear Search</button>
+            </div>
+        )}
       </div>
 
       {/* Load More */}

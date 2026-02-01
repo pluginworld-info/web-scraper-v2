@@ -12,7 +12,6 @@ export default function Navigation({ brands, categories }: NavigationProps) {
   const pathname = usePathname();
 
   return (
-    // Sticky Header UI
     <header className="sticky top-0 z-50 w-full bg-[#555555] text-white shadow-md font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
@@ -39,12 +38,13 @@ export default function Navigation({ brands, categories }: NavigationProps) {
               Home
             </Link>
 
-            {/* 2. BRANDS (Dropdown) */}
+            {/* 2. BRANDS (Hover Dropdown) */}
             <div className="group relative h-full flex items-center">
+              {/* Point to /product to avoid 404 */}
               <Link
                 href="/product"
                 className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-blue-300 flex items-center gap-1 ${
-                  pathname.startsWith('/brands') ? 'text-blue-400' : 'text-gray-200'
+                  pathname === '/product' ? 'text-blue-400' : 'text-gray-200'
                 }`}
               >
                 Brands
@@ -52,13 +52,13 @@ export default function Navigation({ brands, categories }: NavigationProps) {
               </Link>
               
               {/* Dropdown Menu */}
-              <div className="absolute left-0 top-full w-48 bg-white text-gray-800 rounded-b-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 border-t-2 border-blue-500 overflow-hidden">
-                <div className="max-h-64 overflow-y-auto py-2">
+              <div className="absolute left-0 top-full w-56 bg-white text-gray-800 rounded-b-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 border-t-2 border-blue-500 overflow-hidden z-50">
+                <div className="max-h-80 overflow-y-auto py-2">
                   {brands.length > 0 ? brands.map((brand) => (
                     <Link 
                       key={brand} 
-                      href={`/product?search=${encodeURIComponent(brand)}`} // Links to search for now
-                      className="block px-4 py-2 text-xs font-bold uppercase hover:bg-gray-100 hover:text-blue-600 transition-colors"
+                      href={`/product?search=${encodeURIComponent(brand)}`} 
+                      className="block px-4 py-2 text-xs font-bold uppercase hover:bg-gray-100 hover:text-blue-600 transition-colors border-b border-gray-50 last:border-0"
                     >
                       {brand}
                     </Link>
@@ -69,12 +69,12 @@ export default function Navigation({ brands, categories }: NavigationProps) {
               </div>
             </div>
 
-            {/* 3. CATEGORIES (Dropdown) */}
+            {/* 3. CATEGORIES (Hover Dropdown) */}
             <div className="group relative h-full flex items-center">
               <Link
                 href="/product"
                 className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-blue-300 flex items-center gap-1 ${
-                  pathname.startsWith('/categories') ? 'text-blue-400' : 'text-gray-200'
+                  pathname === '/product' ? 'text-blue-400' : 'text-gray-200'
                 }`}
               >
                 Categories
@@ -82,13 +82,13 @@ export default function Navigation({ brands, categories }: NavigationProps) {
               </Link>
 
               {/* Dropdown Menu */}
-              <div className="absolute left-0 top-full w-48 bg-white text-gray-800 rounded-b-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 border-t-2 border-blue-500 overflow-hidden">
-                <div className="max-h-64 overflow-y-auto py-2">
+              <div className="absolute left-0 top-full w-56 bg-white text-gray-800 rounded-b-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 border-t-2 border-blue-500 overflow-hidden z-50">
+                <div className="max-h-80 overflow-y-auto py-2">
                    {categories.length > 0 ? categories.map((cat) => (
                     <Link 
                       key={cat} 
                       href={`/product?search=${encodeURIComponent(cat)}`} 
-                      className="block px-4 py-2 text-xs font-bold uppercase hover:bg-gray-100 hover:text-blue-600 transition-colors"
+                      className="block px-4 py-2 text-xs font-bold uppercase hover:bg-gray-100 hover:text-blue-600 transition-colors border-b border-gray-50 last:border-0"
                     >
                       {cat}
                     </Link>
@@ -99,7 +99,7 @@ export default function Navigation({ brands, categories }: NavigationProps) {
               </div>
             </div>
 
-            {/* 4. WISHLIST (New) */}
+            {/* 4. WISHLIST TAB */}
             <Link
               href="/wishlist"
               className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-red-400 flex items-center gap-1 ${
