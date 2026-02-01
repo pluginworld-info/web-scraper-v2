@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-
-// 🔴 CRITICAL: This import applies CSS to the whole site
+import Header from '@/components/Header'; // ✅ Import Header
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -19,6 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <Header /> {/* ✅ Sticky Header Added Here */}
         <main className="min-h-screen bg-gray-50">
           {children}
         </main>
