@@ -59,7 +59,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
       {/* --- BACK BUTTON --- */}
       <div className="mb-6">
         <Link 
-          href="/product" 
+          href="/" 
           className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-colors group"
         >
           <svg className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">

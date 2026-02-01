@@ -9,7 +9,7 @@
 /* Base Styles */
 body {
   color: rgb(var(--foreground-rgb));
-  background: #f9fafb; /* Matches bg-gray-50 */
+  background: #000000; 
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 

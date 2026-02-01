@@ -17,42 +17,53 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
   const discount = product.maxDiscount || (originalPrice > lowestPrice ? Math.round(((originalPrice - lowestPrice) / originalPrice) * 100) : 0);
 
   return (
-    // ✅ FIX: Using explicit hex code #1e1e1e so the card is definitely dark
     <div className="group relative bg-[#1e1e1e] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-800 flex flex-col h-full">
       
-      {/* IMAGE AREA */}
-      <div className="relative aspect-square w-full overflow-hidden bg-white p-4">
+      {/* IMAGE AREA - NOW WITH BLURRED BG */}
+      <div className="relative aspect-square w-full overflow-hidden bg-gray-900 p-4 z-0">
         
-        {/* --- BADGES (Moved to Bottom Right) --- */}
-        <div className="absolute bottom-3 right-3 flex flex-col gap-2 z-10 pointer-events-none items-end">
+        {/* 1. THE BLURRED BACKGROUND IMAGE */}
+        {product.image && (
+          <Image 
+            src={product.image} 
+            alt="" 
+            fill 
+            unoptimized={true}
+            className="object-cover blur-xl opacity-60 scale-125 pointer-events-none" 
+          />
+        )}
+
+        {/* --- BADGES (Top Left) --- */}
+        <div className="absolute top-3 left-3 flex flex-col gap-2 z-20 pointer-events-none items-start">
            {isHot && (
-            <span className="bg-red-600 text-white text-[10px] font-black uppercase px-2 py-1 rounded-full flex items-center gap-1 shadow-md w-fit animate-pulse">
+            <span className="bg-red-600 text-white text-[10px] font-black uppercase px-2 py-1 rounded-md flex items-center gap-1 shadow-md w-fit animate-pulse">
                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" /></svg>
                Hot
             </span>
            )}
            
            {discount > 70 && (
-             <span className="bg-yellow-400 text-yellow-900 text-[10px] font-black uppercase px-2 py-1 rounded-full shadow-md w-fit">
+             <span className="bg-yellow-400 text-yellow-900 text-[10px] font-black uppercase px-2 py-1 rounded-md shadow-md w-fit">
                Lowest Price
              </span>
            )}
         </div>
 
-        {/* Wishlist Toggle (Remains Top Left) */}
+        {/* Wishlist Toggle (Bottom Right) */}
         <WishlistToggle productId={product.id} />
 
-        {/* Discount Badge (Remains Top Right) */}
+        {/* Discount Badge (Top Right) */}
         {discount > 0 && (
-          <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded shadow-lg z-10 pointer-events-none">
+          <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded shadow-lg z-20 pointer-events-none">
             {discount}% OFF
           </div>
         )}
 
+        {/* 2. THE MAIN SHARP IMAGE */}
         <Link 
           href={`/product/${product.slug}`}
           onClick={() => onClick && onClick(product.id)}
-          className="block w-full h-full relative"
+          className="block w-full h-full relative z-10"
         >
           {product.image ? (
             <Image 
@@ -60,16 +71,16 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
               alt={product.title} 
               fill 
               unoptimized={true}
-              className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
+              className="object-contain p-2 group-hover:scale-110 transition-transform duration-500 drop-shadow-xl"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-gray-300 font-medium italic">No Image</div>
+            <div className="flex h-full items-center justify-center text-gray-400 font-medium italic bg-black/50 backdrop-blur-md rounded-xl">No Image</div>
           )}
         </Link>
       </div>
 
       {/* CONTENT AREA */}
-      <div className="p-5 flex-grow flex flex-col items-center text-center">
+      <div className="p-5 flex-grow flex flex-col items-center text-center relative z-20 bg-[#1e1e1e]">
         <span className="text-[10px] font-black uppercase text-blue-500 tracking-tighter mb-1">
           {product.brand || 'Brand'}
         </span>
