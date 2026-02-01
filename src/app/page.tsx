@@ -76,4 +76,4 @@ export default async function HomePage() {
       <ProductGrid initialProducts={processedProducts} totalCount={totalCount} />
     </main>
   );
-}
+} 
