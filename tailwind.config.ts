@@ -9,8 +9,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // We define our custom palette here.
-        // Now we can use 'bg-header' or 'bg-card-dark' instead of hex codes.
+        // ✅ DYNAMIC THEME COLORS (Mapped to CSS Variables)
+        primary: 'var(--primary)', // Enables bg-primary, text-primary, border-primary
+        accent: 'var(--accent)',   // Enables bg-accent, text-accent
+
+        // Existing Custom Palette
         header: '#555555', 
         'card-dark': '#1e1e1e',
         'card-border': '#2d2d2d',
@@ -23,7 +26,7 @@ const config: Config = {
     },
   },
   plugins: [
-    require('@tailwindcss/typography'), // Ensure you have this installed: npm install -D @tailwindcss/typography
+    require('@tailwindcss/typography'),
   ],
 };
 export default config;

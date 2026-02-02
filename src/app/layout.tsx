@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import Header from '@/components/Header'; // ✅ Import Header
+import Header from '@/components/Header'; 
+import ThemeProvider from '@/providers/ThemeProvider'; // ✅ NEW IMPORT
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -18,10 +19,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Header /> {/* ✅ Sticky Header Added Here */}
-        <main className="min-h-screen bg-gray-50">
-          {children}
-        </main>
+        {/* ✅ WRAP WITH THEME PROVIDER */}
+        <ThemeProvider>
+          <Header /> 
+          <main className="min-h-screen bg-gray-50">
+            {children}
+          </main>
+        </ThemeProvider>
       </body>
     </html>
   );

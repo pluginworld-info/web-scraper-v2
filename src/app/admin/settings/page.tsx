@@ -8,6 +8,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isDragging, setIsDragging] = useState(false); // Visual cue state
   
   // Form State
   const [formData, setFormData] = useState({
@@ -17,11 +18,12 @@ export default function SettingsPage() {
     accentColor: '#ef4444'
   });
 
-  // Helper to apply colors live
+  // ✅ HELPER: Apply colors live to the entire document
   const applyThemeColors = (primary: string, accent: string) => {
     if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--primary', primary);
-      document.documentElement.style.setProperty('--accent', accent);
+      const root = document.documentElement;
+      root.style.setProperty('--primary', primary);
+      root.style.setProperty('--accent', accent);
     }
   };
 
@@ -31,21 +33,29 @@ export default function SettingsPage() {
       .then(res => res.json())
       .then(data => {
         if (data && !data.error) {
-           setFormData({
+           const newSettings = {
              siteName: data.siteName || '',
              logoUrl: data.logoUrl || '',
              primaryColor: data.primaryColor || '#2563eb',
              accentColor: data.accentColor || '#ef4444'
-           });
-           // Apply colors immediately on load
-           applyThemeColors(data.primaryColor, data.accentColor);
+           };
+           setFormData(newSettings);
+           applyThemeColors(newSettings.primaryColor, newSettings.accentColor);
         }
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  // 2. Handle Save
+  // 2. Handle Color Changes (Live Preview)
+  const handleColorChange = (key: string, value: string) => {
+    const newData = { ...formData, [key]: value };
+    setFormData(newData);
+    // Apply immediately so user sees the change
+    applyThemeColors(newData.primaryColor, newData.accentColor);
+  };
+
+  // 3. Handle Save
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -56,9 +66,6 @@ export default function SettingsPage() {
       });
       
       if (res.ok) {
-        // ✅ FIX: Force update CSS variables immediately
-        applyThemeColors(formData.primaryColor, formData.accentColor);
-        
         alert("Settings Saved! Theme updated.");
         router.refresh();
       } else {
@@ -71,7 +78,7 @@ export default function SettingsPage() {
     }
   };
 
-  // 3. Handle Cache Clearing
+  // 4. Handle Cache Clearing
   const handleClearBrowserCache = () => {
     if (confirm("This will log you out and clear all local storage. Continue?")) {
       document.cookie.split(";").forEach((c) => {
@@ -84,14 +91,32 @@ export default function SettingsPage() {
     }
   };
 
-  // Drag and Drop Logic (For URL strings)
+  // ✅ FIXED DRAG & DROP LOGIC
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const droppedText = e.dataTransfer.getData('text');
-    if (droppedText && (droppedText.startsWith('http') || droppedText.startsWith('/'))) {
-        setFormData({ ...formData, logoUrl: droppedText });
+    setIsDragging(false);
+    
+    // Try to get data from different formats
+    const textData = e.dataTransfer.getData('text/plain');
+    const uriData = e.dataTransfer.getData('text/uri-list');
+    
+    // Prioritize URI, then Text
+    const droppedUrl = uriData || textData;
+
+    if (droppedUrl && (droppedUrl.startsWith('http') || droppedUrl.startsWith('/'))) {
+        setFormData({ ...formData, logoUrl: droppedUrl });
     } else {
-        alert("Please drop a valid Image URL.");
+        alert("Could not detect a valid URL. Please right-click the image -> Copy Image Address, then paste it here.");
     }
   };
 
@@ -109,30 +134,27 @@ export default function SettingsPage() {
       {/* --- BRANDING SECTION --- */}
       <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl p-8">
         <h3 className="text-white font-bold mb-6 flex items-center gap-2">
-           <span className="w-2 h-2 rounded-full bg-blue-500"></span> Identity & Branding
+           <span className="w-2 h-2 rounded-full bg-[var(--primary)]"></span> Identity & Branding
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           
-          {/* Site Name Input */}
           <div className="space-y-3">
             <label className="text-xs font-bold text-[#888] uppercase">Site Name</label>
             <input 
               type="text" 
               value={formData.siteName}
               onChange={(e) => setFormData({...formData, siteName: e.target.value})}
-              className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--primary)] transition-colors"
               placeholder="e.g. PluginDeals"
             />
             <p className="text-[10px] text-[#555]">Displayed in the browser tab and navigation fallback.</p>
           </div>
 
-          {/* Logo Manager (Drag & Drop / Preview) */}
           <div className="space-y-3">
             <label className="text-xs font-bold text-[#888] uppercase">Site Logo</label>
             
             {formData.logoUrl ? (
-                // ✅ VIEW: Active Logo with Delete
                 <div className="relative group w-full h-32 bg-[#111] border border-[#333] rounded-xl flex items-center justify-center overflow-hidden">
                     <Image 
                         src={formData.logoUrl} 
@@ -151,19 +173,23 @@ export default function SettingsPage() {
                     </div>
                 </div>
             ) : (
-                // ✅ VIEW: Empty State / Input
                 <div 
-                    onDragOver={(e) => e.preventDefault()}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className="w-full h-32 bg-[#111] border-2 border-dashed border-[#333] hover:border-[#555] rounded-xl flex flex-col items-center justify-center transition-colors p-4"
+                    className={`w-full h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-colors p-4 ${
+                        isDragging ? 'border-[var(--primary)] bg-[var(--primary)]/10' : 'border-[#333] bg-[#111] hover:border-[#555]'
+                    }`}
                 >
-                    <span className="text-[#666] text-xs font-bold uppercase mb-2">No Logo Set</span>
+                    <span className={`text-xs font-bold uppercase mb-2 ${isDragging ? 'text-[var(--primary)]' : 'text-[#666]'}`}>
+                        {isDragging ? 'Drop URL Here!' : 'Drop Image URL Here'}
+                    </span>
                     <input 
                       type="text" 
                       value={formData.logoUrl}
                       onChange={(e) => setFormData({...formData, logoUrl: e.target.value})}
                       className="w-full bg-transparent text-center text-sm text-white focus:outline-none placeholder:text-[#333]"
-                      placeholder="Paste Image URL here..."
+                      placeholder="Or paste URL here..."
                     />
                 </div>
             )}
@@ -174,7 +200,7 @@ export default function SettingsPage() {
       {/* --- THEME COLORS --- */}
       <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl p-8">
         <h3 className="text-white font-bold mb-6 flex items-center gap-2">
-           <span className="w-2 h-2 rounded-full bg-purple-500"></span> Theme Colors
+           <span className="w-2 h-2 rounded-full bg-[var(--accent)]"></span> Theme Colors
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -183,7 +209,7 @@ export default function SettingsPage() {
              <input 
                type="color" 
                value={formData.primaryColor}
-               onChange={(e) => setFormData({...formData, primaryColor: e.target.value})}
+               onChange={(e) => handleColorChange('primaryColor', e.target.value)}
                className="w-12 h-12 rounded-lg cursor-pointer bg-transparent border-none"
              />
              <div>
@@ -197,7 +223,7 @@ export default function SettingsPage() {
              <input 
                type="color" 
                value={formData.accentColor}
-               onChange={(e) => setFormData({...formData, accentColor: e.target.value})}
+               onChange={(e) => handleColorChange('accentColor', e.target.value)}
                className="w-12 h-12 rounded-lg cursor-pointer bg-transparent border-none"
              />
              <div>
@@ -213,16 +239,17 @@ export default function SettingsPage() {
         <button 
           onClick={handleSave}
           disabled={saving}
-          className="bg-blue-600 text-white font-black text-lg px-8 py-4 rounded-xl hover:bg-blue-700 transition shadow-xl shadow-blue-900/30 disabled:opacity-50 flex items-center gap-2"
+          // Note: using explicit styles here because Tailwind variables handle class names, 
+          // but for the button itself, inline styles ensure 100% reliability during preview
+          style={{ backgroundColor: formData.primaryColor }}
+          className="text-white font-black text-lg px-8 py-4 rounded-xl hover:opacity-90 transition shadow-xl disabled:opacity-50 flex items-center gap-2"
         >
           {saving ? 'Processing...' : 'Save All Changes'}
         </button>
       </div>
 
-      {/* --- ✅ NEW: SESSION INFO SECTION --- */}
+      {/* --- SESSION INFO SECTION --- */}
       <div className="grid md:grid-cols-2 gap-8">
-          
-          {/* Session Details */}
           <div className="bg-[#111] border border-[#333] rounded-2xl p-6">
              <h3 className="text-white font-bold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Active Session
@@ -243,7 +270,6 @@ export default function SettingsPage() {
              </div>
           </div>
 
-          {/* Danger Zone */}
           <div className="bg-red-900/10 border border-red-900/30 rounded-2xl p-6 flex flex-col justify-between">
              <div>
                 <h3 className="text-red-500 font-bold mb-2 flex items-center gap-2 uppercase tracking-widest text-sm">
@@ -257,14 +283,10 @@ export default function SettingsPage() {
                onClick={handleClearBrowserCache}
                className="w-full bg-black border border-red-900/50 text-red-500 px-6 py-3 rounded-xl text-sm font-bold uppercase hover:bg-red-900/20 transition flex items-center justify-center gap-2"
              >
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-               </svg>
                Logout & Clear Cache
              </button>
           </div>
       </div>
-
     </div>
   );
 }
