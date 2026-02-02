@@ -35,6 +35,7 @@ model Product {
 
   // Analytics & Alerts
   views       ProductView[]
+  clicks      ProductClick[] // ✅ Added relation for analytics
   wishlisted  WishlistItem[]
   
   // Link to Price Alerts
@@ -124,20 +125,18 @@ model User {
   reviews   Review[]
   searches  SearchLog[]
   views     ProductView[]
+  clicks    ProductClick[] // ✅ Added relation for analytics
   wishlist  WishlistItem[]
 }
 
-// ✅ UPDATED REVIEW MODEL
 model Review {
   id        String   @id @default(cuid())
   rating    Int
   comment   String?
   
-  // ✅ UPDATE: User is now Optional
   userId    String?
   user      User?    @relation(fields: [userId], references: [id])
   
-  // ✅ NEW: Capture Guest Name
   authorName String  @default("Guest")
 
   productId String
@@ -205,6 +204,26 @@ model ProductView {
   @@index([guestId])
 }
 
+// ✅ NEW: ANALYTICS (LEAD GEN TRACKING)
+model ProductClick {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  // Who clicked?
+  userId    String?  // Optional (if logged in)
+  user      User?    @relation(fields: [userId], references: [id])
+  guestId   String?  // Important for guest tracking
+  
+  // Which store did they go to?
+  retailerId String? 
+  
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
+}
+
 model WishlistItem {
   id        String   @id @default(cuid())
   productId String
@@ -218,11 +237,27 @@ model WishlistItem {
   @@unique([userId, productId])
 }
 
+// ✅ NEW: SITE CONFIGURATION
+model SiteSettings {
+  id             String   @id @default(cuid()) // Usually just one row
+  siteName       String   @default("PluginDeals")
+  description    String?  @default("The best audio plugin deals.")
+  
+  logoUrl        String?
+  faviconUrl     String?
+  
+  // Theme Colors (We store hex codes)
+  primaryColor   String   @default("#2563eb") // Blue-600
+  accentColor    String   @default("#ef4444") // Red-500
+  
+  updatedAt      DateTime @updatedAt
+}
+
 // --- ENUMS ---
 
 enum RetailerRole {
-  MASTER // Authority: Can update Title, Image, Description
-  SPOKE  // Contributor: Can ONLY update Price/URL
+  MASTER 
+  SPOKE  
 }
 
 enum FeedType {

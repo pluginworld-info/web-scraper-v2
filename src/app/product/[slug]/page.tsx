@@ -9,6 +9,8 @@ import PriceChart from '@/components/PriceChart';
 import AlertModalTrigger from '@/components/AlertModalTrigger';
 import RelatedProducts from '@/components/RelatedProducts'; 
 import ReviewsSection from '@/components/ReviewsSection'; 
+// ✅ NEW IMPORT
+import TrackedLink from '@/components/TrackedLink';
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
   const slug = params?.slug;
@@ -154,7 +156,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
               </span>
             </div>
 
-            {/* ✅ ADDED: Star Rating Display */}
+            {/* Star Rating Display */}
             <div className="flex items-center gap-2 mb-3">
                <div className="flex text-yellow-500">
                   {[...Array(5)].map((_, i) => (
@@ -235,14 +237,16 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
                 
                 <div className="flex items-center gap-6">
                   <span className="font-black text-xl text-white">${listing.price.toFixed(2)}</span>
-                  <a 
-                    href={listing.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
+                  
+                  {/* ✅ UPDATED: Now uses TrackedLink for Analytics */}
+                  <TrackedLink 
+                    url={listing.url}
+                    productId={product.id}
+                    retailerId={listing.retailerId}
                     className="bg-black text-white px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-[#333] border border-[#333] transition whitespace-nowrap"
                   >
                     Go to Store
-                  </a>
+                  </TrackedLink>
                 </div>
               </div>
             ))}
