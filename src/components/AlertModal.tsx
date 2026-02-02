@@ -11,7 +11,6 @@ interface AlertModalProps {
 export default function AlertModal({ product, currentPrice, isOpen, onClose }: AlertModalProps) {
   const salePrice = currentPrice 
     || product?.minPrice 
-    || product?.lowestPrice 
     || product?.listings?.[0]?.price 
     || 0;
 
@@ -58,12 +57,15 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4 backdrop-blur-md">
+    // ✅ FIX: Increased Z-Index to 999999 to force it on top of everything
+    <div className="fixed inset-0 bg-black/80 z-[999999] flex items-center justify-center p-4 backdrop-blur-md">
+      
+      {/* Modal Content */}
       <div className="bg-[#222222] rounded-3xl w-full max-w-lg overflow-hidden relative border border-[#333] p-8 text-center shadow-2xl shadow-black/50">
         
         <button 
           onClick={onClose} 
-          className="absolute top-4 right-5 text-[#666] hover:text-white text-2xl font-bold transition-colors"
+          className="absolute top-4 right-5 text-[#666] hover:text-white text-2xl font-bold transition-colors z-50"
         >
           ✕
         </button>
@@ -102,7 +104,7 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
         {status === 'SUCCESS' ? (
           <div className="bg-green-900/30 border border-green-800 text-green-400 p-5 rounded-2xl font-bold animate-pulse flex flex-col items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
-              <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+              <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 4.365-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
             </svg>
             <span>Alert Set! Check your inbox soon.</span>
           </div>

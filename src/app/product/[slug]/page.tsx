@@ -42,6 +42,12 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
   const hasDiscount = anchorPrice > currentBestPrice;
   const savingsAmount = anchorPrice - currentBestPrice;
 
+  // 3. Rating Logic
+  const reviewCount = product.reviews.length;
+  const averageRating = reviewCount > 0 
+    ? product.reviews.reduce((acc, review) => acc + review.rating, 0) / reviewCount 
+    : 0;
+
   // AI Deal Strength
   let dealStrength = "Good Deal";
   let dealColor = "bg-blue-900/30 text-blue-400 border border-blue-800";
@@ -55,7 +61,6 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
   }
 
   return (
-    // ✅ FIX: Explicit Dark Background Wrapper
     <main className="min-h-screen bg-[#111] pb-20">
       
       <div className="max-w-6xl mx-auto p-4 md:p-8">
@@ -103,10 +108,8 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
         {/* --- MAIN HEADER SECTION --- */}
         <div className="grid md:grid-cols-2 gap-12 mb-16">
           
-          {/* Product Image Section with Blurred BG */}
+          {/* Product Image Section */}
           <div className="relative h-[450px] w-full bg-[#222222] rounded-3xl overflow-hidden border border-[#333] flex items-center justify-center group">
-            
-            {/* 1. Blurred Background Image */}
             {product.image && (
                 <div className="absolute inset-0 z-0">
                   <Image 
@@ -120,7 +123,6 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
                 </div>
             )}
 
-            {/* 2. Main Sharp Image */}
             {product.image ? (
               <div className="relative z-10 w-full h-full p-8">
                   <Image 
@@ -142,13 +144,32 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
 
           {/* Product Info */}
           <div className="flex flex-col justify-center">
-            <div className="flex flex-wrap gap-2 mb-6">
+            
+            <div className="flex flex-wrap gap-2 mb-4">
               <span className="bg-blue-900/50 text-blue-200 border border-blue-800 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter">
                 {product.brand || 'Premium Brand'}
               </span>
               <span className="bg-[#333] text-[#aaaaaa] border border-[#444] px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter">
                 {product.category || 'Plugin'}
               </span>
+            </div>
+
+            {/* ✅ ADDED: Star Rating Display */}
+            <div className="flex items-center gap-2 mb-3">
+               <div className="flex text-yellow-500">
+                  {[...Array(5)].map((_, i) => (
+                     <svg 
+                       key={i} 
+                       className={`w-4 h-4 ${i < Math.round(averageRating) ? "fill-current" : "text-[#444] fill-current"}`} 
+                       viewBox="0 0 20 20"
+                     >
+                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                     </svg>
+                  ))}
+               </div>
+               <span className="text-xs font-bold text-[#666] uppercase tracking-wider">
+                  {reviewCount > 0 ? `${reviewCount} Reviews` : 'No Reviews Yet'}
+               </span>
             </div>
 
             <h1 className="text-4xl md:text-5xl font-black text-white mb-6 leading-[1.1] tracking-tight">
@@ -177,7 +198,6 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
             </div>
 
             <div className="flex gap-4">
-               {/* ✅ FIX: Pass the EXACT calculated price to the Alert Modal */}
                {currentBestPrice > 0 && (
                   <AlertModalTrigger 
                     product={product} 
