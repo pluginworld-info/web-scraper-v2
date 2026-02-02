@@ -17,7 +17,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
   const [menuBrands, setMenuBrands] = useState<string[]>(initialBrands || []);
   const [menuCategories, setMenuCategories] = useState<string[]>(initialCategories || []);
 
-  // 1. ROBUST DATA FETCHING: Ensure dropdowns never disappear
+  // 1. ROBUST DATA FETCHING
   useEffect(() => {
     async function fetchMenuData() {
       try {
@@ -33,23 +33,26 @@ export default function Navigation({ brands: initialBrands, categories: initialC
         console.error("Menu fetch failed, using fallback data");
       }
     }
-    
-    // Fetch fresh data on mount to ensure list is populated
     fetchMenuData();
   }, []);
 
-  // 2. WISHLIST LOGIC (LocalStorage)
+  // 2. WISHLIST LOGIC (Fixed "Ghost" Product Bug)
   const updateCount = () => {
     if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem('wishlist_items');
-    if (saved) {
-      try {
+    
+    try {
+      const saved = localStorage.getItem('wishlist_items');
+      if (saved) {
         const ids = JSON.parse(saved);
-        setWishlistCount(Array.isArray(ids) ? ids.length : 0);
-      } catch (e) {
-        setWishlistCount(0);
+        if (Array.isArray(ids)) {
+            // ✅ CRITICAL FIX: Filter out nulls, undefined, and empty strings
+            const validCount = ids.filter(id => typeof id === 'string' && id.trim().length > 0).length;
+            setWishlistCount(validCount);
+            return;
+        }
       }
-    } else {
+      setWishlistCount(0);
+    } catch (e) {
       setWishlistCount(0);
     }
   };
@@ -61,7 +64,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
     // Listen for custom event (from WishlistToggle button)
     window.addEventListener('wishlist-updated', updateCount);
     
-    // Listen for cross-tab updates (if user has 2 tabs open)
+    // Listen for cross-tab updates
     window.addEventListener('storage', updateCount);
 
     return () => {
@@ -97,7 +100,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
               Home
             </Link>
 
-            {/* 2. BRANDS (Hover Dropdown) */}
+            {/* 2. BRANDS */}
             <div className="group relative h-full flex items-center">
               <Link
                 href="/product"
@@ -120,13 +123,13 @@ export default function Navigation({ brands: initialBrands, categories: initialC
                       {brand}
                     </Link>
                   )) : (
-                     <span className="block px-4 py-2 text-xs text-gray-500 italic">No brands found</span>
+                      <span className="block px-4 py-2 text-xs text-gray-500 italic">No brands found</span>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* 3. CATEGORIES (Hover Dropdown) */}
+            {/* 3. CATEGORIES */}
             <div className="group relative h-full flex items-center">
               <Link
                 href="/product"
@@ -155,7 +158,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
               </div>
             </div>
 
-            {/* 4. WISHLIST TAB (Dynamic Red) */}
+            {/* 4. WISHLIST TAB */}
             <Link
               href="/wishlist"
               className={`text-sm font-bold uppercase tracking-wider transition-colors flex items-center gap-2 px-3 py-1 rounded-full ${
@@ -168,13 +171,14 @@ export default function Navigation({ brands: initialBrands, categories: initialC
                 <svg className="w-4 h-4" fill={wishlistCount > 0 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
+                {/* Badge Overlay on Icon */}
+                {wishlistCount > 0 && (
+                   <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[9px] font-black w-3.5 h-3.5 flex items-center justify-center rounded-full shadow-sm">
+                     {wishlistCount}
+                   </span>
+                )}
               </div>
               Wishlist
-              {wishlistCount > 0 && (
-                <span className="bg-red-600 text-white text-[9px] font-black px-1.5 h-4 min-w-[16px] flex items-center justify-center rounded-full shadow-sm">
-                  {wishlistCount}
-                </span>
-              )}
             </Link>
 
           </nav>

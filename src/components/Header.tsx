@@ -30,7 +30,7 @@ export default async function Header() {
     return <Navigation brands={brands} categories={categories} />;
 
   } catch (error) {
-    // ⚠️ FALLBACK FOR BUILD TIME
+    // FALLBACK FOR BUILD TIME
     // When building in Docker, the Database isn't available. 
     // We catch the error and render an empty nav so the build finishes.
     console.warn("Header: Database not available (likely during build). Rendering empty nav.");

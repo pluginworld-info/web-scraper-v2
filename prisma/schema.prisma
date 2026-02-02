@@ -37,7 +37,7 @@ model Product {
   views       ProductView[]
   wishlisted  WishlistItem[]
   
-  // ADDED: Link to Price Alerts (Required for relation)
+  // Link to Price Alerts
   priceAlerts PriceAlert[] 
 
   @@index([title])
@@ -127,14 +127,19 @@ model User {
   wishlist  WishlistItem[]
 }
 
+// ✅ UPDATED REVIEW MODEL
 model Review {
   id        String   @id @default(cuid())
   rating    Int
   comment   String?
   
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  // ✅ UPDATE: User is now Optional
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
   
+  // ✅ NEW: Capture Guest Name
+  authorName String  @default("Guest")
+
   productId String
   product   Product  @relation(fields: [productId], references: [id])
   
@@ -155,7 +160,6 @@ model UserEvent {
 
 // --- ANALYTICS & ALERTS MODELS ---
 
-// ADDED: This was missing in your file!
 model PriceAlert {
   id           String   @id @default(cuid())
   email        String

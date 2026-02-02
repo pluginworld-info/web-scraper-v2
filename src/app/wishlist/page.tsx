@@ -5,49 +5,67 @@ import Link from 'next/link';
 import ProductGrid from '@/components/ProductGrid'; 
 
 export default function WishlistPage() {
-  const [wishlistIds, setWishlistIds] = useState<string[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Helper to sync state with localStorage
-  const refreshWishlist = () => {
-    const saved = localStorage.getItem('wishlist_items');
-    if (saved) {
-      const ids = JSON.parse(saved);
-      setWishlistIds(ids);
-      return ids;
+  // ✅ ROBUST: Safely parse local storage and filter out bad data
+  const getSafeWishlistIds = () => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem('wishlist_items');
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      // Ensure we only return valid non-empty strings
+      return Array.isArray(parsed) ? parsed.filter(id => typeof id === 'string' && id.trim().length > 0) : [];
+    } catch (e) {
+      console.error("Wishlist Parse Error:", e);
+      return [];
     }
-    return [];
   };
 
-  // 1. Load IDs on mount AND Listen for Updates (Instant Removal)
+  // 1. Initial Load
   useEffect(() => {
-    const ids = refreshWishlist();
+    const ids = getSafeWishlistIds();
     if (ids.length > 0) {
       fetchWishlistProducts(ids);
     } else {
       setLoading(false);
     }
 
-    // ✅ NEW: Listen for "wishlist-updated" event (triggered by the Toggle button)
-    // This allows the item to disappear instantly without refreshing the page
+    // 2. Event Listener for "Ghost" Updates
     const handleUpdate = () => {
-      const currentIds = refreshWishlist();
-      setProducts(prevProducts => prevProducts.filter(p => currentIds.includes(p.id)));
+      // Re-read storage to get the *current* valid list
+      const validIds = getSafeWishlistIds();
+      
+      // Update state: Keep only products that are still in the validIds list
+      setProducts(prev => prev.filter(p => validIds.includes(p.id)));
+      
+      // If we filtered everything out, ensure loading is off
+      if (validIds.length === 0) setLoading(false);
     };
 
     window.addEventListener('wishlist-updated', handleUpdate);
     return () => window.removeEventListener('wishlist-updated', handleUpdate);
   }, []);
 
-  // 2. Fetch data
+  // 3. Fetch Data (Fixed to prevent "Show All" bug)
   async function fetchWishlistProducts(ids: string[]) {
     try {
-      const promises = ids.map(id => fetch(`/api/products?id=${id}`).then(r => r.json()));
+      // ✅ CRITICAL FIX: Only fetch if ID is valid. 
+      // Prevents calling /api/products?id=undefined which might return ALL products.
+      const validIds = ids.filter(id => id && id !== "null" && id !== "undefined");
+      
+      if (validIds.length === 0) {
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+
+      const promises = validIds.map(id => fetch(`/api/products?id=${id}`).then(r => r.json()));
       const results = await Promise.all(promises);
       
       const foundProducts = results
-        .filter(r => r.product)
+        .filter(r => r && r.product) // Ensure 'product' exists
         .map(r => r.product);
         
       setProducts(foundProducts);
@@ -60,33 +78,30 @@ export default function WishlistPage() {
 
   if (loading) {
     return (
-        // ✅ Dark Mode Loading
-        <div className="min-h-screen flex items-center justify-center bg-black">
-            <div className="animate-pulse text-gray-500 font-bold tracking-widest uppercase text-sm">Loading saved items...</div>
+        <div className="min-h-screen flex items-center justify-center bg-[#111]">
+            <div className="animate-pulse text-[#666] font-bold tracking-widest uppercase text-xs">Loading saved items...</div>
         </div>
     );
   }
 
   return (
-    // ✅ Dark Mode Background
-    <main className="min-h-screen bg-black p-4 md:p-8">
+    <main className="min-h-screen bg-[#111] p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8 border-b border-gray-800 pb-5">
-           <h1 className="text-3xl font-black text-white mb-2 tracking-tight">My Wishlist</h1>
-           <p className="text-gray-400 font-medium">{products.length} items saved</p>
+        <div className="mb-8 border-b border-[#333] pb-5 flex items-end gap-3">
+           <h1 className="text-3xl font-black text-white tracking-tighter">My Wishlist</h1>
+           <span className="text-[#666] font-bold mb-1">{products.length} Items</span>
         </div>
 
         {products.length > 0 ? (
           <ProductGrid initialProducts={products} totalCount={products.length} />
         ) : (
-          // ✅ Dark Mode Empty State
-          <div className="text-center py-20 bg-[#1e1e1e] rounded-3xl border border-gray-800 shadow-xl">
-            <div className="text-6xl mb-6 opacity-50">💔</div>
+          <div className="text-center py-32 bg-[#1a1a1a] rounded-3xl border border-[#333] shadow-xl">
+            <div className="text-6xl mb-6 grayscale opacity-30">💔</div>
             <h2 className="text-xl font-bold text-white mb-2">Your wishlist is empty</h2>
-            <p className="text-gray-500 mb-8 max-w-md mx-auto">Start saving your favorite plugins to track their prices and get notified of deals.</p>
+            <p className="text-[#888] mb-8 max-w-md mx-auto text-sm">Start saving your favorite plugins to track their prices and get notified of deals.</p>
             <Link 
               href="/product" 
-              className="bg-blue-600 text-white px-8 py-3 rounded-full font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-900/20"
+              className="bg-blue-600 text-white px-8 py-4 rounded-full font-black uppercase text-xs tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-900/20"
             >
               Browse Deals
             </Link>
