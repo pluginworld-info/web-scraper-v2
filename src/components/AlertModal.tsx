@@ -13,18 +13,18 @@ interface AlertModalProps {
 export default function AlertModal({ product, currentPrice, isOpen, onClose }: AlertModalProps) {
   const [mounted, setMounted] = useState(false);
 
-  // 1. Wait for mount to access 'document' (Required for Portals)
+  // 1. Wait for mount to access 'document'
   useEffect(() => {
     setMounted(true);
-    // Lock body scroll when modal is open
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden'; // Lock scroll
     } else {
       document.body.style.overflow = 'unset';
     }
     return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
+  // Don't render until client-side matches
   if (!isOpen || !mounted) return null;
 
   const salePrice = currentPrice 
@@ -72,18 +72,18 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
     }
   };
 
-  // 2. THE PORTAL: Teleports this HTML to document.body
+  // 2. SAFE PORTAL RENDER
   return createPortal(
     <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4">
       
-      {/* Backdrop (Click to close) */}
+      {/* LAYER 1: The Backdrop (z-10) */}
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" 
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm z-10" 
         onClick={onClose}
       />
 
-      {/* Modal Content */}
-      <div className="relative bg-[#222222] rounded-3xl w-full max-w-lg overflow-hidden border border-[#333] p-8 text-center shadow-2xl shadow-black/50 animate-in fade-in zoom-in duration-200">
+      {/* LAYER 2: The Content (z-20) - Must be higher than backdrop */}
+      <div className="relative z-20 bg-[#222222] rounded-3xl w-full max-w-lg overflow-hidden border border-[#333] p-8 text-center shadow-2xl shadow-black/50">
         
         <button 
           onClick={onClose} 
@@ -124,7 +124,7 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
 
         {/* Status / Form */}
         {status === 'SUCCESS' ? (
-          <div className="bg-green-900/30 border border-green-800 text-green-400 p-5 rounded-2xl font-bold animate-pulse flex flex-col items-center gap-2">
+          <div className="bg-green-900/30 border border-green-800 text-green-400 p-5 rounded-2xl font-bold flex flex-col items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
               <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 4.365-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
             </svg>
@@ -151,6 +151,6 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
         )}
       </div>
     </div>,
-    document.body // 👈 Attaches to <body>
+    document.body
   );
 }
