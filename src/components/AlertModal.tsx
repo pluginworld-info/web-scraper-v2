@@ -1,5 +1,7 @@
 'use client';
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface AlertModalProps {
   product: any;
@@ -9,6 +11,22 @@ interface AlertModalProps {
 }
 
 export default function AlertModal({ product, currentPrice, isOpen, onClose }: AlertModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  // 1. Wait for mount to access 'document' (Required for Portals)
+  useEffect(() => {
+    setMounted(true);
+    // Lock body scroll when modal is open
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isOpen]);
+
+  if (!isOpen || !mounted) return null;
+
   const salePrice = currentPrice 
     || product?.minPrice 
     || product?.listings?.[0]?.price 
@@ -21,8 +39,6 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
   const [email, setEmail] = useState('');
   const [targetPrice, setTargetPrice] = useState(salePrice);
   const [status, setStatus] = useState('IDLE'); 
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,12 +72,18 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
     }
   };
 
-  return (
-    // ✅ FIX: Increased Z-Index to 999999 to force it on top of everything
-    <div className="fixed inset-0 bg-black/80 z-[999999] flex items-center justify-center p-4 backdrop-blur-md">
+  // 2. THE PORTAL: Teleports this HTML to document.body
+  return createPortal(
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4">
       
+      {/* Backdrop (Click to close) */}
+      <div 
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" 
+        onClick={onClose}
+      />
+
       {/* Modal Content */}
-      <div className="bg-[#222222] rounded-3xl w-full max-w-lg overflow-hidden relative border border-[#333] p-8 text-center shadow-2xl shadow-black/50">
+      <div className="relative bg-[#222222] rounded-3xl w-full max-w-lg overflow-hidden border border-[#333] p-8 text-center shadow-2xl shadow-black/50 animate-in fade-in zoom-in duration-200">
         
         <button 
           onClick={onClose} 
@@ -128,6 +150,7 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body // 👈 Attaches to <body>
   );
 }
