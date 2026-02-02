@@ -11,21 +11,7 @@ interface AlertModalProps {
 }
 
 export default function AlertModal({ product, currentPrice, isOpen, onClose }: AlertModalProps) {
-  const [mounted, setMounted] = useState(false);
-
-  // 1. Wait for mount to access 'document'
-  useEffect(() => {
-    setMounted(true);
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'; 
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [isOpen]);
-
-  if (!isOpen || !mounted) return null;
-
+  // --- 1. CALCULATE VALUES FIRST (Safe logic) ---
   const salePrice = currentPrice 
     || product?.minPrice 
     || product?.listings?.[0]?.price 
@@ -35,9 +21,30 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
     || product?.listings?.[0]?.originalPrice 
     || salePrice;
 
+  // --- 2. DEFINE ALL HOOKS UNCONDITIONALLY ---
+  // (Hooks must ALWAYS run in the same order, so they cannot be after an 'if')
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState('');
   const [targetPrice, setTargetPrice] = useState(salePrice);
   const [status, setStatus] = useState('IDLE'); 
+
+  // Initialize/Reset price when modal opens
+  useEffect(() => {
+    if (isOpen) {
+        setTargetPrice(salePrice);
+    }
+  }, [isOpen, salePrice]);
+
+  // Handle side effects (Body scroll lock)
+  useEffect(() => {
+    setMounted(true);
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'; 
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +78,11 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
     }
   };
 
-  // 2. PORTAL with Strict Layering
+  // --- 3. CONDITIONAL RENDER (The Guard Clause) ---
+  // Only NOW can we return null if closed
+  if (!isOpen || !mounted) return null;
+
+  // --- 4. RENDER PORTAL ---
   return createPortal(
     <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4">
       
@@ -81,7 +92,7 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
         onClick={onClose}
       ></div>
 
-      {/* LAYER 2: The Modal Content (Must be Relative to sit on top of fixed overlay) */}
+      {/* LAYER 2: The Modal Content */}
       <div className="relative bg-[#222222] rounded-3xl w-full max-w-lg border border-[#444] p-8 text-center shadow-2xl">
         
         {/* Close Button */}
