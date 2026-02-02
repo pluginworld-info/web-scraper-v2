@@ -111,19 +111,22 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
           
           {/* Product Image Section */}
           <div className="relative h-[450px] w-full bg-[#222222] rounded-3xl overflow-hidden border border-[#333] flex items-center justify-center group">
+            
+            {/* ✅ CONTAINED BLURRED BACKGROUND (Restored here) */}
             {product.image && (
-                <div className="absolute inset-0 z-0">
+                <div className="absolute inset-0 z-0 pointer-events-none">
                   <Image 
                     src={product.image} 
                     alt="" 
                     fill 
                     unoptimized={true}
-                    className="object-cover blur-2xl opacity-40 scale-110"
+                    className="object-cover blur-2xl opacity-40 scale-110 saturate-150"
                   />
                   <div className="absolute inset-0 bg-black/20" /> 
                 </div>
             )}
 
+            {/* Main Image */}
             {product.image ? (
               <div className="relative z-10 w-full h-full p-8">
                   <Image 
@@ -275,10 +278,6 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
         {/* --- RELATED DEALS --- */}
         {product.category && (
           <div className="mt-20">
-            <div className="flex items-center gap-4 mb-8">
-              <h3 className="font-black text-sm uppercase tracking-widest text-[#aaaaaa]">Similar Deals</h3>
-              <div className="h-px bg-[#333] flex-grow"></div>
-            </div>
             <RelatedProducts currentId={product.id} category={product.category} />
           </div>
         )}
