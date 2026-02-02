@@ -10,7 +10,6 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const token = searchParams.get('token');
   
-  // Reuse the same secret you set up for the Sync job
   if (token !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -19,7 +18,6 @@ export async function GET(req: Request) {
     console.log("🔍 Cron Job: Checking Price Alerts...");
 
     // 2. Fetch Active Alerts (Only those NOT triggered yet)
-    // We include the 'product' so we know its current 'minPrice'
     const alerts = await prisma.priceAlert.findMany({
       where: { isTriggered: false },
       include: { product: true }
@@ -31,7 +29,7 @@ export async function GET(req: Request) {
     }
 
     let triggeredCount = 0;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pluginworld.com'; // Adjust fallback as needed
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pluginworld.com'; 
 
     // 3. Loop through alerts and check conditions
     for (const alert of alerts) {
@@ -43,7 +41,6 @@ export async function GET(req: Request) {
         console.log(`   🚀 Triggering Alert for ${alert.email} on ${alert.product.title}`);
 
         try {
-          // A. Send Email
           const productUrl = `${baseUrl}/product/${alert.product.slug}`;
           await sendPriceAlertEmail(
             alert.email,
@@ -53,7 +50,7 @@ export async function GET(req: Request) {
             productUrl
           );
 
-          // B. Update Database (Mark as triggered so we don't spam them)
+          // Mark as triggered
           await prisma.priceAlert.update({
             where: { id: alert.id },
             data: { 

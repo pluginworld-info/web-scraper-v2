@@ -37,7 +37,7 @@ model Product {
   views       ProductView[]
   wishlisted  WishlistItem[]
   
-  // ✅ ADDED: Link to Price Alerts (Required for relation)
+  // ADDED: Link to Price Alerts (Required for relation)
   priceAlerts PriceAlert[] 
 
   @@index([title])
@@ -155,7 +155,7 @@ model UserEvent {
 
 // --- ANALYTICS & ALERTS MODELS ---
 
-// ✅ ADDED: This was missing in your file!
+// ADDED: This was missing in your file!
 model PriceAlert {
   id           String   @id @default(cuid())
   email        String
