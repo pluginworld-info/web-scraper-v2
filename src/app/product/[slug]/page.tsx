@@ -9,7 +9,6 @@ import PriceChart from '@/components/PriceChart';
 import AlertModalTrigger from '@/components/AlertModalTrigger';
 import RelatedProducts from '@/components/RelatedProducts'; 
 import ReviewsSection from '@/components/ReviewsSection'; 
-// ✅ NEW IMPORT
 import TrackedLink from '@/components/TrackedLink';
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
@@ -221,8 +220,15 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
               <div key={listing.id} className="flex items-center justify-between p-6 hover:bg-[#2a2a2a] transition">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 relative flex-shrink-0 bg-white rounded-lg flex items-center justify-center overflow-hidden">
+                    {/* ✅ FIX: unoptimized={true} ensures external logos load */}
                     {listing.retailer.logo ? (
-                      <Image src={listing.retailer.logo} alt={listing.retailer.name} fill className="object-contain p-1" />
+                      <Image 
+                        src={listing.retailer.logo} 
+                        alt={listing.retailer.name} 
+                        fill 
+                        className="object-contain p-1"
+                        unoptimized={true}
+                      />
                     ) : (
                       <span className="text-xs font-bold text-black">{listing.retailer.name.charAt(0)}</span>
                     )}
@@ -238,7 +244,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
                 <div className="flex items-center gap-6">
                   <span className="font-black text-xl text-white">${listing.price.toFixed(2)}</span>
                   
-                  {/* ✅ UPDATED: Now uses TrackedLink for Analytics */}
+                  {/* Tracked Link for Analytics */}
                   <TrackedLink 
                     url={listing.url}
                     productId={product.id}

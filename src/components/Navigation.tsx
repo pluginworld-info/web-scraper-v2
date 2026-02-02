@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -13,30 +14,52 @@ export default function Navigation({ brands: initialBrands, categories: initialC
   const pathname = usePathname();
   const [wishlistCount, setWishlistCount] = useState(0);
 
-  // ✅ STATE for Menu Data (Initialized with server props, updated by client fetch)
+  // ✅ STATE for Menu Data
   const [menuBrands, setMenuBrands] = useState<string[]>(initialBrands || []);
   const [menuCategories, setMenuCategories] = useState<string[]>(initialCategories || []);
+  
+  // ✅ STATE for Site Branding
+  const [siteSettings, setSiteSettings] = useState({
+    siteName: 'PluginDeals',
+    logoUrl: ''
+  });
 
-  // 1. ROBUST DATA FETCHING
+  // 1. ROBUST DATA FETCHING (Menu & Settings)
   useEffect(() => {
-    async function fetchMenuData() {
+    async function fetchData() {
       try {
-        const res = await fetch('/api/metadata');
-        const data = await res.json();
-        if (data.brands && data.brands.length > 0) {
-          setMenuBrands(data.brands);
+        // Fetch Menu Data
+        const metaRes = await fetch('/api/metadata');
+        const metaData = await metaRes.json();
+        
+        if (metaData.brands?.length > 0) setMenuBrands(metaData.brands);
+        if (metaData.categories?.length > 0) setMenuCategories(metaData.categories);
+
+        // Fetch Site Settings (Logo/Name)
+        const settingsRes = await fetch('/api/admin/settings');
+        const settingsData = await settingsRes.json();
+        
+        if (settingsData && !settingsData.error) {
+           setSiteSettings({
+             siteName: settingsData.siteName || 'PluginDeals',
+             logoUrl: settingsData.logoUrl || ''
+           });
+           
+           // Inject CSS Variables for dynamic colors
+           if (typeof document !== 'undefined') {
+             document.documentElement.style.setProperty('--primary', settingsData.primaryColor);
+             document.documentElement.style.setProperty('--accent', settingsData.accentColor);
+           }
         }
-        if (data.categories && data.categories.length > 0) {
-          setMenuCategories(data.categories);
-        }
+
       } catch (error) {
-        console.error("Menu fetch failed, using fallback data");
+        console.error("Data fetch failed", error);
       }
     }
-    fetchMenuData();
+    fetchData();
   }, []);
 
-  // 2. WISHLIST LOGIC (Fixed "Ghost" Product Bug)
+  // 2. WISHLIST LOGIC
   const updateCount = () => {
     if (typeof window === 'undefined') return;
     
@@ -45,7 +68,6 @@ export default function Navigation({ brands: initialBrands, categories: initialC
       if (saved) {
         const ids = JSON.parse(saved);
         if (Array.isArray(ids)) {
-            // ✅ CRITICAL FIX: Filter out nulls, undefined, and empty strings
             const validCount = ids.filter(id => typeof id === 'string' && id.trim().length > 0).length;
             setWishlistCount(validCount);
             return;
@@ -58,15 +80,9 @@ export default function Navigation({ brands: initialBrands, categories: initialC
   };
 
   useEffect(() => {
-    // Check on load
     updateCount();
-
-    // Listen for custom event (from WishlistToggle button)
     window.addEventListener('wishlist-updated', updateCount);
-    
-    // Listen for cross-tab updates
     window.addEventListener('storage', updateCount);
-
     return () => {
       window.removeEventListener('wishlist-updated', updateCount);
       window.removeEventListener('storage', updateCount);
@@ -78,12 +94,25 @@ export default function Navigation({ brands: initialBrands, categories: initialC
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           
-          {/* LOGO */}
+          {/* ✅ DYNAMIC LOGO SECTION */}
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center gap-2 group">
-              <span className="text-2xl font-black tracking-tighter uppercase group-hover:opacity-90 transition-opacity">
-                Plugin<span className="text-blue-500">Deals</span>
-              </span>
+              {siteSettings.logoUrl ? (
+                <div className="relative h-8 w-40">
+                   <Image 
+                     src={siteSettings.logoUrl} 
+                     alt={siteSettings.siteName} 
+                     fill 
+                     className="object-contain object-left"
+                     unoptimized // Allow external URLs
+                   />
+                </div>
+              ) : (
+                <span className="text-2xl font-black tracking-tighter uppercase group-hover:opacity-90 transition-opacity">
+                  {siteSettings.siteName.replace('Deals', '')}
+                  <span className="text-blue-500">Deals</span>
+                </span>
+              )}
             </Link>
           </div>
 
@@ -171,7 +200,6 @@ export default function Navigation({ brands: initialBrands, categories: initialC
                 <svg className="w-4 h-4" fill={wishlistCount > 0 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
-                {/* Badge Overlay on Icon */}
                 {wishlistCount > 0 && (
                    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[9px] font-black w-3.5 h-3.5 flex items-center justify-center rounded-full shadow-sm">
                      {wishlistCount}
@@ -181,10 +209,28 @@ export default function Navigation({ brands: initialBrands, categories: initialC
               Wishlist
             </Link>
 
+            {/* ✅ NEW: ADMIN LOGIN BUTTON */}
+            <Link
+              href="/admin"
+              className="text-gray-500 hover:text-white transition-colors"
+              title="Admin Access"
+            >
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+               </svg>
+            </Link>
+
           </nav>
 
-          {/* MOBILE MENU ICON */}
-          <div className="md:hidden">
+          {/* MOBILE MENU */}
+          <div className="md:hidden flex items-center gap-4">
+             {/* Admin for Mobile */}
+             <Link href="/admin" className="text-gray-500 hover:text-white">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+             </Link>
+
             <button className="text-gray-200 hover:text-white p-2">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
