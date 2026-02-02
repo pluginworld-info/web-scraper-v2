@@ -93,8 +93,6 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
 
   // Load More Logic
   async function loadMore() {
-    // Don't set main loading to true here, usually we want a spinner on the button only
-    // But for simplicity, we can just fetch
     try {
       const skip = products.length;
       const response = await fetch(`/api/products?skip=${skip}&search=${encodeURIComponent(search)}`); 
@@ -120,7 +118,7 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
           <input 
             type="text" 
             placeholder="Search brands, categories..." 
-            className="p-3 pl-10 bg-[#1a1a1a] border border-gray-800 text-white rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none transition font-medium placeholder-gray-500"
+            className="p-3 pl-10 bg-[#1a1a1a] border border-gray-800 text-white rounded-lg w-full focus:ring-2 focus:ring-[var(--primary)] outline-none transition font-medium placeholder-gray-500"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -130,7 +128,7 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
         </div>
 
         <select 
-          className="p-3 bg-[#1a1a1a] border border-gray-800 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer font-medium text-sm"
+          className="p-3 bg-[#1a1a1a] border border-gray-800 text-white rounded-lg focus:ring-2 focus:ring-[var(--primary)] outline-none cursor-pointer font-medium text-sm"
           onChange={(e) => setSort(e.target.value)}
           value={sort}
         >
@@ -147,7 +145,7 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
         {loading && (
             <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center rounded-2xl transition-all duration-300">
                 <div className="flex flex-col items-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary)] mb-4"></div>
                     <span className="text-white font-bold tracking-widest uppercase text-sm animate-pulse">Searching...</span>
                 </div>
             </div>
@@ -167,7 +165,12 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
                 !loading && (
                     <div className="col-span-full text-center py-20">
                         <p className="text-gray-400 text-lg font-medium">No products found matching "{search}"</p>
-                        <button onClick={() => setSearch('')} className="mt-4 text-blue-500 font-bold hover:underline">Clear Search</button>
+                        <button 
+                          onClick={() => setSearch('')} 
+                          className="mt-4 text-[var(--primary)] font-bold hover:opacity-80 transition-opacity underline"
+                        >
+                          Clear Search
+                        </button>
                     </div>
                 )
             )}
@@ -179,7 +182,7 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
         <div className="mt-20 flex justify-center pb-12">
           <button
             onClick={loadMore}
-            className="group relative inline-flex items-center justify-center px-12 py-4 font-black text-white transition-all duration-200 bg-blue-600 rounded-full hover:bg-blue-700 tracking-widest text-xs uppercase"
+            className="group relative inline-flex items-center justify-center px-12 py-4 font-black text-white transition-all duration-200 bg-[var(--primary)] rounded-full hover:opacity-90 tracking-widest text-xs uppercase shadow-lg shadow-black/40"
           >
             LOAD MORE PLUGINS
           </button>
