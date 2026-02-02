@@ -8,8 +8,15 @@ export default function SettingsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [isDragging, setIsDragging] = useState(false); // Visual cue state
+  const [isDragging, setIsDragging] = useState(false); 
   
+  // ✅ NEW: Notification State
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'error';
+  }>({ show: false, message: '', type: 'success' });
+
   // Form State
   const [formData, setFormData] = useState({
     siteName: '',
@@ -18,7 +25,16 @@ export default function SettingsPage() {
     accentColor: '#ef4444'
   });
 
-  // ✅ HELPER: Apply colors live to the entire document
+  // HELPER: Show Custom Notification
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setNotification({ show: true, message, type });
+    // Auto hide after 3 seconds
+    setTimeout(() => {
+        setNotification(prev => ({ ...prev, show: false }));
+    }, 3000);
+  };
+
+  // HELPER: Apply colors live
   const applyThemeColors = (primary: string, accent: string) => {
     if (typeof document !== 'undefined') {
       const root = document.documentElement;
@@ -47,11 +63,10 @@ export default function SettingsPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  // 2. Handle Color Changes (Live Preview)
+  // 2. Handle Color Changes
   const handleColorChange = (key: string, value: string) => {
     const newData = { ...formData, [key]: value };
     setFormData(newData);
-    // Apply immediately so user sees the change
     applyThemeColors(newData.primaryColor, newData.accentColor);
   };
 
@@ -66,20 +81,23 @@ export default function SettingsPage() {
       });
       
       if (res.ok) {
-        alert("Settings Saved! Theme updated.");
+        // ✅ REPLACED ALERT WITH TOAST
+        showToast("Settings Saved Successfully!", "success");
         router.refresh();
       } else {
-        alert("Failed to save settings.");
+        showToast("Failed to save settings. Image might be too large.", "error");
       }
     } catch (e) {
-      alert("Error saving settings.");
+      showToast("Error saving settings.", "error");
     } finally {
       setSaving(false);
     }
   };
 
-  // 4. Handle Cache Clearing
+  // 4. Cache Clearing
   const handleClearBrowserCache = () => {
+    // We can stick with confirm() for dangerous actions, or build a modal. 
+    // For now, confirm is safer for destructive actions.
     if (confirm("This will log you out and clear all local storage. Continue?")) {
       document.cookie.split(";").forEach((c) => {
         document.cookie = c
@@ -91,7 +109,27 @@ export default function SettingsPage() {
     }
   };
 
-  // ✅ FIXED DRAG & DROP LOGIC
+  // FILE HANDLING LOGIC
+  const processFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+        showToast("File is not an image.", "error");
+        return;
+    }
+    // Limit size to 1MB
+    if (file.size > 1024 * 1024) {
+        showToast("File is too large. Max 1MB.", "error");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setFormData(prev => ({ ...prev, logoUrl: result }));
+        showToast("Logo uploaded successfully!", "success");
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -106,25 +144,55 @@ export default function SettingsPage() {
     e.preventDefault();
     setIsDragging(false);
     
-    // Try to get data from different formats
-    const textData = e.dataTransfer.getData('text/plain');
-    const uriData = e.dataTransfer.getData('text/uri-list');
-    
-    // Prioritize URI, then Text
-    const droppedUrl = uriData || textData;
+    // 1. Check for FILES first
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processFile(e.dataTransfer.files[0]);
+        return;
+    }
 
-    if (droppedUrl && (droppedUrl.startsWith('http') || droppedUrl.startsWith('/'))) {
-        setFormData({ ...formData, logoUrl: droppedUrl });
-    } else {
-        alert("Could not detect a valid URL. Please right-click the image -> Copy Image Address, then paste it here.");
+    // 2. Check for URL string
+    const textData = e.dataTransfer.getData('text/plain');
+    if (textData && (textData.startsWith('http') || textData.startsWith('data:image'))) {
+        setFormData(prev => ({ ...prev, logoUrl: textData }));
+        showToast("Image URL applied!", "success");
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+        processFile(e.target.files[0]);
     }
   };
 
   if (loading) return <div className="text-[#666] animate-pulse p-8">Loading Settings...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-20">
+    <div className="max-w-4xl mx-auto space-y-8 pb-20 relative">
       
+      {/* ✅ CUSTOM NOTIFICATION TOAST */}
+      <div 
+        className={`fixed bottom-6 right-6 z-50 transform transition-all duration-300 ease-out ${
+            notification.show ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'
+        }`}
+      >
+        <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${
+            notification.type === 'success' 
+                ? 'bg-[#1a1a1a] border-green-900 text-green-400' 
+                : 'bg-[#1a1a1a] border-red-900 text-red-400'
+        }`}>
+            {notification.type === 'success' ? (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+            ) : (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            )}
+            <span className="font-bold text-sm">{notification.message}</span>
+        </div>
+      </div>
+
       {/* HEADER */}
       <div>
         <h1 className="text-3xl font-black text-white tracking-tighter">Site Settings</h1>
@@ -168,30 +236,45 @@ export default function SettingsPage() {
                             onClick={() => setFormData({...formData, logoUrl: ''})}
                             className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg hover:bg-red-700 transition"
                         >
-                            Delete Logo
+                            Remove Logo
                         </button>
                     </div>
                 </div>
             ) : (
-                <div 
+                <label 
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`w-full h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-colors p-4 ${
+                    className={`w-full h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-colors p-4 cursor-pointer relative ${
                         isDragging ? 'border-[var(--primary)] bg-[var(--primary)]/10' : 'border-[#333] bg-[#111] hover:border-[#555]'
                     }`}
                 >
-                    <span className={`text-xs font-bold uppercase mb-2 ${isDragging ? 'text-[var(--primary)]' : 'text-[#666]'}`}>
-                        {isDragging ? 'Drop URL Here!' : 'Drop Image URL Here'}
-                    </span>
                     <input 
-                      type="text" 
-                      value={formData.logoUrl}
-                      onChange={(e) => setFormData({...formData, logoUrl: e.target.value})}
-                      className="w-full bg-transparent text-center text-sm text-white focus:outline-none placeholder:text-[#333]"
-                      placeholder="Or paste URL here..."
+                        type="file" 
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleFileSelect}
                     />
-                </div>
+                    <div className="flex flex-col items-center pointer-events-none">
+                         <svg className={`w-8 h-8 mb-2 ${isDragging ? 'text-[var(--primary)]' : 'text-[#444]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                         </svg>
+                         <span className={`text-xs font-bold uppercase ${isDragging ? 'text-[var(--primary)]' : 'text-[#666]'}`}>
+                             {isDragging ? 'Drop File Now' : 'Click or Drag Image Here'}
+                         </span>
+                    </div>
+                </label>
+            )}
+            
+            {/* Fallback for direct URL paste */}
+            {!formData.logoUrl && (
+                <input 
+                type="text" 
+                value={formData.logoUrl}
+                onChange={(e) => setFormData({...formData, logoUrl: e.target.value})}
+                className="w-full bg-transparent text-center text-[10px] text-[#666] focus:outline-none focus:text-white border-none"
+                placeholder="(Or paste URL manually)"
+                />
             )}
           </div>
         </div>
@@ -239,8 +322,6 @@ export default function SettingsPage() {
         <button 
           onClick={handleSave}
           disabled={saving}
-          // Note: using explicit styles here because Tailwind variables handle class names, 
-          // but for the button itself, inline styles ensure 100% reliability during preview
           style={{ backgroundColor: formData.primaryColor }}
           className="text-white font-black text-lg px-8 py-4 rounded-xl hover:opacity-90 transition shadow-xl disabled:opacity-50 flex items-center gap-2"
         >

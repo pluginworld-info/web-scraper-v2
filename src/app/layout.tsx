@@ -1,15 +1,31 @@
-import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Header from '@/components/Header'; 
-import ThemeProvider from '@/providers/ThemeProvider'; // ✅ NEW IMPORT
+import ThemeProvider from '@/providers/ThemeProvider'; 
+import { prisma } from '@/lib/db/prisma'; // ✅ Import Prisma
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
-export const metadata: Metadata = {
-  title: 'Plugin Deals Tracker',
-  description: 'Real-time price tracking for audio plugins',
-};
+// ✅ DYNAMIC METADATA: Fetches Site Name for the Browser Tab
+export async function generateMetadata() {
+  try {
+    const settings = await prisma.siteSettings.findFirst();
+    
+    return {
+      title: settings?.siteName || 'Plugin Deals Tracker',
+      description: settings?.description || 'Real-time price tracking for audio plugins',
+      icons: {
+        icon: settings?.faviconUrl || '/favicon.ico', // Optional: if you add favicon support later
+      },
+    };
+  } catch (e) {
+    // Fallback if DB fails
+    return {
+      title: 'Plugin Deals Tracker',
+      description: 'Real-time price tracking for audio plugins',
+    };
+  }
+}
 
 export default function RootLayout({
   children,

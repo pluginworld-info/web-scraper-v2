@@ -62,7 +62,6 @@ export default function Navigation({ brands: initialBrands, categories: initialC
   // 2. WISHLIST LOGIC
   const updateCount = () => {
     if (typeof window === 'undefined') return;
-    
     try {
       const saved = localStorage.getItem('wishlist_items');
       if (saved) {
@@ -98,19 +97,31 @@ export default function Navigation({ brands: initialBrands, categories: initialC
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center gap-2 group">
               {siteSettings.logoUrl ? (
-                <div className="relative h-8 w-40">
+                // OPTION A: Show Image Logo
+                <div className="relative h-9 w-40">
                    <Image 
                      src={siteSettings.logoUrl} 
                      alt={siteSettings.siteName} 
                      fill 
                      className="object-contain object-left"
-                     unoptimized // Allow external URLs
+                     unoptimized // Allow external URLs (e.g. imgur, aws)
                    />
                 </div>
               ) : (
-                <span className="text-2xl font-black tracking-tighter uppercase group-hover:opacity-90 transition-opacity">
-                  {siteSettings.siteName.replace('Deals', '')}
-                  <span className="text-blue-500">Deals</span>
+                // OPTION B: Show Site Name (Text)
+                <span className="text-2xl font-black tracking-tighter uppercase group-hover:opacity-90 transition-opacity whitespace-nowrap">
+                  {/* Smart Coloring: Splits name and colors the last word */}
+                  {siteSettings.siteName.includes(' ') ? (
+                    <>
+                      {siteSettings.siteName.split(' ').slice(0, -1).join(' ')}
+                      <span className="text-primary"> {siteSettings.siteName.split(' ').slice(-1)}</span>
+                    </>
+                  ) : (
+                    <>
+                       {siteSettings.siteName.slice(0, Math.ceil(siteSettings.siteName.length / 2))}
+                       <span className="text-primary">{siteSettings.siteName.slice(Math.ceil(siteSettings.siteName.length / 2))}</span>
+                    </>
+                  )}
                 </span>
               )}
             </Link>
@@ -122,8 +133,8 @@ export default function Navigation({ brands: initialBrands, categories: initialC
             {/* 1. HOME */}
             <Link
               href="/"
-              className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-blue-400 flex items-center h-full ${
-                pathname === '/' ? 'text-blue-500' : 'text-gray-300'
+              className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-primary flex items-center h-full ${
+                pathname === '/' ? 'text-primary' : 'text-gray-300'
               }`}
             >
               Home
@@ -133,21 +144,21 @@ export default function Navigation({ brands: initialBrands, categories: initialC
             <div className="group relative h-full flex items-center">
               <Link
                 href="/product"
-                className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-blue-400 flex items-center gap-1 ${
-                  pathname === '/product' ? 'text-blue-500' : 'text-gray-300'
+                className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-primary flex items-center gap-1 ${
+                  pathname === '/product' ? 'text-primary' : 'text-gray-300'
                 }`}
               >
                 Brands
                 <svg className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
               </Link>
               
-              <div className="absolute left-0 top-full w-56 bg-[#1a1a1a] text-gray-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 border-t-2 border-blue-600 overflow-hidden z-50">
+              <div className="absolute left-0 top-full w-56 bg-[#1a1a1a] text-gray-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 border-t-2 border-primary overflow-hidden z-50">
                 <div className="max-h-80 overflow-y-auto py-2 custom-scrollbar">
                   {menuBrands.length > 0 ? menuBrands.map((brand) => (
                     <Link 
                       key={brand} 
                       href={`/product?search=${encodeURIComponent(brand)}`} 
-                      className="block px-4 py-3 text-xs font-bold uppercase hover:bg-white/5 hover:text-blue-400 transition-colors border-b border-white/5 last:border-0"
+                      className="block px-4 py-3 text-xs font-bold uppercase hover:bg-white/5 hover:text-primary transition-colors border-b border-white/5 last:border-0"
                     >
                       {brand}
                     </Link>
@@ -162,21 +173,21 @@ export default function Navigation({ brands: initialBrands, categories: initialC
             <div className="group relative h-full flex items-center">
               <Link
                 href="/product"
-                className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-blue-400 flex items-center gap-1 ${
-                  pathname === '/product' ? 'text-blue-500' : 'text-gray-300'
+                className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-primary flex items-center gap-1 ${
+                  pathname === '/product' ? 'text-primary' : 'text-gray-300'
                 }`}
               >
                 Categories
                 <svg className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
               </Link>
 
-              <div className="absolute left-0 top-full w-56 bg-[#1a1a1a] text-gray-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 border-t-2 border-blue-600 overflow-hidden z-50">
+              <div className="absolute left-0 top-full w-56 bg-[#1a1a1a] text-gray-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 border-t-2 border-primary overflow-hidden z-50">
                 <div className="max-h-80 overflow-y-auto py-2 custom-scrollbar">
                    {menuCategories.length > 0 ? menuCategories.map((cat) => (
                     <Link 
                       key={cat} 
                       href={`/product?search=${encodeURIComponent(cat)}`} 
-                      className="block px-4 py-3 text-xs font-bold uppercase hover:bg-white/5 hover:text-blue-400 transition-colors border-b border-white/5 last:border-0"
+                      className="block px-4 py-3 text-xs font-bold uppercase hover:bg-white/5 hover:text-primary transition-colors border-b border-white/5 last:border-0"
                     >
                       {cat}
                     </Link>
@@ -192,8 +203,8 @@ export default function Navigation({ brands: initialBrands, categories: initialC
               href="/wishlist"
               className={`text-sm font-bold uppercase tracking-wider transition-colors flex items-center gap-2 px-3 py-1 rounded-full ${
                 pathname === '/wishlist' || wishlistCount > 0 
-                  ? 'text-red-500 bg-red-500/10' 
-                  : 'text-gray-300 hover:text-red-400'
+                  ? 'text-accent bg-accent/10' 
+                  : 'text-gray-300 hover:text-accent'
               }`}
             >
               <div className="relative">
@@ -201,7 +212,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
                 {wishlistCount > 0 && (
-                   <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[9px] font-black w-3.5 h-3.5 flex items-center justify-center rounded-full shadow-sm">
+                   <span className="absolute -top-2 -right-2 bg-accent text-white text-[9px] font-black w-3.5 h-3.5 flex items-center justify-center rounded-full shadow-sm">
                      {wishlistCount}
                    </span>
                 )}
@@ -209,7 +220,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
               Wishlist
             </Link>
 
-            {/* ✅ NEW: ADMIN LOGIN BUTTON */}
+            {/* ✅ ADMIN LOGIN BUTTON */}
             <Link
               href="/admin"
               className="text-gray-500 hover:text-white transition-colors"
@@ -224,7 +235,6 @@ export default function Navigation({ brands: initialBrands, categories: initialC
 
           {/* MOBILE MENU */}
           <div className="md:hidden flex items-center gap-4">
-             {/* Admin for Mobile */}
              <Link href="/admin" className="text-gray-500 hover:text-white">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
