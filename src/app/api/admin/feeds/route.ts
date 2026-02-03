@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db/prisma'; 
+import { prisma } from '@/lib/db/prisma';
+// ✅ Import the deleter to clean up the cloud bucket
+import { deleteImageFromBucket } from '../../../../../scripts/utils/image-uploader';
 
 // 1. GET: List all feeds grouped by Retailer
 export async function GET() {
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
   }
 }
 
-// 3. DELETE: Remove a Feed
+// 3. DELETE: Remove a Feed AND Wipe its Data
 export async function DELETE(req: Request) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
@@ -67,11 +69,61 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
   try {
+    // 1. Find the feed and its retailer
+    const feed = await prisma.feed.findUnique({
+        where: { id },
+        include: { retailer: true }
+    });
+
+    if (!feed) return NextResponse.json({ error: "Feed not found" }, { status: 404 });
+
+    console.log(`🗑️ Deleting feed: ${feed.name}. Starting cleanup...`);
+
+    // 2. Find all products associated with this Retailer
+    // We look for products where the *Listing* belongs to this retailer.
+    const listings = await prisma.listing.findMany({
+        where: { retailerId: feed.retailerId },
+        select: { productId: true }
+    });
+
+    // Extract unique Product IDs (filter out nulls)
+    const productIds = Array.from(new Set(listings.map(l => l.productId).filter(pid => pid !== null))) as string[];
+
+    if (productIds.length > 0) {
+        console.log(`⚠️ Found ${productIds.length} products linked to this feed. Wiping data...`);
+
+        // 3. Fetch Product Details (to get slugs for Image Deletion)
+        const productsToDelete = await prisma.product.findMany({
+            where: { id: { in: productIds } },
+            select: { id: true, slug: true, image: true }
+        });
+
+        // 4. Delete Images from Google Cloud Bucket
+        for (const product of productsToDelete) {
+            if (product.image && product.image.includes('storage.googleapis.com')) {
+                await deleteImageFromBucket(product.slug);
+            }
+        }
+
+        // 5. Delete Products from DB
+        // NOTE: Because we added 'onDelete: Cascade' to your schema, 
+        // this SINGLE command will automatically delete all related Listings, Reviews, and History.
+        await prisma.product.deleteMany({
+            where: { id: { in: productIds } }
+        });
+        
+        console.log(`✅ Successfully deleted ${productIds.length} products and their assets.`);
+    }
+
+    // 6. Finally, Delete the Feed
     await prisma.feed.delete({
       where: { id }
     });
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
+
+    return NextResponse.json({ success: true, deletedCount: productIds.length });
+
+  } catch (error: any) {
+    console.error("Delete Error:", error);
+    return NextResponse.json({ error: "Failed to delete feed and data" }, { status: 500 });
   }
 }
