@@ -13,7 +13,7 @@ interface Feed {
   type: 'JSON' | 'CSV' | 'XML';
   status: FeedStatus;
   lastSyncedAt: string | null;
-  errorMessage: string | null; // ✅ ADDED THIS FIELD
+  errorMessage: string | null; // ✅ ADDED FIELD
 }
 
 interface Retailer {
@@ -35,7 +35,7 @@ export default function AdminFeedsPage() {
   const [isMaster, setIsMaster] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // 1. Fetch Data
+  // Fetch Data
   const fetchFeeds = async () => {
     try {
       const res = await fetch('/api/admin/feeds');
@@ -50,11 +50,11 @@ export default function AdminFeedsPage() {
 
   useEffect(() => {
     fetchFeeds();
-    const interval = setInterval(fetchFeeds, 5000); // Polling faster (5s) for better feedback
+    const interval = setInterval(fetchFeeds, 5000); 
     return () => clearInterval(interval);
   }, []);
 
-  // 2. Handle Add Site
+  // Handle Add Site
   const handleAddSite = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -81,7 +81,7 @@ export default function AdminFeedsPage() {
     }
   };
 
-  // 3. Handle Delete Feed
+  // Handle Delete Feed
   const handleDelete = async (feedId: string) => {
     if (!confirm("Are you sure? This will stop monitoring this feed.")) return;
     await fetch(`/api/admin/feeds?id=${feedId}`, { method: 'DELETE' });
@@ -208,7 +208,7 @@ export default function AdminFeedsPage() {
   );
 }
 
-// ✅ UPDATED FEED CARD TO SHOW ERRORS
+// ✅ UPDATED FEED CARD (With Error Display)
 function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void }) {
   return (
     <div className={`bg-[#1a1a1a] border rounded-xl p-5 flex items-center justify-between transition-colors group ${
@@ -218,11 +218,11 @@ function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed
           <div className="w-10 h-10 bg-[#222] rounded-lg flex items-center justify-center font-bold text-white border border-[#333]">
              {retailer.name.charAt(0)}
           </div>
-          <div className="flex-1 min-w-0"> {/* min-w-0 needed for truncate to work in flex */}
+          <div className="flex-1 min-w-0">
              <div className="flex items-center gap-3">
                 <h3 className="text-white font-bold text-lg leading-tight">{retailer.name}</h3>
                 
-                {/* 🔴 ERROR INDICATOR */}
+                {/* 🔴 ERROR BADGE */}
                 {feed.status === 'ERROR' && (
                     <span className="text-[10px] bg-red-500 text-black font-bold px-2 py-0.5 rounded">
                         ERROR
@@ -234,10 +234,10 @@ function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed
                  {feed.url}
              </a>
              
-             {/* 🔴 ERROR MESSAGE DISPLAY */}
+             {/* 🔴 DETAILED ERROR MESSAGE */}
              {feed.status === 'ERROR' && feed.errorMessage && (
-                 <div className="mt-2 text-xs text-red-200 bg-red-500/10 border border-red-500/20 p-2 rounded font-mono">
-                    <span className="font-bold">Details:</span> {feed.errorMessage}
+                 <div className="mt-2 text-xs text-red-200 bg-red-500/10 border border-red-500/20 p-2 rounded font-mono break-all">
+                    <span className="font-bold">Error:</span> {feed.errorMessage}
                  </div>
              )}
           </div>

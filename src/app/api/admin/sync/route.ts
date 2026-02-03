@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-// ✅ Import uploader & deleter from root scripts folder
 import { processAndUploadImage, deleteImageFromBucket } from '../../../../../scripts/utils/image-uploader';
 
 // Helper to sanitize slug
@@ -15,12 +14,16 @@ function slugify(text: string) {
 }
 
 export async function POST(req: Request) {
+  // Define variable here so it is accessible in the catch block
+  let feedId: string | null = null;
+
   try {
-    const { feedId } = await req.json();
+    const body = await req.json();
+    feedId = body.feedId;
 
     // 1. Get the Feed Info
     const feed = await prisma.feed.findUnique({
-      where: { id: feedId },
+      where: { id: feedId as string },
       include: { retailer: true }
     });
 
@@ -28,7 +31,7 @@ export async function POST(req: Request) {
 
     // Update Status to SYNCING
     await prisma.feed.update({
-      where: { id: feedId },
+      where: { id: feedId as string },
       data: { status: 'SYNCING', errorMessage: null }
     });
 
@@ -44,7 +47,7 @@ export async function POST(req: Request) {
     console.log(`📦 Found ${products.length} products. Processing...`);
 
     let processed = 0;
-    const processedSlugs: string[] = []; // Track slugs to find deleted items later
+    const processedSlugs: string[] = []; 
     
     for (const item of products) {
       // ✅ MAPPING
@@ -76,18 +79,19 @@ export async function POST(req: Request) {
       processedSlugs.push(slug);
 
       // --- LOGIC: FETCH CURRENT STATE ---
-      // We check what we currently have in the DB to compare images
       const existingProduct = await prisma.product.findUnique({
           where: { slug: slug },
           select: { id: true, sourceImageUrl: true, image: true }
       });
 
       // --- LOGIC: SMART IMAGE UPLOAD ---
-      let finalBucketUrl = existingProduct?.image || null; // Default to existing bucket URL
+      let finalBucketUrl = existingProduct?.image || null; 
       let shouldUpload = false;
 
       // Only MASTER feeds (like Plugin Boutique) manage images
       if (feed.retailer.role === 'MASTER' && incomingImage) {
+          const isBucketUrl = existingProduct?.image?.includes('storage.googleapis.com');
+
           if (!existingProduct) {
               // Case 1: New Product -> Upload
               shouldUpload = true;
@@ -95,19 +99,27 @@ export async function POST(req: Request) {
               // Case 2: Affiliate changed the image link -> Re-upload
               console.log(`🔄 Image changed for ${slug}. Re-uploading...`);
               shouldUpload = true;
+          } else if (!existingProduct.image || !isBucketUrl) {
+              // Case 3 (RESCUE): Source matches, but we don't have a valid bucket URL
+              console.log(`🛠️ Image missing/broken for ${slug}. Retrying upload...`);
+              shouldUpload = true;
           }
-          // Case 3: URLs match -> Do nothing (Keep existing Bucket URL)
       }
 
       if (shouldUpload) {
           try {
+             // 🚨 CRITICAL CHANGE: Stop the sync if upload fails
              const bucketUrl = await processAndUploadImage(incomingImage, slug);
+             
              if (bucketUrl) {
                  finalBucketUrl = bucketUrl;
+             } else {
+                 throw new Error("Image Upload returned null (Check Cloud Credentials)");
              }
-          } catch (imgErr) {
+          } catch (imgErr: any) {
              console.error(`Failed to process image for ${slug}`, imgErr);
-             // We continue even if image fails, to ensure price updates still happen
+             // 🚨 THROW ERROR UP so it is caught by the main catch block and saved to DB
+             throw new Error(`Image Upload Failed for '${title}': ${imgErr.message}`);
           }
       }
 
@@ -123,7 +135,6 @@ export async function POST(req: Request) {
 
       if (feed.retailer.role === 'MASTER') {
         productData.description = description;
-        // ✅ SAVE BOTH URLs
         if (finalBucketUrl) productData.image = finalBucketUrl;
         if (incomingImage) productData.sourceImageUrl = incomingImage; 
       }
@@ -178,14 +189,12 @@ export async function POST(req: Request) {
     }
 
     // --- 3. CLEANUP: REMOVE DELETED PRODUCTS ---
-    // Only run this for MASTER feeds to prevent data loss from partial updates
     if (feed.retailer.role === 'MASTER' && processedSlugs.length > 0) {
         
-        // Find products owned by this retailer that were NOT in the feed
         const productsToDelete = await prisma.product.findMany({
             where: {
                listings: { some: { retailerId: feed.retailer.id } },
-               slug: { notIn: processedSlugs } // The ones missing from the feed
+               slug: { notIn: processedSlugs } 
             },
             select: { id: true, slug: true, image: true }
         });
@@ -194,13 +203,10 @@ export async function POST(req: Request) {
             console.log(`🗑️ Detected ${productsToDelete.length} removed products. Cleaning up...`);
             
             for (const p of productsToDelete) {
-                // 1. Delete Image from Cloud Bucket
                 if (p.image && p.image.includes('storage.googleapis.com')) {
                     await deleteImageFromBucket(p.slug);
                 }
 
-                // 2. Delete Product from DB 
-                // Note: Ensure your Prisma schema has onDelete: Cascade for relations to avoid errors
                 try {
                     await prisma.product.delete({ where: { id: p.id } });
                 } catch (delErr) {
@@ -210,9 +216,9 @@ export async function POST(req: Request) {
         } 
     }
 
-    // 4. Success! //
+    // 4. Success!
     await prisma.feed.update({ 
-      where: { id: feedId },
+      where: { id: feedId as string },
       data: { 
         status: 'SUCCESS', 
         lastSyncedAt: new Date() 
@@ -224,15 +230,17 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Sync Error:", error);
     
-    try {
-        const { feedId } = await req.json();
-        if (feedId) {
+    // 🚨 UPDATE DB STATUS TO ERROR
+    if (feedId) {
+        try {
             await prisma.feed.update({
                 where: { id: feedId },
                 data: { status: 'ERROR', errorMessage: error.message }
             });
+        } catch (dbErr) {
+            console.error("Failed to save error state to DB", dbErr);
         }
-    } catch (e) { /* ignore */ }
+    }
 
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -2,12 +2,22 @@ import { Storage } from '@google-cloud/storage';
 import axios from 'axios';
 import sharp from 'sharp';
 import path from 'path'; 
+import fs from 'fs';
 
 // CONFIG: Replace with your actual bucket name
 const BUCKET_NAME = 'plugin-scraper-images'; 
+const KEY_FILENAME = 'service-account.json';
 
 // FORCE ABSOLUTE PATH to the key file in the root directory
-const KEY_PATH = path.join(process.cwd(), 'service-account.json');
+const KEY_PATH = path.join(process.cwd(), KEY_FILENAME);
+
+// 🔍 DIAGNOSTIC CHECK (Runs when server starts)
+if (!fs.existsSync(KEY_PATH)) {
+    console.warn(`⚠️ WARNING: '${KEY_FILENAME}' was not found at: ${KEY_PATH}`);
+    console.warn("If you are on Cloud Run, images will fail unless you set GCLOUD_CREDENTIALS env var or ensure the file is included in the build.");
+} else {
+    console.log(`✅ Found credentials file at: ${KEY_PATH}`);
+}
 
 const storage = new Storage({ keyFilename: KEY_PATH });
 const bucket = storage.bucket(BUCKET_NAME);
@@ -41,15 +51,19 @@ export async function processAndUploadImage(imageUrl: string, slug: string): Pro
             resumable: false
         });
 
-        return `https://storage.googleapis.com/${BUCKET_NAME}/${destination}`;
+        const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${destination}`;
+        return publicUrl;
 
     } catch (error: any) {
-        console.error(`Image Error (${slug}): ${error.message}`);
-        return null;
+        // 🚨 CRITICAL UPDATE: THROW THE ERROR
+        // Instead of returning null (which hides the problem), we throw it
+        // so the Admin Dashboard can show the Red Error Box.
+        console.error(`❌ Upload Failed (${slug}): ${error.message}`);
+        throw new Error(`Upload Failed: ${error.message}`);
     }
 }
 
-// ✅ NEW: Delete image when product is removed
+// Delete image when product is removed
 export async function deleteImageFromBucket(slug: string): Promise<boolean> {
     try {
         const destination = `products/${slug}.webp`;
@@ -64,6 +78,7 @@ export async function deleteImageFromBucket(slug: string): Promise<boolean> {
         return true;
     } catch (error: any) {
         console.error(`⚠️ Failed to delete image for ${slug}:`, error.message);
+        // We don't throw here because failing to delete isn't critical enough to stop the sync
         return false;
     }
 }
