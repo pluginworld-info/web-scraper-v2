@@ -1,0 +1,107 @@
+{
+  "siteName": "Plugin Boutique",
+  "siteUrl": "https://pluginboutique.com",
+  "siteLogo": "https://www.pluginboutique.com/vite/assets/signet-mfG32Rpj.svg",
+  "products": [
+    {
+      "title": "UAD Essentials Edition",
+      "brand": "Universal Audio",
+      "price": 63.29,
+      "originalPrice": 299.00,
+      "category": "Effects Bundles",
+      "url": "https://www.pluginboutique.com/product/81-Bundles/39-Effects-Bundles/11347-UAD-Essentials-Edition",
+      "image": "https://banners.pluginboutique.com/o19n03wwqltahquwsfpq1kawxnl5",
+      "description": "Enhance your audio productions with the UAD Essentials Edition bundle plugin by Universal Audio. Featuring 11 essential UAD plug-ins and instruments, this collection delivers rich analog tones reminiscent of classic albums, all at an accessible price point and without the need for UA hardware."
+    },
+    {
+      "title": "Analog Lab Pro",
+      "brand": "Arturia",
+      "price": 199.00,
+      "originalPrice": 140.32,
+      "category": "Synth",
+      "url": "https://www.pluginboutique.com/product/1-Instruments/4-Synth/7149-Analog-Lab-Pro",
+      "image": "https://banners.pluginboutique.com/i6lywpfssb2kil5h78amd83kvr93",
+      "description": "Analog Lab is a powerful virtual instrument plugin developed by Arturia, known for its Keyboard Anthology collection. This plugin offers a vast array of authentic analog sounds from Arturia's renowned synthesizers and keyboards, all conveniently accessed within a single interface. Whether you're looking for classic vintage tones or modern electronic sounds, Analog Lab provides a rich and inspiring palette for music production and performance."
+    },
+    {
+      "title": "XV-5080",
+      "brand": "Roland",
+      "price": 129.00,
+      "originalPrice": 45.35,
+      "category": "Synth",
+      "url": "https://www.pluginboutique.com/product/1-Instruments/4-Synth/15297-XV-5080",
+      "image": "https://banners.pluginboutique.com/mwvrwtyt3jweudf1y5m7qlpwmmc1",
+      "description": "Recreate the classic sounds of the Roland XV-5080 synthesizer with this powerful plugin, offering a universe of diverse instrument sounds and effects for your music production needs."
+    },
+    {
+      "title": "Ozone 12 Advanced",
+      "brand": "iZotope",
+      "price": 499.00,
+      "originalPrice": 399.00,
+      "category": "Mastering",
+      "url": "https://www.pluginboutique.com/product/2-Effects/52-Mastering-Suite/15503-Ozone-12-Advanced",
+      "image": "https://banners.pluginboutique.com/wzvfaeyq6nsqcy0xsm9z9gq9ym9u",
+      "description": "Ozone Advanced 12 by iZotope is a powerful mastering plugin tailored for modern audio production, featuring 20 professional tools and an AI-powered assistant for an efficient workflow. With a legacy of award-winning innovation, Ozone 12 offers unprecedented mastering capabilities for creators of all levels."
+    },
+    {
+      "title": "Neutron Elements",
+      "brand": "iZotope",
+      "price": 27.00,
+      "originalPrice": 129.00,
+      "category": "Multi-Effect",
+      "url": "https://www.pluginboutique.com/product/2-Effects/21-Channel-Strip/13567-Neutron-5-Elements",
+      "image": "https://banners.pluginboutique.com/0v9x1ctsu3rnt7onbdyva8dz13ft",
+      "description": "Unlock your mixing potential with Neutron Elements by iZotope. This versatile multi-effect plugin empowers you to sculpt your sounds effortlessly and effectively while maintaining your creative flow. With the modern and intelligent AI tool, Neutron 4 Elements guides you through the mixing process, making it ideal for beginners and experienced producers alike."
+    },
+    {
+      "title": "Pigments",
+      "brand": "Arturia",
+      "price": 99.00,
+      "originalPrice": 199.00,
+      "category": "Synthesizer",
+      "url": "https://www.pluginboutique.com/product/1-Instruments/4-Synth/11867-Pigments-7",
+      "image": "https://banners.pluginboutique.com/jalud74wvfi96ot9538whe1q6qwx",
+      "description": "Pigments by Arturia is a versatile synthesizer plugin that offers a polychrome experience with an array of innovative features and unique sound capabilities. Explore a world of sonic possibilities with this powerful software synthesizer."
+    },
+    {
+      "title": "auralControl",
+      "brand": "PSP Audioware",
+      "price": 99.00,
+      "originalPrice": 99.00,
+      "category": "Utility",
+      "url": "https://www.pluginboutique.com/product/2-Effects/50-Mastering-/10864-PSP-auralControl",
+      "image": "https://banners.pluginboutique.com/h9atqgto0586xjmjwibewehibug1",
+      "description": "auralControl by PSP Audioware is a versatile utility plugin designed to enhance control over the stereo image and overall sound of your audio projects. This powerful tool allows you to fine-tune the stereo width, balance, and placement of your audio sources with precision, providing a streamlined workflow for mixing and mastering."
+    },
+    {
+      "title": "MASTER Bundle",
+      "brand": "Zynaptiq",
+      "price": 499.00,
+      "originalPrice": 499.00,
+      "category": "Bundle",
+      "url": "https://www.pluginboutique.com/product/2-Effects/50-Mastering-/4940-MASTER-Bundle",
+      "image": "https://banners.pluginboutique.com/gek18iu2zyzihtqq9qomu6nedoy4",
+      "description": "Introducing the MASTER Bundle by Zynaptiq, a comprehensive set of audio mastering plugins designed to elevate your music production to the next level. This powerful bundle provides a range of tools to help you achieve professional-sounding results in your mastering process."
+    },
+    {
+      "title": "MORPH 3",
+      "brand": "Zynaptiq",
+      "price": 149.00,
+      "originalPrice": 181.79,
+      "category": "Utility",
+      "url": "https://www.pluginboutique.com/product/2-Effects/33-Modulator/12204-MORPH-3",
+      "image": "https://banners.pluginboutique.com/bwwmtfrcoruzintxicw827gbg8cs",
+      "description": "Morph 3 by Zynaptiq is a powerful utility plugin designed to provide real-time structural audio morphing. Enhance your sound design capabilities with this versatile tool that allows you to transform and manipulate audio signals with ease."
+    },
+    {
+      "title": "Century Tube Channel Strip",
+      "brand": "Universal Audio",
+      "price": 39.00,
+      "originalPrice": 199.00,
+      "category": "Channel Strip",
+      "url": "http://pluginboutique.com/product/2-Effects/21-Channel-Strip/10160-Century-Tube-Channel-Strip",
+      "image": "https://banners.pluginboutique.com/0ifdmgr9ufip9z4946l6zhgdi6gu",
+      "description": "Experience the warmth and character of a classic tube channel strip with the Century Tube Preamp plugin by Universal Audio. Perfect for UA Interface users, this plugin offers an organic tube mic preamp, transparent dynamics control, and intuitively voiced EQ to help you capture your best recordings effortlessly."
+    }
+  ]
+}
