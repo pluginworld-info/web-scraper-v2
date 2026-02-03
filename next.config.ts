@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // 1. Enable Standalone output (Required for Docker/Cloud Run)
-  output: "standalone",
+  //output: "standalone",
 
   // 2. BYPASS ERRORS: Allow build to finish despite linting/type errors
   eslint: {
