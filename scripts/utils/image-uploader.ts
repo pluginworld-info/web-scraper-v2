@@ -44,7 +44,7 @@ export async function processAndUploadImage(imageUrl: string, slug: string): Pro
         return `https://storage.googleapis.com/${BUCKET_NAME}/${destination}`;
 
     } catch (error: any) {
-        console.error(`      ❌ Image Error (${slug}): ${error.message}`);
+        console.error(`Image Error (${slug}): ${error.message}`);
         return null;
     }
 }

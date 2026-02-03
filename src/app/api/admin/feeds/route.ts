@@ -98,7 +98,7 @@ export async function DELETE(req: Request) {
         }
     }
 
-    console.log(`🔍 Analysis: ${retailerListings.length} listings to remove. ${orphansToWipe.length} products will become orphans.`);
+    console.log(`Analysis: ${retailerListings.length} listings to remove. ${orphansToWipe.length} products will become orphans.`);
 
     // --- PHASE 2: ATOMIC DATABASE CLEANUP ---
     await prisma.$transaction(async (tx) => {

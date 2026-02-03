@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import FeedSyncButton from '@/components/admin/FeedSyncButton'; // ✅ Import the Smart Button
+import FeedSyncButton from '@/components/admin/FeedSyncButton'; // Import the Smart Button
 
 // Types matching your Schema
 type FeedStatus = 'IDLE' | 'SYNCING' | 'SUCCESS' | 'ERROR';
@@ -89,7 +89,7 @@ export default function AdminFeedsPage() {
     fetchFeeds();
   };
 
-  // ❌ Removed handleSync (Logic moved to FeedSyncButton component)
+  // Removed handleSync (Logic moved to FeedSyncButton component)
 
   if (loading) return <div className="p-10 text-center text-[#aaaaaa]">Loading Dashboard...</div>;
 
@@ -226,7 +226,7 @@ function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed
        </div>
 
        <div className="flex items-center gap-4">
-          {/* ✅ REPLACED: Status + Sync Button */}
+          {/* REPLACED: Status + Sync Button */}
           <FeedSyncButton feed={feed} />
           
           {/* Delete Button */}

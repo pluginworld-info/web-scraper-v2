@@ -53,7 +53,7 @@ export default function FeedSyncButton({ feed }: FeedSyncButtonProps) {
     return () => clearInterval(interval);
   }, [isPolling, feed.id, router]);
 
-  // ✅ MANUAL TRIGGER
+  // ✅ MANUAL TRIGGER //
   const handleSync = async () => {
     setLoading(true);
     setStatus('SYNCING');
@@ -79,7 +79,7 @@ export default function FeedSyncButton({ feed }: FeedSyncButtonProps) {
     }
   };
 
-  // --- UI RENDER LOGIC ---
+  // --- UI RENDER LOGIC --- //
 
   if (status === 'SYNCING') {
     return (
