@@ -1,7 +1,7 @@
-'use client'; 
+'use client';
 
 import { useState, useEffect } from 'react';
-import FeedSyncButton from '@/components/admin/FeedSyncButton'; // Import the Smart Button
+import FeedSyncButton from '@/components/admin/FeedSyncButton'; 
 
 // Types matching your Schema
 type FeedStatus = 'IDLE' | 'SYNCING' | 'SUCCESS' | 'ERROR';
@@ -13,6 +13,7 @@ interface Feed {
   type: 'JSON' | 'CSV' | 'XML';
   status: FeedStatus;
   lastSyncedAt: string | null;
+  errorMessage: string | null; // ✅ ADDED THIS FIELD
 }
 
 interface Retailer {
@@ -49,8 +50,7 @@ export default function AdminFeedsPage() {
 
   useEffect(() => {
     fetchFeeds();
-    // Keep global polling for new feeds, but Sync status is now handled by the button component
-    const interval = setInterval(fetchFeeds, 10000);
+    const interval = setInterval(fetchFeeds, 5000); // Polling faster (5s) for better feedback
     return () => clearInterval(interval);
   }, []);
 
@@ -69,9 +69,8 @@ export default function AdminFeedsPage() {
           role: isMaster ? 'MASTER' : 'SPOKE'
         }),
       });
-      await fetchFeeds(); // Refresh list
+      await fetchFeeds(); 
       setIsModalOpen(false);
-      // Reset form
       setNewSiteName('');
       setNewFeedUrl('');
       setIsMaster(false);
@@ -88,8 +87,6 @@ export default function AdminFeedsPage() {
     await fetch(`/api/admin/feeds?id=${feedId}`, { method: 'DELETE' });
     fetchFeeds();
   };
-
-  // Removed handleSync (Logic moved to FeedSyncButton component)
 
   if (loading) return <div className="p-10 text-center text-[#aaaaaa]">Loading Dashboard...</div>;
 
@@ -211,25 +208,44 @@ export default function AdminFeedsPage() {
   );
 }
 
-// Sub-Component for Clean Code
+// ✅ UPDATED FEED CARD TO SHOW ERRORS
 function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void }) {
   return (
-    <div className="bg-[#1a1a1a] border border-[#333] rounded-xl p-5 flex items-center justify-between hover:border-[#444] transition-colors group">
-       <div className="flex items-center gap-4">
+    <div className={`bg-[#1a1a1a] border rounded-xl p-5 flex items-center justify-between transition-colors group ${
+        feed.status === 'ERROR' ? 'border-red-900/50 bg-red-900/10' : 'border-[#333] hover:border-[#444]'
+    }`}>
+       <div className="flex items-center gap-4 flex-1">
           <div className="w-10 h-10 bg-[#222] rounded-lg flex items-center justify-center font-bold text-white border border-[#333]">
              {retailer.name.charAt(0)}
           </div>
-          <div>
-             <h3 className="text-white font-bold text-lg leading-tight">{retailer.name}</h3>
-             <a href={feed.url} target="_blank" className="text-blue-500 text-xs hover:underline truncate max-w-[200px] block">{feed.url}</a>
+          <div className="flex-1 min-w-0"> {/* min-w-0 needed for truncate to work in flex */}
+             <div className="flex items-center gap-3">
+                <h3 className="text-white font-bold text-lg leading-tight">{retailer.name}</h3>
+                
+                {/* 🔴 ERROR INDICATOR */}
+                {feed.status === 'ERROR' && (
+                    <span className="text-[10px] bg-red-500 text-black font-bold px-2 py-0.5 rounded">
+                        ERROR
+                    </span>
+                )}
+             </div>
+
+             <a href={feed.url} target="_blank" className="text-blue-500 text-xs hover:underline truncate max-w-[200px] block opacity-80">
+                 {feed.url}
+             </a>
+             
+             {/* 🔴 ERROR MESSAGE DISPLAY */}
+             {feed.status === 'ERROR' && feed.errorMessage && (
+                 <div className="mt-2 text-xs text-red-200 bg-red-500/10 border border-red-500/20 p-2 rounded font-mono">
+                    <span className="font-bold">Details:</span> {feed.errorMessage}
+                 </div>
+             )}
           </div>
        </div>
 
-       <div className="flex items-center gap-4">
-          {/* REPLACED: Status + Sync Button */}
+       <div className="flex items-center gap-4 pl-4">
           <FeedSyncButton feed={feed} />
           
-          {/* Delete Button */}
           <button 
             onClick={() => onDelete(feed.id)}
             className="p-2 text-[#666] hover:text-red-500 hover:bg-[#333] rounded-lg transition-colors opacity-100 md:opacity-0 group-hover:opacity-100"
@@ -240,4 +256,4 @@ function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed
        </div>
     </div>
   );
-}  
+}
