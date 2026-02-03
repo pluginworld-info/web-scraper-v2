@@ -240,4 +240,4 @@ function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed
        </div>
     </div>
   );
-}
+}  

@@ -120,4 +120,4 @@ export default function FeedSyncButton({ feed }: FeedSyncButtonProps) {
       </button>
     </div>
   );
-}
+} 

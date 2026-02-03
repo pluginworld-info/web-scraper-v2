@@ -142,4 +142,4 @@ export async function DELETE(req: Request) {
     console.error("Delete Error:", error);
     return NextResponse.json({ error: "Failed to delete feed and data" }, { status: 500 });
   }
-}
+} 

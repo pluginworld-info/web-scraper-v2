@@ -207,11 +207,11 @@ export async function POST(req: Request) {
                     console.error(`Failed to delete product ${p.slug} from DB`, delErr);
                 }
             }
-        }
-    }
+        } 
+    } 
 
     // 4. Success!
-    await prisma.feed.update({
+    await prisma.feed.update({ 
       where: { id: feedId },
       data: { 
         status: 'SUCCESS', 
