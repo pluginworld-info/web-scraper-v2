@@ -4,13 +4,11 @@ const nextConfig: NextConfig = {
   // 1. Enable Standalone output (Required for Docker/Cloud Run)
   output: "standalone",
 
-  // 2. BYPASS ERRORS: Allow the build to finish despite linting/type errors
+  // 2. BYPASS ERRORS: Allow build to finish despite linting/type errors
   eslint: {
-    // This ignores the 'any' and 'unused-vars' errors during npm run build
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // This ignores the 'any' type errors during the build phase
     ignoreBuildErrors: true,
   },
 
@@ -20,19 +18,22 @@ const nextConfig: NextConfig = {
     'puppeteer-extra', 
     'puppeteer-extra-plugin-stealth', 
     'cheerio',
-    '@prisma/client' // Added to ensure Prisma stability
+    '@prisma/client'
   ],
 
   // 4. Image Configuration
   images: {
-    // GLOBAL FIX: Ensures images from GCS are served in original high-definition
+    // GLOBAL FIX: Ensures images serve in original definition & saves CPU
     unoptimized: true, 
     remotePatterns: [
       { protocol: "https", hostname: "media.sweetwater.com" },
       { protocol: "https", hostname: "cdn.pluginboutique.com" },
+      { protocol: "https", hostname: "banners.pluginboutique.com" }, // ✅ Added for Product Images
+      { protocol: "https", hostname: "www.pluginboutique.com" },     // ✅ Added for Logos
       { protocol: "https", hostname: "static.kvraudio.com" },
       { protocol: "https", hostname: "audioplugin.deals" },
       { protocol: "https", hostname: "*.audioplugin.deals" },
+      
       // Google Cloud Storage Bucket domain
       { 
         protocol: "https", 

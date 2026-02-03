@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db/prisma';
+import { prisma } from '@/lib/db/prisma'; 
 
 // 1. GET: List all feeds grouped by Retailer
 export async function GET() {

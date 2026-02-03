@@ -16,7 +16,11 @@ model Product {
   title       String
   slug        String   @unique
   description String?  // Only MASTER feeds can overwrite this
-  image       String?  // Only MASTER feeds can overwrite this
+  
+  // ✅ DUAL IMAGE SYSTEM
+  image          String?  // The PUBLIC Bucket URL (served to users)
+  sourceImageUrl String?  // The HIDDEN Affiliate URL (used for diffing)
+
   brand       String?  @default("Unknown")
   category    String?  @default("Plugin")
   
@@ -35,7 +39,7 @@ model Product {
 
   // Analytics & Alerts
   views       ProductView[]
-  clicks      ProductClick[] // ✅ Added relation for analytics
+  clicks      ProductClick[] 
   wishlisted  WishlistItem[]
   
   // Link to Price Alerts
@@ -60,7 +64,8 @@ model Listing {
   lastScraped   DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
-  product       Product? @relation(fields: [productId], references: [id])
+  // ✅ Added Cascade Delete
+  product       Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId     String?
   
   retailer      Retailer @relation(fields: [retailerId], references: [id])
@@ -70,36 +75,36 @@ model Listing {
 }
 
 model Retailer {
-  id          String       @id @default(cuid())
-  name        String       @unique
-  domain      String
-  logo        String?
+  id            String       @id @default(cuid())
+  name          String       @unique
+  domain        String
+  logo          String?
   
   // The Guardian Field
-  role        RetailerRole @default(SPOKE) 
-  isEnabled   Boolean      @default(true)
-  scrapeDelay Int          @default(5000)
+  role          RetailerRole @default(SPOKE) 
+  isEnabled     Boolean      @default(true)
+  scrapeDelay   Int          @default(5000)
   
-  listings    Listing[]
-  feeds       Feed[]       
+  listings      Listing[]
+  feeds         Feed[]       
 }
 
 // Stores the URLs we need to monitor
 model Feed {
-  id           String       @id @default(cuid())
-  name         String       // e.g. "Main JSON Feed"
-  url          String       // The dynamic URL to monitor
-  type         FeedType     @default(JSON)
+  id            String       @id @default(cuid())
+  name          String       // e.g. "Main JSON Feed"
+  url           String       // The dynamic URL to monitor
+  type          FeedType     @default(JSON)
   
-  status       FeedStatus   @default(IDLE)
-  lastSyncedAt DateTime?
-  errorMessage String?
+  status        FeedStatus   @default(IDLE)
+  lastSyncedAt  DateTime?
+  errorMessage  String?
   
-  retailer     Retailer     @relation(fields: [retailerId], references: [id], onDelete: Cascade)
-  retailerId   String
+  retailer      Retailer     @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  retailerId    String
 
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 model PriceHistory {
@@ -125,7 +130,7 @@ model User {
   reviews   Review[]
   searches  SearchLog[]
   views     ProductView[]
-  clicks    ProductClick[] // ✅ Added relation for analytics
+  clicks    ProductClick[] 
   wishlist  WishlistItem[]
 }
 
@@ -140,7 +145,8 @@ model Review {
   authorName String  @default("Guest")
 
   productId String
-  product   Product  @relation(fields: [productId], references: [id])
+  // ✅ Added Cascade Delete
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   
   createdAt DateTime @default(now())
 }
@@ -160,31 +166,31 @@ model UserEvent {
 // --- ANALYTICS & ALERTS MODELS ---
 
 model PriceAlert {
-  id           String   @id @default(cuid())
-  email        String
-  targetPrice  Float
+  id            String   @id @default(cuid())
+  email         String
+  targetPrice   Float
   
-  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId    String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId     String
   
-  isTriggered  Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  triggeredAt  DateTime?
+  isTriggered   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  triggeredAt   DateTime?
 
   @@index([email])
   @@index([productId])
 }
 
 model SearchLog {
-  id           String   @id @default(cuid())
-  query        String
-  userId       String?
-  guestId      String?
-  resultsCount Int?
-  createdAt    DateTime @default(now())
+  id            String   @id @default(cuid())
+  query         String
+  userId        String?
+  guestId       String?
+  resultsCount  Int?
+  createdAt     DateTime @default(now())
 
-  user         User?    @relation(fields: [userId], references: [id])
-   
+  user          User?    @relation(fields: [userId], references: [id])
+    
   @@index([createdAt])
 }
 
@@ -197,23 +203,23 @@ model ProductView {
   duration  Int?
   createdAt DateTime @default(now())
 
-  product   Product  @relation(fields: [productId], references: [id])
+  // ✅ Added Cascade Delete
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   user      User?    @relation(fields: [userId], references: [id])
 
   @@index([productId])
   @@index([guestId])
 }
 
-// ✅ NEW: ANALYTICS (LEAD GEN TRACKING)
 model ProductClick {
   id        String   @id @default(cuid())
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   
   // Who clicked?
-  userId    String?  // Optional (if logged in)
+  userId    String?  
   user      User?    @relation(fields: [userId], references: [id])
-  guestId   String?  // Important for guest tracking
+  guestId   String?  
   
   // Which store did they go to?
   retailerId String? 
@@ -231,26 +237,25 @@ model WishlistItem {
   guestId   String?
   createdAt DateTime @default(now())
 
-  product   Product  @relation(fields: [productId], references: [id])
+  // ✅ Added Cascade Delete
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   user      User?    @relation(fields: [userId], references: [id])
 
   @@unique([userId, productId])
 }
 
-// ✅ NEW: SITE CONFIGURATION
 model SiteSettings {
-  id             String   @id @default(cuid()) // Usually just one row
-  siteName       String   @default("PluginDeals")
-  description    String?  @default("The best audio plugin deals.")
+  id              String   @id @default(cuid()) 
+  siteName        String   @default("PluginDeals")
+  description     String?  @default("The best audio plugin deals.")
   
-  logoUrl        String?
-  faviconUrl     String?
+  logoUrl         String?
+  faviconUrl      String?
   
-  // Theme Colors (We store hex codes)
-  primaryColor   String   @default("#2563eb") // Blue-600
-  accentColor    String   @default("#ef4444") // Red-500
+  primaryColor    String   @default("#ffa600") 
+  accentColor     String   @default("#ff0059") 
   
-  updatedAt      DateTime @updatedAt
+  updatedAt       DateTime @updatedAt
 }
 
 // --- ENUMS ---

@@ -38,7 +38,7 @@ export async function processAndUploadImage(imageUrl: string, slug: string): Pro
 
         await file.save(optimizedBuffer, {
             contentType: 'image/webp',
-            resumable: false 
+            resumable: false
         });
 
         return `https://storage.googleapis.com/${BUCKET_NAME}/${destination}`;
@@ -46,5 +46,24 @@ export async function processAndUploadImage(imageUrl: string, slug: string): Pro
     } catch (error: any) {
         console.error(`      ❌ Image Error (${slug}): ${error.message}`);
         return null;
+    }
+}
+
+// ✅ NEW: Delete image when product is removed
+export async function deleteImageFromBucket(slug: string): Promise<boolean> {
+    try {
+        const destination = `products/${slug}.webp`;
+        const file = bucket.file(destination);
+
+        // Check if file exists before trying to delete to avoid 404 errors
+        const [exists] = await file.exists();
+        if (exists) {
+            await file.delete();
+            console.log(`🗑️ Deleted image: ${destination}`);
+        }
+        return true;
+    } catch (error: any) {
+        console.error(`⚠️ Failed to delete image for ${slug}:`, error.message);
+        return false;
     }
 }
