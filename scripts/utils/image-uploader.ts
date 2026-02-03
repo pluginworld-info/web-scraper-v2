@@ -66,4 +66,4 @@ export async function deleteImageFromBucket(slug: string): Promise<boolean> {
         console.error(`⚠️ Failed to delete image for ${slug}:`, error.message);
         return false;
     }
-} 
+}

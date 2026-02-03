@@ -48,7 +48,7 @@ export default function FeedSyncButton({ feed }: FeedSyncButtonProps) {
           console.error("Polling error", err);
         }
       }, 3000);
-    }
+    } 
 
     return () => clearInterval(interval);
   }, [isPolling, feed.id, router]);

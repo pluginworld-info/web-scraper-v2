@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
     let retailer = await prisma.retailer.findUnique({
       where: { name: name }
-    });
+    }); 
 
     if (!retailer) {
       retailer = await prisma.retailer.create({

@@ -208,7 +208,7 @@ export async function POST(req: Request) {
                 }
             }
         } 
-    } 
+    }
 
     // 4. Success! //
     await prisma.feed.update({ 

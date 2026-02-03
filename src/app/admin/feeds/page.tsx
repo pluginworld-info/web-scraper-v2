@@ -1,4 +1,4 @@
-'use client';
+'use client'; 
 
 import { useState, useEffect } from 'react';
 import FeedSyncButton from '@/components/admin/FeedSyncButton'; // Import the Smart Button
