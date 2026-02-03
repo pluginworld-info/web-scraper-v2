@@ -1,34 +1,24 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-// ✅ Import the deleter to clean up the cloud bucket
 import { deleteImageFromBucket } from '../../../../../scripts/utils/image-uploader';
 
-// 1. GET: List all feeds grouped by Retailer
 export async function GET() {
   try {
     const retailers = await prisma.retailer.findMany({
-      include: {
-        feeds: true // Include the new Feed relation
-      },
+      include: { feeds: true },
       orderBy: { name: 'asc' }
     });
-    
-    // Filter out retailers that don't have feeds if you want to be strict, 
-    // but usually seeing empty retailers is good for debugging.
     return NextResponse.json(retailers);
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch feeds" }, { status: 500 });
   }
 }
 
-// 2. POST: Add a new Site (Retailer) + Feed
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { name, url, type, role } = body;
 
-    // A. Check if Retailer exists, or create one
-    // We use 'upsert' to be safe, but since 'name' is unique, we can findOrCreate logic
     let retailer = await prisma.retailer.findUnique({
       where: { name: name }
     });
@@ -37,13 +27,12 @@ export async function POST(req: Request) {
       retailer = await prisma.retailer.create({
         data: {
           name,
-          domain: new URL(url).hostname, // Auto-extract domain from feed URL
+          domain: new URL(url).hostname, 
           role: role || 'SPOKE'
         }
       });
     }
 
-    // B. Create the Feed Entry
     const feed = await prisma.feed.create({
       data: {
         name: `${name} ${type} Feed`,
@@ -61,7 +50,6 @@ export async function POST(req: Request) {
   }
 }
 
-// 3. DELETE: Remove a Feed AND Wipe its Data
 export async function DELETE(req: Request) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
@@ -69,7 +57,6 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
   try {
-    // 1. Find the feed and its retailer
     const feed = await prisma.feed.findUnique({
         where: { id },
         include: { retailer: true }
@@ -77,50 +64,79 @@ export async function DELETE(req: Request) {
 
     if (!feed) return NextResponse.json({ error: "Feed not found" }, { status: 404 });
 
-    console.log(`🗑️ Deleting feed: ${feed.name}. Starting cleanup...`);
+    console.log(`🗑️ Analyzing cleanup for feed: ${feed.name}`);
 
-    // 2. Find all products associated with this Retailer
-    // We look for products where the *Listing* belongs to this retailer.
-    const listings = await prisma.listing.findMany({
+    // --- PHASE 1: IDENTIFY ORPHANS ---
+    // Find all listings for this retailer
+    const retailerListings = await prisma.listing.findMany({
         where: { retailerId: feed.retailerId },
         select: { productId: true }
     });
+    
+    const involvedProductIds = Array.from(new Set(retailerListings.map(l => l.productId).filter(p => p !== null))) as string[];
 
-    // Extract unique Product IDs (filter out nulls)
-    const productIds = Array.from(new Set(listings.map(l => l.productId).filter(pid => pid !== null))) as string[];
+    const orphansToWipe: string[] = [];
+    const imagesToDelete: { slug: string, image: string | null }[] = [];
 
-    if (productIds.length > 0) {
-        console.log(`⚠️ Found ${productIds.length} products linked to this feed. Wiping data...`);
-
-        // 3. Fetch Product Details (to get slugs for Image Deletion)
-        const productsToDelete = await prisma.product.findMany({
-            where: { id: { in: productIds } },
-            select: { id: true, slug: true, image: true }
-        });
-
-        // 4. Delete Images from Google Cloud Bucket
-        for (const product of productsToDelete) {
-            if (product.image && product.image.includes('storage.googleapis.com')) {
-                await deleteImageFromBucket(product.slug);
-            }
-        }
-
-        // 5. Delete Products from DB
-        // NOTE: Because we added 'onDelete: Cascade' to your schema, 
-        // this SINGLE command will automatically delete all related Listings, Reviews, and History.
-        await prisma.product.deleteMany({
-            where: { id: { in: productIds } }
+    // Check each involved product: Will it be empty after we delete this retailer's listings?
+    for (const pid of involvedProductIds) {
+        // Count how many listings this product has IN TOTAL (across all retailers)
+        const count = await prisma.listing.count({
+            where: { productId: pid }
         });
         
-        console.log(`✅ Successfully deleted ${productIds.length} products and their assets.`);
+        // If it only has 1 listing (which belongs to the retailer we are deleting), it will become an orphan.
+        if (count <= 1) {
+            orphansToWipe.push(pid);
+            
+            // Fetch image info NOW before we delete the DB record
+            const pInfo = await prisma.product.findUnique({
+                where: { id: pid },
+                select: { slug: true, image: true }
+            });
+            if (pInfo) imagesToDelete.push(pInfo);
+        }
     }
 
-    // 6. Finally, Delete the Feed
-    await prisma.feed.delete({
-      where: { id }
+    console.log(`🔍 Analysis: ${retailerListings.length} listings to remove. ${orphansToWipe.length} products will become orphans.`);
+
+    // --- PHASE 2: ATOMIC DATABASE CLEANUP ---
+    await prisma.$transaction(async (tx) => {
+        // 1. Delete Listings (This breaks the link, but keeps the product if it has other links)
+        await tx.listing.deleteMany({
+            where: { retailerId: feed.retailerId }
+        });
+
+        // 2. Delete Orphans (Products that no longer have any listings)
+        if (orphansToWipe.length > 0) {
+            await tx.product.deleteMany({
+                where: { id: { in: orphansToWipe } }
+            });
+        }
+
+        // 3. Delete the Feed
+        await tx.feed.delete({
+            where: { id }
+        });
     });
 
-    return NextResponse.json({ success: true, deletedCount: productIds.length });
+    // --- PHASE 3: CLOUD STORAGE CLEANUP ---
+    // Only runs if DB transaction succeeded
+    if (imagesToDelete.length > 0) {
+        console.log(`☁️ Removing images for ${imagesToDelete.length} deleted products...`);
+        for (const img of imagesToDelete) {
+            if (img.image && img.image.includes('storage.googleapis.com')) {
+                // Run in background, don't block response
+                deleteImageFromBucket(img.slug).catch(err => console.error(err));
+            }
+        }
+    }
+
+    return NextResponse.json({ 
+        success: true, 
+        deletedListings: retailerListings.length, 
+        deletedProducts: orphansToWipe.length 
+    });
 
   } catch (error: any) {
     console.error("Delete Error:", error);
