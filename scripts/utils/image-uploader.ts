@@ -7,38 +7,52 @@ import fs from 'fs';
 // CONFIG
 const BUCKET_NAME = 'plugin-scraper-images'; 
 
-// 1. Initialize Storage (Prioritize Env Variable, Fallback to File)
-let storage: Storage;
+// 🛑 GLOBAL VARIABLES (Initialize as null)
+// We do NOT create the connection here anymore to prevent Build crashes.
+let storageInstance: Storage | null = null;
+let bucketInstance: any = null; 
 
-// Option A: Cloud Run (Secure)
-if (process.env.GCLOUD_CREDENTIALS) {
-    try {
-        console.log("🔐 Authenticating via GCLOUD_CREDENTIALS environment variable...");
-        const credentials = JSON.parse(process.env.GCLOUD_CREDENTIALS);
-        storage = new Storage({ credentials });
-    } catch (e) {
-        console.error("❌ Failed to parse GCLOUD_CREDENTIALS JSON");
-        throw new Error("Invalid GCLOUD_CREDENTIALS variable");
+// ✅ LAZY INITIALIZATION FUNCTION
+// This function will only run when you actually click "Sync", 
+// ensuring the Build process doesn't crash.
+function getStorage() {
+    if (storageInstance && bucketInstance) {
+        return { storage: storageInstance, bucket: bucketInstance };
     }
-} 
-// Option B: Local Dev (File)
-else {
-    const keyPath = path.join(process.cwd(), 'service-account.json');
-    console.log(`📂 Checking for local key file at: ${keyPath}`);
-    
-    if (fs.existsSync(keyPath)) {
-        storage = new Storage({ keyFilename: keyPath });
-    } else {
-        // If neither exists, we must crash so the error box shows up
-        throw new Error("CRITICAL: No Authentication found. Set GCLOUD_CREDENTIALS var or add service-account.json");
+
+    // 1. Check for Env Variable (Cloud Run)
+    if (process.env.GCLOUD_CREDENTIALS) {
+        try {
+            console.log("🔐 Authenticating via GCLOUD_CREDENTIALS...");
+            const credentials = JSON.parse(process.env.GCLOUD_CREDENTIALS);
+            storageInstance = new Storage({ credentials });
+        } catch (e) {
+            throw new Error("Invalid GCLOUD_CREDENTIALS variable");
+        }
+    } 
+    // 2. Check for Local File (Development)
+    else {
+        const keyPath = path.join(process.cwd(), 'service-account.json');
+        
+        if (fs.existsSync(keyPath)) {
+            console.log(`📂 Found local key file at: ${keyPath}`);
+            storageInstance = new Storage({ keyFilename: keyPath });
+        } else {
+            // 3. If neither exists, WE CRASH HERE (But only at Runtime!)
+            throw new Error("CRITICAL: No Authentication found. Set GCLOUD_CREDENTIALS var or add service-account.json");
+        }
     }
+
+    bucketInstance = storageInstance.bucket(BUCKET_NAME);
+    return { storage: storageInstance, bucket: bucketInstance };
 }
-
-const bucket = storage.bucket(BUCKET_NAME);
 
 export async function processAndUploadImage(imageUrl: string, slug: string): Promise<string | null> {
     try {
         if (!imageUrl) return null;
+
+        // 🚀 CONNECT TO STORAGE NOW (Not at build time)
+        const { bucket } = getStorage();
 
         // 1. Download
         const response = await axios({ url: imageUrl, responseType: 'arraybuffer', timeout: 15000 });
@@ -70,6 +84,9 @@ export async function processAndUploadImage(imageUrl: string, slug: string): Pro
 
 export async function deleteImageFromBucket(slug: string): Promise<boolean> {
     try {
+        // 🚀 CONNECT TO STORAGE NOW
+        const { bucket } = getStorage();
+        
         const destination = `products/${slug}.webp`;
         const file = bucket.file(destination);
         const [exists] = await file.exists();
