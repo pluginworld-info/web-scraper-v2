@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import FeedSyncButton from '@/components/admin/FeedSyncButton'; // ✅ Import the Smart Button
 
 // Types matching your Schema
 type FeedStatus = 'IDLE' | 'SYNCING' | 'SUCCESS' | 'ERROR';
+
 interface Feed {
   id: string;
   name: string;
@@ -12,6 +14,7 @@ interface Feed {
   status: FeedStatus;
   lastSyncedAt: string | null;
 }
+
 interface Retailer {
   id: string;
   name: string;
@@ -46,7 +49,7 @@ export default function AdminFeedsPage() {
 
   useEffect(() => {
     fetchFeeds();
-    // Optional: Poll every 10s to update status
+    // Keep global polling for new feeds, but Sync status is now handled by the button component
     const interval = setInterval(fetchFeeds, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -86,39 +89,7 @@ export default function AdminFeedsPage() {
     fetchFeeds();
   };
 
-  // 4. Handle Manual Sync Trigger (✅ CONNECTED TO API)
-  const handleSync = async (feedId: string) => {
-    // A. Optimistic UI update: Set status to SYNCING immediately
-    const updatedRetailers = retailers.map(r => ({
-      ...r,
-      feeds: r.feeds.map(f => f.id === feedId ? { ...f, status: 'SYNCING' as FeedStatus } : f)
-    }));
-    setRetailers(updatedRetailers);
-
-    try {
-      // B. Call the Sync API
-      const res = await fetch('/api/admin/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ feedId })
-      });
-      
-      const data = await res.json();
-
-      if (res.ok) {
-        // Wait 1s for DB to settle, then refresh
-        console.log(`Synced ${data.processed} products.`);
-        setTimeout(fetchFeeds, 1000); 
-      } else {
-        alert(`Sync failed: ${data.error}`);
-        fetchFeeds(); // Revert UI on failure
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Network error triggering sync");
-      fetchFeeds();
-    }
-  };
+  // ❌ Removed handleSync (Logic moved to FeedSyncButton component)
 
   if (loading) return <div className="p-10 text-center text-[#aaaaaa]">Loading Dashboard...</div>;
 
@@ -150,7 +121,7 @@ export default function AdminFeedsPage() {
               {masterRetailers.length === 0 && <div className="text-[#444] italic">No master feed configured.</div>}
               {masterRetailers.map(retailer => (
                  retailer.feeds.map(feed => (
-                   <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={handleDelete} onSync={handleSync} />
+                   <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={handleDelete} />
                  ))
               ))}
            </div>
@@ -163,7 +134,7 @@ export default function AdminFeedsPage() {
               {competitorRetailers.length === 0 && <div className="text-[#444] italic">No competitor sites added.</div>}
               {competitorRetailers.map(retailer => (
                  retailer.feeds.map(feed => (
-                   <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={handleDelete} onSync={handleSync} />
+                   <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={handleDelete} />
                  ))
               ))}
            </div>
@@ -241,12 +212,7 @@ export default function AdminFeedsPage() {
 }
 
 // Sub-Component for Clean Code
-function FeedCard({ retailer, feed, onDelete, onSync }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void, onSync: (id: string) => void }) {
-  let statusColor = "bg-gray-800 text-gray-400";
-  if (feed.status === 'SUCCESS') statusColor = "bg-green-900/30 text-green-400 border border-green-900";
-  if (feed.status === 'SYNCING') statusColor = "bg-blue-900/30 text-blue-400 border border-blue-900 animate-pulse";
-  if (feed.status === 'ERROR') statusColor = "bg-red-900/30 text-red-400 border border-red-900";
-
+function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void }) {
   return (
     <div className="bg-[#1a1a1a] border border-[#333] rounded-xl p-5 flex items-center justify-between hover:border-[#444] transition-colors group">
        <div className="flex items-center gap-4">
@@ -259,27 +225,18 @@ function FeedCard({ retailer, feed, onDelete, onSync }: { retailer: Retailer, fe
           </div>
        </div>
 
-       <div className="flex items-center gap-6">
-          <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${statusColor}`}>
-             {feed.status}
-          </div>
+       <div className="flex items-center gap-4">
+          {/* ✅ REPLACED: Status + Sync Button */}
+          <FeedSyncButton feed={feed} />
           
-          <div className="flex items-center gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-            <button 
-              onClick={() => onSync(feed.id)}
-              className="p-2 text-[#666] hover:text-white hover:bg-[#333] rounded-lg transition-colors"
-              title="Sync Now"
-            >
-               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            </button>
-            <button 
-              onClick={() => onDelete(feed.id)}
-              className="p-2 text-[#666] hover:text-red-500 hover:bg-[#333] rounded-lg transition-colors"
-              title="Delete Feed"
-            >
-               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            </button>
-          </div>
+          {/* Delete Button */}
+          <button 
+            onClick={() => onDelete(feed.id)}
+            className="p-2 text-[#666] hover:text-red-500 hover:bg-[#333] rounded-lg transition-colors opacity-100 md:opacity-0 group-hover:opacity-100"
+            title="Delete Feed"
+          >
+             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </button>
        </div>
     </div>
   );
