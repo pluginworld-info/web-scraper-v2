@@ -5,10 +5,12 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // 1. Fetch all clicks from the last 30 days
+    // 1. Setup Date Range (Last 30 Days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+    // 2. Fetch Clicks (ProductClick)
+    // We include the Product title, but we can't include Retailer directly yet
     const clicks = await prisma.productClick.findMany({
       where: {
         createdAt: {
@@ -17,33 +19,75 @@ export async function GET() {
       },
       include: {
         product: { select: { title: true } }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    // 3. Manual Retailer Lookup
+    // Since there is no relation in the schema, we collect IDs and fetch names manually
+    const retailerIds = Array.from(new Set(clicks.map(c => c.retailerId).filter(Boolean))) as string[];
+    
+    const retailers = await prisma.retailer.findMany({
+        where: { id: { in: retailerIds } },
+        select: { id: true, name: true }
+    });
+
+    // Create a Lookup Map: ID -> Name
+    const retailerMap: Record<string, string> = {};
+    retailers.forEach(r => {
+        retailerMap[r.id] = r.name;
+    });
+
+    // 4. Aggregate Daily Clicks by Retailer (For Stacked Bar Graph)
+    const graphMap = new Map<string, any>();
+    const allRetailers = new Set<string>();
+
+    clicks.forEach(click => {
+      const dateKey = click.createdAt.toISOString().split('T')[0]; // YYYY-MM-DD
+      // Resolve Name from Map, or fallback to "Unknown"
+      const retailerName = click.retailerId ? (retailerMap[click.retailerId] || 'Unknown') : 'Direct';
+      
+      allRetailers.add(retailerName);
+
+      if (!graphMap.has(dateKey)) {
+        graphMap.set(dateKey, { date: dateKey });
       }
+
+      const entry = graphMap.get(dateKey);
+      entry[retailerName] = (entry[retailerName] || 0) + 1;
     });
 
-    // 2. Aggregate Daily Clicks (Graph Data)
-    const clicksByDate: Record<string, number> = {};
+    const graphData = Array.from(graphMap.values());
+
+    // 5. Aggregate Top Products (For Table)
+    const productMap = new Map<string, any>();
+
     clicks.forEach(click => {
-      const date = click.createdAt.toISOString().split('T')[0]; // YYYY-MM-DD
-      clicksByDate[date] = (clicksByDate[date] || 0) + 1;
+      const title = click.product.title;
+      const retailerName = click.retailerId ? (retailerMap[click.retailerId] || 'Unknown') : 'Direct';
+
+      if (!productMap.has(title)) {
+        productMap.set(title, { 
+            title, 
+            totalClicks: 0, 
+            breakdown: {} 
+        });
+      }
+
+      const entry = productMap.get(title);
+      entry.totalClicks += 1;
+      entry.breakdown[retailerName] = (entry.breakdown[retailerName] || 0) + 1;
     });
 
-    // Transform into array for Recharts
-    const graphData = Object.entries(clicksByDate)
-      .map(([date, count]) => ({ date, count }))
-      .sort((a, b) => a.date.localeCompare(b.date));
+    const topProducts = Array.from(productMap.values())
+      .sort((a, b) => b.totalClicks - a.totalClicks)
+      .slice(0, 10);
 
-    // 3. Aggregate Top Products (Table Data)
-    const productStats: Record<string, number> = {};
-    clicks.forEach(click => {
-      productStats[click.product.title] = (productStats[click.product.title] || 0) + 1;
+    return NextResponse.json({ 
+      graphData, 
+      retailers: Array.from(allRetailers), 
+      topProducts 
     });
-
-    const topProducts = Object.entries(productStats)
-      .map(([title, count]) => ({ title, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10); // Top 10
-
-    return NextResponse.json({ graphData, topProducts });
 
   } catch (error) {
     console.error("Analytics Error:", error);
