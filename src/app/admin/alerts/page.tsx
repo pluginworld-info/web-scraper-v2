@@ -7,15 +7,22 @@ import Image from 'next/image';
 export default function AlertsDashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
 
-  const loadData = () => {
-    fetch('/api/admin/alerts')
-      .then(res => res.json())
-      .then(d => {
+  const loadData = async (isManualRefresh = false) => {
+    if (isManualRefresh) setIsRefreshing(true);
+    
+    try {
+        const res = await fetch(`/api/admin/alerts?t=${Date.now()}`);
+        const d = await res.json();
         setData(d);
+    } catch (error) {
+        console.error("Failed to load alerts", error);
+    } finally {
         setLoading(false);
-      });
+        setIsRefreshing(false);
+    }
   };
 
   useEffect(() => { loadData(); }, []);
@@ -23,15 +30,15 @@ export default function AlertsDashboard() {
   const handleDelete = async (id: string) => {
     if(!confirm("Delete this alert?")) return;
     await fetch(`/api/admin/alerts?id=${id}`, { method: 'DELETE' });
-    loadData(); 
+    loadData(true); 
   };
 
   if (loading) return <div className="p-20 text-center text-[#666] animate-pulse">Loading Dashboard...</div>;
 
-  const filteredAlerts = data.alerts.filter((a: any) => 
+  const filteredAlerts = data?.alerts?.filter((a: any) => 
     a.email.toLowerCase().includes(search.toLowerCase()) || 
     a.product.title.toLowerCase().includes(search.toLowerCase())
-  );
+  ) || [];
 
   return (
     <main className="min-h-screen bg-[#111] p-8 font-sans">
@@ -41,15 +48,22 @@ export default function AlertsDashboard() {
             <h1 className="text-3xl font-black text-white tracking-tighter">Alerts Manager</h1>
             <p className="text-[#666] font-medium">Monitor active price watches and notifications.</p>
           </div>
-          <button onClick={loadData} className="text-blue-500 hover:text-white text-sm font-bold uppercase">
-            ↻ Refresh
+          
+          <button 
+            onClick={() => loadData(true)} 
+            disabled={isRefreshing}
+            className={`text-sm font-bold uppercase flex items-center gap-2 transition-colors ${isRefreshing ? 'text-[#666] cursor-wait' : 'text-blue-500 hover:text-white'}`}
+          >
+            <span className={`text-lg ${isRefreshing ? 'animate-spin' : ''}`}>↻</span>
+            {isRefreshing ? 'Updating...' : 'Refresh'}
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <StatCard label="Active Watchers" value={data.stats.active} color="text-blue-500" desc="Waiting for drop" />
-          <StatCard label="Notifications Sent" value={data.stats.triggered} color="text-green-500" desc="Deals delivered" />
-          <StatCard label="Most Wanted" value={data.topProducts[0]?.title || 'N/A'} color="text-white" desc="Top Product" isText />
+          <StatCard label="Active Watchers" value={data?.stats?.active || 0} color="text-blue-500" desc="Waiting for drop" />
+          <StatCard label="Notifications Sent" value={data?.stats?.triggered || 0} color="text-green-500" desc="Deals delivered" />
+          {/* ✅ UPDATED: Most Wanted card with scrolling */}
+          <StatCard label="Most Wanted" value={data?.topProducts?.[0]?.title || 'No Data Yet'} color="text-white" desc="Top Product" isText />
         </div>
 
         <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl overflow-hidden shadow-2xl">
@@ -77,25 +91,29 @@ export default function AlertsDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#333]">
-                {filteredAlerts.map((alert: any) => (
+                {filteredAlerts.length === 0 ? (
+                    <tr>
+                        <td colSpan={6} className="p-8 text-center text-[#444] font-medium">No alerts found matching your search.</td>
+                    </tr>
+                ) : filteredAlerts.map((alert: any) => (
                   <tr key={alert.id} className="hover:bg-[#222] transition-colors group">
                     <td className="p-4">
                       {alert.isTriggered ? (
-                         <span className="bg-green-900/20 text-green-500 px-2 py-1 rounded text-[10px] font-black uppercase border border-green-900/50">Sent</span>
+                          <span className="bg-green-900/20 text-green-500 px-2 py-1 rounded text-[10px] font-black uppercase border border-green-900/50">Sent</span>
                       ) : (
-                         <span className="bg-blue-900/20 text-blue-500 px-2 py-1 rounded text-[10px] font-black uppercase border border-blue-900/50">Active</span>
+                          <span className="bg-blue-900/20 text-blue-500 px-2 py-1 rounded text-[10px] font-black uppercase border border-blue-900/50">Active</span>
                       )}
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                         {alert.product.image && (
-                           <div className="w-8 h-8 rounded bg-[#333] relative overflow-hidden flex-shrink-0">
-                             <Image src={alert.product.image} alt="" fill className="object-cover" />
-                           </div>
-                         )}
-                         <Link href={`/product/${alert.product.slug}`} target="_blank" className="text-white font-bold text-sm hover:text-blue-500 truncate max-w-[200px] block">
-                            {alert.product.title}
-                         </Link>
+                          {alert.product.image && (
+                            <div className="w-8 h-8 rounded bg-[#333] relative overflow-hidden flex-shrink-0">
+                              <Image src={alert.product.image} alt="" fill className="object-cover" />
+                            </div>
+                          )}
+                          <Link href={`/product/${alert.product.slug}`} target="_blank" className="text-white font-bold text-sm hover:text-blue-500 truncate max-w-[200px] block">
+                             {alert.product.title}
+                          </Link>
                       </div>
                     </td>
                     <td className="p-4">
@@ -112,13 +130,13 @@ export default function AlertsDashboard() {
                       {new Date(alert.createdAt).toLocaleDateString()}
                     </td>
                     <td className="p-4 text-right">
-                       <button 
-                         onClick={() => handleDelete(alert.id)}
-                         className="text-[#666] hover:text-red-500 p-2 rounded hover:bg-[#333] transition-colors"
-                         title="Delete Alert"
-                       >
-                         ✕
-                       </button>
+                        <button 
+                          onClick={() => handleDelete(alert.id)}
+                          className="text-[#666] hover:text-red-500 p-2 rounded hover:bg-[#333] transition-colors"
+                          title="Delete Alert"
+                        >
+                          ✕
+                        </button>
                     </td>
                   </tr>
                 ))}
@@ -131,16 +149,44 @@ export default function AlertsDashboard() {
   );
 }
 
+// ✅ UPDATED STAT CARD WITH MARQUEE
 function StatCard({ label, value, color, desc, isText = false }: any) {
   return (
-    <div className="bg-[#1a1a1a] border border-[#333] p-6 rounded-2xl shadow-lg relative overflow-hidden">
-       <div className="relative z-10">
+    <div className="bg-[#1a1a1a] border border-[#333] p-6 rounded-2xl shadow-lg relative overflow-hidden flex flex-col justify-center h-36">
+       <div className="relative z-10 w-full">
          <h3 className="text-[#666] text-xs font-bold uppercase tracking-widest mb-2">{label}</h3>
-         <div className={`text-4xl font-black ${color} ${isText ? 'text-2xl mt-2 line-clamp-1' : ''}`}>
-           {value}
-         </div>
+         
+         {isText ? (
+            <div className="w-full overflow-hidden relative h-10 flex items-center">
+                {/* Scrolling Animation */}
+                <div className="whitespace-nowrap animate-marquee absolute text-xl font-black text-white">
+                    {value} &nbsp;&nbsp; • &nbsp;&nbsp; {value} &nbsp;&nbsp; • &nbsp;&nbsp;
+                </div>
+            </div>
+         ) : (
+            <div className={`text-4xl font-black ${color}`}>
+               {value}
+            </div>
+         )}
+         
          <p className="text-[#444] text-xs mt-2 font-medium">{desc}</p>
        </div>
+
+       {/* INLINE CSS FOR MARQUEE */}
+       {isText && (
+         <style jsx>{`
+            @keyframes marquee {
+                0% { transform: translateX(100%); }
+                100% { transform: translateX(-100%); }
+            }
+            .animate-marquee {
+                animation: marquee 15s linear infinite;
+            }
+            .animate-marquee:hover {
+                animation-play-state: paused;
+            }
+         `}</style>
+       )}
     </div>
   );
 }
