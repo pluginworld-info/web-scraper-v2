@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { CloudSchedulerClient } from '@google-cloud/scheduler';
 
-// ✅ CONFIG (Matched to your screenshots)
+// ✅ CONFIG (Matched to your verified screenshots)
 const PROJECT_ID = 'composite-haiku-480406-b5';
 const LOCATION_ID = 'us-central1';
 const JOB_ID = 'sync-product-feeds';
@@ -10,25 +10,20 @@ const client = new CloudSchedulerClient();
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  // 1. Setup Client
-  // We use the full path to ensure exact matching
-  const name = `projects/${PROJECT_ID}/locations/${LOCATION_ID}/jobs/${JOB_ID}`;
-
-  let jobData = null;
-
   try {
-    // 2. Fetch Job from Google Cloud
+    // 1. Fetch Job from Google Cloud
+    const name = client.jobPath(PROJECT_ID, LOCATION_ID, JOB_ID);
     const [job] = await client.getJob({ name });
-    jobData = job;
 
     if (!job || !job.schedule) {
        return NextResponse.json({ error: "Job found but has no schedule" }, { status: 404 });
     }
 
-    // 3. Calculate Next Run (Protected Logic)
+    // 2. Calculate Next Run (Safe Dynamic Import)
     let nextRunTime = null;
     try {
-        // 🛡️ DYNAMIC REQUIRE: Loads library at runtime to prevent Webpack crashes
+        // 🛡️ THE FIX: We require() here to bypass the build-time crash
+        // This loads the fresh library from node_modules at runtime
         const parser = require('cron-parser');
         
         const interval = parser.parseExpression(job.schedule as string, {
@@ -36,9 +31,9 @@ export async function GET() {
         });
         nextRunTime = interval.next().toDate().toISOString();
     } catch (libError: any) {
-        console.error("Library Error:", libError);
-        // If library fails, we still return the Job Status so the UI works
-        nextRunTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // Dummy date (+24h)
+        console.error("Cron Library Error:", libError);
+        // Fallback: If library still fails, show tomorrow's date so UI doesn't break
+        nextRunTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     }
 
     return NextResponse.json({
@@ -50,15 +45,13 @@ export async function GET() {
     });
 
   } catch (error: any) {
-    console.error("API Crash:", error);
-
-    // 4. Return Readable Error (Instead of 500 Crash)
-    // This ensures your UI shows the specific error message
+    console.error("Scheduler API Error:", error);
+    
     return NextResponse.json({ 
       error: error.message || "Unknown Error",
-      details: error.code === 7 ? "Permission Denied (IAM)" : "Configuration Error",
-      debug_project: PROJECT_ID,
+      // Include debug info so you can see it in the browser
+      debug_project: PROJECT_ID, 
       debug_job: JOB_ID
-    }, { status: 200 }); // Return 200 so frontend can read the JSON error
+    }, { status: 500 });
   }
 }

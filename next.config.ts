@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // 1. Enable Standalone output (Required for Docker/Cloud Run)
-  //output: "standalone",
+  output: "standalone",
 
   // 2. BYPASS ERRORS: Allow build to finish despite linting/type errors
   eslint: {
@@ -18,7 +18,8 @@ const nextConfig: NextConfig = {
     'puppeteer-extra', 
     'puppeteer-extra-plugin-stealth', 
     'cheerio',
-    '@prisma/client'
+    '@prisma/client',
+    'cron-parser' // 👈 ✅ THIS IS THE FIX
   ],
 
   // 4. Image Configuration
@@ -28,8 +29,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "media.sweetwater.com" },
       { protocol: "https", hostname: "cdn.pluginboutique.com" },
-      { protocol: "https", hostname: "banners.pluginboutique.com" }, // ✅ Added for Product Images
-      { protocol: "https", hostname: "www.pluginboutique.com" },     // ✅ Added for Logos
+      { protocol: "https", hostname: "banners.pluginboutique.com" }, 
+      { protocol: "https", hostname: "www.pluginboutique.com" },     
       { protocol: "https", hostname: "static.kvraudio.com" },
       { protocol: "https", hostname: "audioplugin.deals" },
       { protocol: "https", hostname: "*.audioplugin.deals" },
