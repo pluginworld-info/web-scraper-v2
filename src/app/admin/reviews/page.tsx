@@ -6,12 +6,17 @@ import Image from 'next/image';
 export default function ReviewsManager() {
   const [data, setData] = useState<any>({ products: [], reviews: [] });
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Selection & Filtering
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [spamIds, setSpamIds] = useState<string[]>([]);
-  const [isScanning, setIsScanning] = useState(false);
+  
+  // Modal State
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // 1. Fetch Data
-  const loadData = async () => {
+  const loadData = async (manual = false) => {
+    if (manual) setIsRefreshing(true);
     try {
       const res = await fetch(`/api/admin/reviews?t=${Date.now()}`);
       const d = await res.json();
@@ -20,42 +25,27 @@ export default function ReviewsManager() {
       console.error("Failed", e);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => { loadData(); }, []);
 
-  // 2. Heuristic "AI" Spam Detection Logic
-  const runSpamCheck = () => {
-    setIsScanning(true);
-    setTimeout(() => {
-        const suspiciousIds = data.reviews.filter((r: any) => {
-            const text = r.comment.toLowerCase();
-            const isTooShort = text.length < 5;
-            const hasBadWords = text.includes('scam') || text.includes('fake') || text.includes('$$$');
-            const isAllCaps = r.comment === r.comment.toUpperCase() && r.comment.length > 5;
-            return isTooShort || hasBadWords || isAllCaps;
-        }).map((r: any) => r.id);
-
-        setSpamIds(suspiciousIds);
-        setIsScanning(false);
-    }, 1500); // Fake a 1.5s "processing" delay for effect
-  };
-
-  // 3. Delete Logic
-  const handleDelete = async (id: string) => {
-    if (!confirm("Permanently delete this review?")) return;
+  // 2. Delete Logic
+  const confirmDelete = async () => {
+    if (!deleteId) return;
     
     // Optimistic Update
     setData((prev: any) => ({
         ...prev,
-        reviews: prev.reviews.filter((r: any) => r.id !== id)
+        reviews: prev.reviews.filter((r: any) => r.id !== deleteId)
     }));
 
-    await fetch(`/api/admin/reviews?id=${id}`, { method: 'DELETE' });
+    await fetch(`/api/admin/reviews?id=${deleteId}`, { method: 'DELETE' });
+    setDeleteId(null); // Close modal
   };
 
-  // 4. Filtering Logic
+  // 3. Filtering Logic
   const filteredReviews = useMemo(() => {
     let list = data.reviews;
     if (selectedProductId) {
@@ -76,27 +66,14 @@ export default function ReviewsManager() {
            <p className="text-[#666] font-medium">Manage, moderate, and analyze user feedback.</p>
         </div>
         <div className="flex gap-3">
-             {/* SPAM BUTTON */}
+             {/* REFRESH BUTTON (With Animation) */}
              <button 
-                onClick={runSpamCheck}
-                disabled={isScanning}
-                className={`px-5 py-2 rounded-lg font-bold uppercase text-xs tracking-wider transition-all flex items-center gap-2 ${spamIds.length > 0 ? 'bg-red-500/20 text-red-500 border border-red-500/50' : 'bg-[#222] text-[#888] hover:bg-[#333] hover:text-white border border-[#333]'}`}
+                onClick={() => loadData(true)} 
+                disabled={isRefreshing}
+                className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg font-bold uppercase text-xs tracking-widest shadow-lg shadow-blue-900/20 flex items-center gap-2"
              >
-                {isScanning ? (
-                    <>
-                        <div className="w-3 h-3 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                        Scanning Content...
-                    </>
-                ) : (
-                    <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                        {spamIds.length > 0 ? `${spamIds.length} Issues Detected` : 'Run AI Spam Check'}
-                    </>
-                )}
-             </button>
-             
-             <button onClick={() => loadData()} className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg font-bold uppercase text-xs tracking-widest shadow-lg shadow-blue-900/20">
-                Refresh
+                {isRefreshing && <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
+                {isRefreshing ? 'Updating...' : 'Refresh'}
              </button>
         </div>
       </div>
@@ -157,48 +134,82 @@ export default function ReviewsManager() {
                     <tbody className="divide-y divide-[#333]">
                         {filteredReviews.length === 0 ? (
                             <tr><td colSpan={4} className="p-10 text-center text-[#444]">No reviews found.</td></tr>
-                        ) : filteredReviews.map((review: any) => {
-                            const isSpam = spamIds.includes(review.id);
-                            return (
-                                <tr key={review.id} className={`group transition-colors ${isSpam ? 'bg-red-900/10 hover:bg-red-900/20' : 'hover:bg-[#222]'}`}>
-                                    <td className="p-4 align-top">
-                                        <div className={`flex items-center gap-1 font-bold ${review.rating >= 4 ? 'text-green-500' : review.rating >= 3 ? 'text-yellow-500' : 'text-red-500'}`}>
-                                            <span className="text-lg">★</span> {review.rating}
-                                        </div>
-                                    </td>
-                                    <td className="p-4 align-top">
-                                        {/* Spam Badge */}
-                                        {isSpam && (
-                                            <div className="mb-2 inline-flex items-center gap-2 bg-red-500/20 border border-red-500/50 text-red-400 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider">
-                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                                Potential Spam
-                                            </div>
-                                        )}
-                                        <p className="text-gray-300 text-sm leading-relaxed mb-1">{review.comment}</p>
-                                        <p className="text-[#555] text-xs font-medium flex items-center gap-2">
-                                            on <span className="text-[#777]">{review.product?.title || 'Unknown Product'}</span>
-                                        </p>
-                                    </td>
-                                    <td className="p-4 align-top text-[#666] text-xs font-mono">
-                                        {new Date(review.createdAt).toLocaleDateString()}
-                                    </td>
-                                    <td className="p-4 align-top text-right">
-                                        <button 
-                                            onClick={() => handleDelete(review.id)}
-                                            className="text-[#555] hover:text-red-500 hover:bg-[#333] p-2 rounded-lg transition-colors"
-                                            title="Delete Review"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
+                        ) : filteredReviews.map((review: any) => (
+                            <tr key={review.id} className="group hover:bg-[#222] transition-colors">
+                                <td className="p-4 align-top">
+                                    <div className={`flex items-center gap-1 font-bold ${review.rating >= 4 ? 'text-green-500' : review.rating >= 3 ? 'text-yellow-500' : 'text-red-500'}`}>
+                                        <span className="text-lg">★</span> {review.rating}
+                                    </div>
+                                </td>
+                                <td className="p-4 align-top">
+                                    <p className="text-gray-300 text-sm leading-relaxed mb-1">{review.comment}</p>
+                                    <p className="text-[#555] text-xs font-medium flex items-center gap-2">
+                                        on <span className="text-[#777]">{review.product?.title || 'Unknown Product'}</span>
+                                    </p>
+                                </td>
+                                <td className="p-4 align-top text-[#666] text-xs font-mono">
+                                    {new Date(review.createdAt).toLocaleDateString()}
+                                </td>
+                                <td className="p-4 align-top text-right">
+                                    <button 
+                                        onClick={() => setDeleteId(review.id)}
+                                        className="text-[#555] hover:text-red-500 hover:bg-[#333] p-2 rounded-lg transition-colors"
+                                        title="Delete Review"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
             </div>
          </div>
       </div>
+
+      {/* ✅ STYLED DELETE CONFIRMATION MODAL */}
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" 
+                onClick={() => setDeleteId(null)}
+            ></div>
+            
+            <div className="relative bg-[#222] border border-[#333] w-full max-w-sm rounded-2xl p-8 shadow-2xl transform transition-all scale-100 animate-in fade-in zoom-in duration-200">
+                <div className="flex flex-col items-center text-center">
+                    
+                    {/* Warning Icon */}
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center mb-6 bg-red-500/10 text-red-500">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </div>
+
+                    <h3 className="text-2xl font-bold text-white mb-2">Delete Review?</h3>
+                    
+                    <p className="text-[#888] text-sm mb-8 leading-relaxed">
+                        This action cannot be undone. The review will be permanently removed from the database.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-4 w-full">
+                        <button 
+                            onClick={() => setDeleteId(null)} 
+                            className="bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold text-sm transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmDelete} 
+                            className="bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-red-900/20 transition-all"
+                        >
+                            Yes, Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
     </main>
   );
 }
