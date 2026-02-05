@@ -24,14 +24,9 @@ export default function FeedSyncButton({ feed }: FeedSyncButtonProps) {
     if (isPolling) {
       interval = setInterval(async () => {
         try {
-          // Fetch just this feed's latest status
-          // Note: You might need a simple GET API for a single feed, 
-          // or just re-fetch the main feeds list. 
-          // For efficiency, here we assume re-fetching the list is okay.
           const res = await fetch('/api/admin/feeds');
           const data = await res.json();
           
-          // Find our specific feed
           const currentFeed = data.flatMap((r: any) => r.feeds).find((f: any) => f.id === feed.id);
           
           if (currentFeed) {
@@ -41,7 +36,7 @@ export default function FeedSyncButton({ feed }: FeedSyncButtonProps) {
             if (currentFeed.status === 'SUCCESS' || currentFeed.status === 'ERROR') {
               setIsPolling(false);
               setLoading(false);
-              router.refresh(); // Refresh server data to show new timestamps
+              router.refresh(); 
             }
           }
         } catch (err) {
@@ -57,7 +52,7 @@ export default function FeedSyncButton({ feed }: FeedSyncButtonProps) {
   const handleSync = async () => {
     setLoading(true);
     setStatus('SYNCING');
-    setIsPolling(true); // Start watching
+    setIsPolling(true); 
 
     try {
       const res = await fetch('/api/admin/sync', {
@@ -67,9 +62,6 @@ export default function FeedSyncButton({ feed }: FeedSyncButtonProps) {
       });
       
       if (!res.ok) throw new Error('Failed to start sync');
-      
-      // We don't wait for the JSON response here because the sync might take 60s+
-      // We let the Polling Effect handle the completion.
       
     } catch (error) {
       alert("Failed to start sync");
@@ -83,7 +75,8 @@ export default function FeedSyncButton({ feed }: FeedSyncButtonProps) {
 
   if (status === 'SYNCING') {
     return (
-      <div className="flex items-center gap-2 text-blue-400 font-mono text-xs animate-pulse">
+      // ✅ DYNAMIC PROCESSING STATE
+      <div className="flex items-center gap-2 text-primary font-mono text-xs animate-pulse">
         <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -111,7 +104,8 @@ export default function FeedSyncButton({ feed }: FeedSyncButtonProps) {
       <button
         onClick={handleSync}
         disabled={loading || status === 'SYNCING'}
-        className="group relative p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+        // ✅ DYNAMIC BUTTON HOVER
+        className="group relative p-2 rounded-lg bg-white/5 hover:bg-primary/10 text-gray-400 hover:text-primary transition-all"
         title="Start Sync"
       >
         <svg className="w-5 h-5 group-hover:rotate-180 transition-transform duration-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -120,4 +114,4 @@ export default function FeedSyncButton({ feed }: FeedSyncButtonProps) {
       </button>
     </div>
   );
-} 
+}

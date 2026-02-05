@@ -48,11 +48,10 @@ export default function WishlistPage() {
     return () => window.removeEventListener('wishlist-updated', handleUpdate);
   }, []);
 
-  // 3. Fetch Data (Fixed to prevent "Show All" bug)
+  // 3. Fetch Data
   async function fetchWishlistProducts(ids: string[]) {
     try {
       // ✅ CRITICAL FIX: Only fetch if ID is valid. 
-      // Prevents calling /api/products?id=undefined which might return ALL products.
       const validIds = ids.filter(id => id && id !== "null" && id !== "undefined");
       
       if (validIds.length === 0) {
@@ -85,11 +84,20 @@ export default function WishlistPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#111] p-4 md:p-8">
+    <main className="min-h-screen bg-[#111] p-4 md:p-8 pb-20">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8 border-b border-[#333] pb-5 flex items-end gap-3">
-           <h1 className="text-3xl font-black text-white tracking-tighter">My Wishlist</h1>
-           <span className="text-[#666] font-bold mb-1">{products.length} Items</span>
+        
+        {/* HEADER */}
+        <div className="mb-10 border-b border-[#333] pb-6 flex items-end justify-between">
+           <div>
+             <h1 className="text-3xl font-black text-white tracking-tighter">My Wishlist</h1>
+             <p className="text-[#666] font-medium mt-1">Your curated list of tracked plugins.</p>
+           </div>
+           
+           {/* ✅ DYNAMIC COUNT BADGE */}
+           <span className="bg-primary/10 text-primary border border-primary/20 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-[0_0_15px_rgba(var(--primary-rgb),0.2)]">
+             {products.length} Saved
+           </span>
         </div>
 
         {products.length > 0 ? (
@@ -101,7 +109,8 @@ export default function WishlistPage() {
             <p className="text-[#888] mb-8 max-w-md mx-auto text-sm">Start saving your favorite plugins to track their prices and get notified of deals.</p>
             <Link 
               href="/product" 
-              className="bg-blue-600 text-white px-8 py-4 rounded-full font-black uppercase text-xs tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-900/20"
+              // ✅ DYNAMIC BUTTON COLOR
+              className="bg-primary text-white px-8 py-4 rounded-full font-black uppercase text-xs tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/20"
             >
               Browse Deals
             </Link>

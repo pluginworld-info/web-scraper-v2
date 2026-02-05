@@ -41,7 +41,8 @@ export default function AdminLogin() {
         
         {/* Header */}
         <div className="text-center mb-8">
-           <div className="w-12 h-12 bg-blue-600 rounded-xl mx-auto flex items-center justify-center font-black text-2xl text-white mb-4 shadow-lg shadow-blue-900/40">
+           {/* ✅ DYNAMIC LOGO COLOR */}
+           <div className="w-12 h-12 bg-primary rounded-xl mx-auto flex items-center justify-center font-black text-2xl text-white mb-4 shadow-lg shadow-primary/40">
              P
            </div>
            <h1 className="text-xl font-bold text-white tracking-tight">Admin Access</h1>
@@ -56,7 +57,8 @@ export default function AdminLogin() {
                value={password}
                onChange={(e) => setPassword(e.target.value)}
                placeholder="Security PIN"
-               className="w-full bg-[#1a1a1a] border border-[#333] text-white text-center text-lg tracking-[0.5em] font-bold rounded-xl py-4 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:tracking-normal placeholder:font-normal placeholder:text-[#444]"
+               // ✅ DYNAMIC FOCUS BORDER & RING
+               className="w-full bg-[#1a1a1a] border border-[#333] text-white text-center text-lg tracking-[0.5em] font-bold rounded-xl py-4 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:tracking-normal placeholder:font-normal placeholder:text-[#444]"
                autoFocus
              />
            </div>
@@ -69,7 +71,8 @@ export default function AdminLogin() {
 
            <button
              disabled={loading || !password}
-             className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+             // ✅ DYNAMIC BUTTON COLOR
+             className="w-full bg-primary text-white font-bold py-4 rounded-xl hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
            >
              {loading ? 'Verifying...' : 'Unlock Dashboard'}
            </button>

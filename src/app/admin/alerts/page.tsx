@@ -51,7 +51,8 @@ export default function AlertsDashboard() {
           <button 
             onClick={() => loadData(true)} 
             disabled={isRefreshing}
-            className={`text-sm font-bold uppercase flex items-center gap-2 transition-colors ${isRefreshing ? 'text-[#666] cursor-wait' : 'text-blue-500 hover:text-white'}`}
+            // ✅ DYNAMIC REFRESH BUTTON
+            className={`text-sm font-bold uppercase flex items-center gap-2 transition-colors ${isRefreshing ? 'text-[#666] cursor-wait' : 'text-primary hover:text-white'}`}
           >
             <span className={`text-lg ${isRefreshing ? 'animate-spin' : ''}`}>↻</span>
             {isRefreshing ? 'Updating...' : 'Refresh'}
@@ -59,7 +60,8 @@ export default function AlertsDashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <StatCard label="Active Watchers" value={data?.stats?.active || 0} color="text-blue-500" desc="Waiting for drop" />
+          {/* ✅ DYNAMIC STAT CARD COLOR */}
+          <StatCard label="Active Watchers" value={data?.stats?.active || 0} color="text-primary" desc="Waiting for drop" />
           <StatCard label="Notifications Sent" value={data?.stats?.triggered || 0} color="text-green-500" desc="Deals delivered" />
           {/* Most Wanted Card */}
           <StatCard label="Most Wanted" value={data?.topProducts?.[0]?.title || 'No Data Yet'} color="text-white" desc="Top Product" isText />
@@ -73,7 +75,7 @@ export default function AlertsDashboard() {
                placeholder="Search email or product..." 
                value={search}
                onChange={(e) => setSearch(e.target.value)}
-               className="bg-[#111] border border-[#333] rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-blue-600 w-64"
+               className="bg-[#111] border border-[#333] rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-primary w-64 transition-colors"
              />
           </div>
 
@@ -100,7 +102,8 @@ export default function AlertsDashboard() {
                       {alert.isTriggered ? (
                           <span className="bg-green-900/20 text-green-500 px-2 py-1 rounded text-[10px] font-black uppercase border border-green-900/50">Sent</span>
                       ) : (
-                          <span className="bg-blue-900/20 text-blue-500 px-2 py-1 rounded text-[10px] font-black uppercase border border-blue-900/50">Active</span>
+                          // ✅ DYNAMIC ACTIVE BADGE
+                          <span className="bg-primary/20 text-primary px-2 py-1 rounded text-[10px] font-black uppercase border border-primary/50">Active</span>
                       )}
                     </td>
                     <td className="p-4">
@@ -110,7 +113,8 @@ export default function AlertsDashboard() {
                               <Image src={alert.product.image} alt="" fill className="object-cover" />
                             </div>
                           )}
-                          <Link href={`/product/${alert.product.slug}`} target="_blank" className="text-white font-bold text-sm hover:text-blue-500 truncate max-w-[200px] block">
+                          {/* ✅ DYNAMIC LINK HOVER */}
+                          <Link href={`/product/${alert.product.slug}`} target="_blank" className="text-white font-bold text-sm hover:text-primary truncate max-w-[200px] block transition-colors">
                              {alert.product.title}
                           </Link>
                       </div>

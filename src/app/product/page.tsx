@@ -1,5 +1,3 @@
-// FILE: src/app/product/page.tsx
-
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Forces fresh data on every visit
 
@@ -11,7 +9,6 @@ export default async function AllProductsPage() {
   const totalCount = await prisma.product.count();
 
   // 2. Fetch products (Initial batch of 12)
-  // We include 'listings' just in case we need a fallback, but we primarily rely on the cached fields now.
   const products = await prisma.product.findMany({
     take: 12,
     include: {
@@ -48,11 +45,20 @@ export default async function AllProductsPage() {
   });
 
   return (
-    <main className="p-4 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-           <h1 className="text-3xl font-bold text-gray-800">All Plugins</h1>
-           <span className="text-sm font-medium text-gray-500">{totalCount} Results</span>
+    <main className="min-h-screen bg-[#111] pb-20">
+      <div className="max-w-7xl mx-auto p-4 md:p-8">
+        
+        {/* HEADER */}
+        <div className="flex items-end justify-between mb-10 border-b border-[#333] pb-6">
+           <div>
+             <h1 className="text-3xl font-black text-white tracking-tighter">All Plugins</h1>
+             <p className="text-[#666] font-medium mt-1">Browse the latest deals and drops.</p>
+           </div>
+           
+           {/* ✅ DYNAMIC RESULT BADGE */}
+           <span className="bg-primary/10 text-primary border border-primary/20 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-[0_0_15px_rgba(var(--primary-rgb),0.2)]">
+             {totalCount} Results
+           </span>
         </div>
         
         <ProductGrid 

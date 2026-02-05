@@ -22,7 +22,6 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
     || salePrice;
 
   // --- 2. DEFINE ALL HOOKS UNCONDITIONALLY ---
-  // (Hooks must ALWAYS run in the same order, so they cannot be after an 'if')
   const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState('');
   const [targetPrice, setTargetPrice] = useState(salePrice);
@@ -78,43 +77,42 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
     }
   };
 
-  // --- 3. CONDITIONAL RENDER (The Guard Clause) ---
-  // Only NOW can we return null if closed
+  // --- 3. CONDITIONAL RENDER ---
   if (!isOpen || !mounted) return null;
 
   // --- 4. RENDER PORTAL ---
   return createPortal(
     <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4">
       
-      {/* LAYER 1: The Dark Overlay (Click to close) */}
+      {/* LAYER 1: The Dark Overlay */}
       <div 
         className="fixed inset-0 bg-black opacity-90" 
         onClick={onClose}
       ></div>
 
       {/* LAYER 2: The Modal Content */}
-      <div className="relative bg-[#222222] rounded-3xl w-full max-w-lg border border-[#444] p-8 text-center shadow-2xl">
+      <div className="relative bg-[#1a1a1a] rounded-3xl w-full max-w-lg border border-[#333] p-8 text-center shadow-2xl">
         
         {/* Close Button */}
         <button 
           onClick={onClose} 
-          className="absolute top-4 right-5 text-[#888] hover:text-white text-2xl font-bold transition-colors"
+          className="absolute top-4 right-5 text-[#666] hover:text-white text-2xl font-bold transition-colors"
         >
           ✕
         </button>
 
         {/* Header */}
-        <h2 className="text-2xl font-extrabold text-white mb-2 tracking-tight">
+        <h2 className="text-2xl font-black text-white mb-2 tracking-tight">
           {product.title}
         </h2>
-        <p className="text-[#aaaaaa] mb-6 text-sm">
+        <p className="text-[#888] mb-6 text-sm font-medium">
           Adjust the slider below to set an email price alert!
         </p>
 
         {/* Price Display */}
-        <div className="text-lg font-bold text-red-400 mb-6 bg-red-900/20 py-3 rounded-xl border border-red-900/30">
+        <div className="text-sm font-bold text-red-400 mb-6 bg-red-900/10 py-3 rounded-xl border border-red-900/20">
           Regular: ${regularPrice.toFixed(2)} 
-          <span className="text-[#444] mx-3">|</span> 
+          <span className="text-[#333] mx-3">|</span> 
           Current: ${salePrice.toFixed(2)}
         </div>
 
@@ -127,16 +125,18 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
             step={1}
             value={targetPrice} 
             onChange={(e) => setTargetPrice(Number(e.target.value))}
-            className="w-full h-3 bg-[#111] rounded-lg appearance-none cursor-pointer accent-blue-600 border border-[#333]"
+            // ✅ DYNAMIC SLIDER ACCENT
+            className="w-full h-2 bg-[#111] rounded-lg appearance-none cursor-pointer accent-primary border border-[#333]"
           />
           <div className="mt-5 text-2xl font-black text-white">
-            Alert me at: <span className="text-blue-500">${targetPrice.toFixed(2)}</span>
+            {/* ✅ DYNAMIC TEXT COLOR */}
+            Alert me at: <span className="text-primary">${targetPrice.toFixed(2)}</span>
           </div>
         </div>
 
         {/* Form Logic */}
         {status === 'SUCCESS' ? (
-          <div className="bg-green-900/30 border border-green-800 text-green-400 p-5 rounded-2xl font-bold flex flex-col items-center gap-2">
+          <div className="bg-green-900/20 border border-green-900/50 text-green-400 p-5 rounded-2xl font-bold flex flex-col items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
               <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 4.365-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
             </svg>
@@ -150,12 +150,14 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
               placeholder="Enter your email"
               value={email} 
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-4 text-base text-white placeholder-[#666] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              // ✅ DYNAMIC FOCUS RING
+              className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-4 text-base text-white placeholder-[#555] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
             />
             
             <button 
               disabled={status === 'LOADING'}
-              className="w-full bg-blue-600 text-white font-black text-lg py-4 rounded-full hover:bg-blue-700 transition shadow-lg shadow-blue-900/20 disabled:bg-[#333] disabled:text-[#666] disabled:cursor-not-allowed uppercase tracking-widest"
+              // ✅ DYNAMIC BUTTON COLOR
+              className="w-full bg-primary text-white font-black text-lg py-4 rounded-full hover:opacity-90 transition shadow-lg shadow-primary/20 disabled:bg-[#333] disabled:text-[#666] disabled:cursor-not-allowed uppercase tracking-widest"
             >
               {status === 'LOADING' ? 'SECURELY SAVING...' : 'ACTIVATE ALERT'}
             </button>

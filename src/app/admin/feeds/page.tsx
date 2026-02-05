@@ -214,7 +214,7 @@ export default function AdminFeedsPage() {
                 <div className="flex items-center gap-2 bg-[#1a1a1a] border border-[#333] px-3 py-1.5 rounded-lg">
                     <div className={`w-2 h-2 rounded-full ${schedulerState === 'ENABLED' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                     <span className="text-xs font-mono text-[#888] font-bold">
-                        Next Auto-Run: <span className="text-blue-400">{timeDisplay}</span>
+                        Next Auto-Run: <span className="text-primary">{timeDisplay}</span>
                     </span>
                 </div>
              </div>
@@ -246,7 +246,8 @@ export default function AdminFeedsPage() {
 
             <button 
               onClick={() => setIsAddModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-blue-900/20 transition-all flex-1 md:flex-none text-center"
+              // ✅ DYNAMIC BUTTON
+              className="bg-primary hover:opacity-90 text-white px-6 py-3 rounded-xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-primary/20 transition-all flex-1 md:flex-none text-center"
             >
               + Add Site
             </button>
@@ -257,7 +258,8 @@ export default function AdminFeedsPage() {
         <div className="space-y-12">
             <div>
                 <h2 className="text-[#aaaaaa] font-black uppercase tracking-widest text-sm mb-4 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    {/* ✅ DYNAMIC PRIMARY INDICATOR */}
+                    <span className="w-2 h-2 rounded-full bg-primary"></span>
                     Master Data Sources
                 </h2>
                 <div className="grid grid-cols-1 gap-4">
@@ -271,7 +273,8 @@ export default function AdminFeedsPage() {
 
             <div>
                 <h2 className="text-[#aaaaaa] font-black uppercase tracking-widest text-sm mb-4 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                    {/* ✅ DYNAMIC ACCENT INDICATOR */}
+                    <span className="w-2 h-2 rounded-full bg-accent"></span>
                     Competitor Sub-Sites
                 </h2>
                 <div className="grid grid-cols-1 gap-4">
@@ -292,11 +295,12 @@ export default function AdminFeedsPage() {
             <form onSubmit={handleAddSite} className="space-y-4">
               <div>
                 <label className="block text-[#666] text-xs font-bold uppercase mb-2">Site Name</label>
-                <input className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:outline-none focus:border-blue-600" value={newSiteName} onChange={e => setNewSiteName(e.target.value)} required />
+                {/* ✅ DYNAMIC FOCUS BORDER */}
+                <input className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:outline-none focus:border-primary transition-colors" value={newSiteName} onChange={e => setNewSiteName(e.target.value)} required />
               </div>
               <div>
                 <label className="block text-[#666] text-xs font-bold uppercase mb-2">Feed URL</label>
-                <input className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:outline-none focus:border-blue-600" value={newFeedUrl} onChange={e => setNewFeedUrl(e.target.value)} required />
+                <input className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:outline-none focus:border-primary transition-colors" value={newFeedUrl} onChange={e => setNewFeedUrl(e.target.value)} required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -307,7 +311,7 @@ export default function AdminFeedsPage() {
                      <option value="XML">XML</option>
                    </select>
                 </div>
-                {/* UPDATED CHECKBOX LOGIC */}
+                {/* ✅ DYNAMIC CHECKBOX COLOR */}
                 <div className="pt-6">
                    <label className={`flex items-center gap-3 ${hasMaster ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                       <input 
@@ -315,7 +319,7 @@ export default function AdminFeedsPage() {
                           checked={isMaster} 
                           onChange={e => !hasMaster && setIsMaster(e.target.checked)} 
                           disabled={hasMaster} 
-                          className="w-5 h-5 rounded bg-[#111] border border-[#333] accent-blue-600 disabled:opacity-50" 
+                          className="w-5 h-5 rounded bg-[#111] border border-[#333] accent-primary disabled:opacity-50" 
                       />
                       <span className="text-white font-bold text-sm">Is Master?</span>
                    </label>
@@ -328,7 +332,8 @@ export default function AdminFeedsPage() {
               </div>
               <div className="pt-6 flex gap-3">
                 <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold uppercase text-xs">Cancel</button>
-                <button disabled={submitting} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold uppercase text-xs disabled:opacity-50">{submitting ? 'Saving...' : 'Add Feed'}</button>
+                {/* ✅ DYNAMIC SUBMIT BUTTON */}
+                <button disabled={submitting} className="flex-1 bg-primary hover:opacity-90 text-white py-3 rounded-xl font-bold uppercase text-xs disabled:opacity-50 transition-all">{submitting ? 'Saving...' : 'Add Feed'}</button>
               </div>
             </form>
           </div>
@@ -341,7 +346,7 @@ export default function AdminFeedsPage() {
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setIsSyncModalOpen(false)}></div>
             <div className="relative bg-[#222] border border-[#333] w-full max-w-md rounded-2xl p-8 shadow-2xl transform transition-all scale-100 animate-in fade-in zoom-in duration-200">
                 <div className="flex flex-col items-center text-center">
-                    <div className="w-16 h-16 rounded-full flex items-center justify-center mb-6 bg-blue-500/10 text-blue-500">
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center mb-6 bg-primary/10 text-primary">
                         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
@@ -353,7 +358,7 @@ export default function AdminFeedsPage() {
                     </p>
                     <div className="grid grid-cols-2 gap-4 w-full">
                         <button onClick={() => setIsSyncModalOpen(false)} className="bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold text-sm transition-colors">Cancel</button>
-                        <button onClick={executeSyncAll} className="bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition-all">Confirm Sync</button>
+                        <button onClick={executeSyncAll} className="bg-primary hover:opacity-90 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition-all">Confirm Sync</button>
                     </div>
                 </div>
             </div>
@@ -377,7 +382,12 @@ function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed
                 {feed.status === 'SYNCING' && <span className="text-[10px] bg-yellow-500 text-black font-black px-2 py-0.5 rounded uppercase animate-pulse">Syncing</span>}
                 {feed.status === 'SUCCESS' && <span className="text-[10px] bg-green-500 text-black font-black px-2 py-0.5 rounded uppercase">Active</span>}
              </div>
-             <div className="flex items-center gap-2 text-xs text-[#666]"><span className="uppercase font-bold">{feed.type}</span><span>•</span><a href={feed.url} className="text-blue-500 hover:underline truncate max-w-[200px] block opacity-80">{feed.url}</a></div>
+             <div className="flex items-center gap-2 text-xs text-[#666]">
+                <span className="uppercase font-bold">{feed.type}</span>
+                <span>•</span>
+                {/* ✅ DYNAMIC LINK COLOR */}
+                <a href={feed.url} className="text-primary hover:underline truncate max-w-[200px] block opacity-80">{feed.url}</a>
+             </div>
              {feed.status === 'ERROR' && feed.errorMessage && <div className="mt-3 text-xs text-red-200 bg-red-500/10 border border-red-500/20 p-3 rounded-lg font-mono break-all"><strong className="text-red-400">DIAGNOSTICS:</strong> {feed.errorMessage}</div>}
           </div>
        </div>

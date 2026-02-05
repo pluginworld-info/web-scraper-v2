@@ -12,14 +12,14 @@ import {
   Legend
 } from 'recharts';
 
-// Consistent colors for specific retailers
+// ✅ UPDATED: Map key retailers to Theme Variables
 const RETAILER_COLORS: Record<string, string> = {
-  'Plugin Boutique': '#3b82f6', // Blue
-  'ADSR Sounds': '#8b5cf6',     // Purple
-  'Best Service': '#f59e0b',    // Amber
-  'Waves': '#ef4444',           // Red
-  'Loopmasters': '#10b981',     // Emerald
-  'Default': '#64748b'          // Slate (Fallback)
+  'Plugin Boutique': 'var(--primary)', // was #3b82f6 (Blue)
+  'ADSR Sounds': '#8b5cf6',            // Purple
+  'Best Service': '#f59e0b',           // Amber
+  'Waves': 'var(--accent)',            // was #ef4444 (Red)
+  'Loopmasters': '#10b981',            // Emerald
+  'Default': '#64748b'                 // Slate
 };
 
 const getColor = (name: string) => RETAILER_COLORS[name] || RETAILER_COLORS['Default'];
@@ -54,7 +54,8 @@ export default function AnalyticsPage() {
           <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl p-6 shadow-xl">
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-white font-bold flex items-center gap-3">
-                   <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
+                   {/* ✅ DYNAMIC ICON COLOR */}
+                   <div className="p-2 bg-primary/10 rounded-lg text-primary">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                    </div>
                    Traffic by Source (30 Days)
@@ -99,7 +100,7 @@ export default function AnalyticsPage() {
                             dataKey={retailer} 
                             stackId="a" 
                             fill={getColor(retailer)} 
-                            radius={[0, 0, 0, 0]} // No radius for middle stacks
+                            radius={[0, 0, 0, 0]} 
                             maxBarSize={50}
                         />
                     ))}
@@ -132,7 +133,8 @@ export default function AnalyticsPage() {
                   {data?.topProducts?.map((product: any, index: number) => (
                      <tr key={index} className="hover:bg-[#222] transition-colors group">
                         <td className="px-6 py-4">
-                            <div className="text-white font-bold text-sm group-hover:text-blue-400 transition-colors">{product.title}</div>
+                            {/* ✅ DYNAMIC HOVER COLOR */}
+                            <div className="text-white font-bold text-sm group-hover:text-primary transition-colors">{product.title}</div>
                         </td>
                         <td className="px-6 py-4 text-center">
                             <span className="bg-[#222] border border-[#333] px-3 py-1 rounded text-white font-mono text-xs font-bold">

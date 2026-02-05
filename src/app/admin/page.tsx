@@ -30,7 +30,8 @@ export default function AdminDashboard() {
       {/* KPI CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
         <KpiCard label="Total Products" value={stats?.products || 0} icon="📦" />
-        <KpiCard label="Active Alerts" value={stats?.alerts || 0} icon="🔔" color="text-blue-400" />
+        {/* ✅ DYNAMIC THEME COLOR */}
+        <KpiCard label="Active Alerts" value={stats?.alerts || 0} icon="🔔" color="text-primary" />
         <KpiCard label="Total Clicks (Leads)" value={stats?.clicks || 0} icon="🚀" color="text-green-400" />
         <KpiCard label="User Reviews" value={stats?.reviews || 0} icon="⭐" color="text-yellow-400" />
       </div>
@@ -41,7 +42,8 @@ export default function AdminDashboard() {
         {/* Recent Alerts */}
         <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl p-6 shadow-xl">
           <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-500"></span> Recent Price Alerts
+            {/* ✅ DYNAMIC THEME COLOR */}
+            <span className="w-2 h-2 rounded-full bg-primary"></span> Recent Price Alerts
           </h3>
           <div className="space-y-4">
               {stats?.recentAlerts?.length > 0 ? (

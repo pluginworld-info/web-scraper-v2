@@ -70,7 +70,8 @@ export default function ReviewsManager() {
              <button 
                 onClick={() => loadData(true)} 
                 disabled={isRefreshing}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg font-bold uppercase text-xs tracking-widest shadow-lg shadow-blue-900/20 flex items-center gap-2"
+                // ✅ DYNAMIC BUTTON COLOR
+                className="bg-primary hover:opacity-90 text-white px-5 py-2 rounded-lg font-bold uppercase text-xs tracking-widest shadow-lg shadow-primary/20 flex items-center gap-2 transition-all"
              >
                 {isRefreshing && <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
                 {isRefreshing ? 'Updating...' : 'Refresh'}
@@ -88,7 +89,12 @@ export default function ReviewsManager() {
             <div className="overflow-y-auto flex-1 p-2 space-y-1 custom-scrollbar">
                 <button 
                     onClick={() => setSelectedProductId(null)}
-                    className={`w-full text-left p-3 rounded-xl flex justify-between items-center transition-all ${!selectedProductId ? 'bg-blue-600 text-white shadow-lg' : 'text-[#888] hover:bg-[#222] hover:text-white'}`}
+                    // ✅ DYNAMIC ACTIVE STATE
+                    className={`w-full text-left p-3 rounded-xl flex justify-between items-center transition-all ${
+                        !selectedProductId 
+                            ? 'bg-primary text-white shadow-lg' 
+                            : 'text-[#888] hover:bg-[#222] hover:text-white'
+                    }`}
                 >
                     <span className="font-bold text-sm">All Reviews</span>
                     <span className="bg-black/20 px-2 py-0.5 rounded text-xs font-mono">{data.reviews.length}</span>
@@ -98,7 +104,12 @@ export default function ReviewsManager() {
                     <button 
                         key={p.id}
                         onClick={() => setSelectedProductId(p.id)}
-                        className={`w-full text-left p-3 rounded-xl flex items-center gap-3 transition-all ${selectedProductId === p.id ? 'bg-blue-600 text-white shadow-lg' : 'text-[#888] hover:bg-[#222] hover:text-white'}`}
+                        // ✅ DYNAMIC ACTIVE STATE
+                        className={`w-full text-left p-3 rounded-xl flex items-center gap-3 transition-all ${
+                            selectedProductId === p.id 
+                                ? 'bg-primary text-white shadow-lg' 
+                                : 'text-[#888] hover:bg-[#222] hover:text-white'
+                        }`}
                     >
                         <div className="w-8 h-8 rounded bg-black/40 relative overflow-hidden flex-shrink-0 border border-white/10">
                             {p.image && <Image src={p.image} alt="" fill className="object-cover" />}

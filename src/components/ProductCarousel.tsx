@@ -17,14 +17,11 @@ interface Product {
 export default function ProductCarousel({ products }: { products: Product[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Scroll Handler
   const scroll = (direction: 'left' | 'right') => {
     if (containerRef.current) {
       const container = containerRef.current;
-      // Calculate width of one card + gap (approximate based on CSS)
-      // Getting actual first child width is safest
       const cardWidth = container.firstElementChild?.getBoundingClientRect().width || 240;
-      const gap = 24; // gap-6 is 1.5rem (24px)
+      const gap = 24; 
       const scrollAmount = cardWidth + gap;
 
       container.scrollBy({
@@ -40,7 +37,8 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
       {/* --- LEFT BUTTON --- */}
       <button
         onClick={() => scroll('left')}
-        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 border border-[#333] text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--primary)] hover:border-[var(--primary)] -ml-5 shadow-2xl backdrop-blur-sm"
+        // ✅ DYNAMIC: Switched var() to Tailwind primary classes
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 border border-[#333] text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:border-primary -ml-5 shadow-2xl backdrop-blur-sm"
         aria-label="Scroll Left"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -51,53 +49,51 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
       {/* --- SCROLL CONTAINER --- */}
       <div 
         ref={containerRef}
-        className="flex gap-6 overflow-x-hidden scroll-smooth pb-4" // overflow-x-hidden hides scrollbars
+        className="flex gap-6 overflow-x-hidden scroll-smooth pb-4"
       >
         {products.map((p) => (
           <Link
             href={`/product/${p.slug}`}
             key={p.id}
-            // SIZING LOGIC:
-            // calc(20% - 19.2px) ensures exactly 5 items fit with a 24px (gap-6) gap.
-            // Formula: (100% / items) - (totalGapSpace / items)
-            // On Mobile: min-w-[240px] fallback
-            className="min-w-[240px] lg:min-w-[calc(20%-19.2px)] bg-[#1e1e1e] border border-gray-800 rounded-2xl p-4 hover:shadow-2xl hover:border-gray-700 transition-all group/card flex-shrink-0"
+            // ✅ UPDATED: Matches ProductCard background and hover border
+            className="min-w-[240px] lg:min-w-[calc(20%-19.2px)] bg-[#1a1a1a] border border-white/5 rounded-2xl p-4 hover:shadow-2xl hover:border-primary/30 transition-all group/card flex-shrink-0"
           >
             {/* Image Container */}
-            <div className="relative h-40 w-full bg-gray-900 mb-4 rounded-xl overflow-hidden">
+            <div className="relative h-40 w-full bg-[#111] mb-4 rounded-xl overflow-hidden">
               {p.image ? (
                 <Image
                   src={p.image}
                   alt={p.title}
                   fill
                   unoptimized={true}
-                  className="object-cover group-hover/card:scale-110 transition-transform duration-500"
+                  className="object-contain p-4 group-hover/card:scale-110 transition-transform duration-500 drop-shadow-lg"
                 />
               ) : (
-                <div className="flex h-full items-center justify-center text-gray-700 text-xs">
+                <div className="flex h-full items-center justify-center text-[#555] text-xs italic">
                   No Image
                 </div>
               )}
 
-              {/* Discount Badge */}
+              {/* ✅ DYNAMIC: Discount Badge uses Accent color */}
               {p.discount > 0 && (
-                <div className="absolute top-2 right-2 bg-[var(--accent)] text-white text-[10px] font-black px-2 py-1 rounded shadow-md">
+                <div className="absolute top-2 right-2 bg-accent text-white text-[10px] font-black px-2 py-1 rounded shadow-lg z-10">
                   {p.discount}% OFF
                 </div>
               )}
             </div>
 
-            {/* Text Details */}
-            <h4 className="font-bold text-white text-sm mb-3 line-clamp-2 h-10 group-hover/card:text-[var(--primary)] transition-colors">
+            {/* ✅ DYNAMIC: Hover title turns Primary */}
+            <h4 className="font-bold text-white text-sm mb-3 line-clamp-2 h-10 group-hover/card:text-primary transition-colors">
               {p.title}
             </h4>
 
             <div className="flex items-center gap-3">
-              <span className="text-[var(--accent)] font-black text-lg">
+              {/* ✅ DYNAMIC: Price uses Accent color */}
+              <span className="text-accent font-black text-lg tracking-tighter">
                 ${p.price.toFixed(2)}
               </span>
               {p.discount > 0 && (
-                <span className="text-gray-500 line-through text-xs">
+                <span className="text-[#555] line-through text-xs font-bold">
                   ${p.originalPrice.toFixed(2)}
                 </span>
               )}
@@ -109,7 +105,8 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
       {/* --- RIGHT BUTTON --- */}
       <button
         onClick={() => scroll('right')}
-        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 border border-[#333] text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--primary)] hover:border-[var(--primary)] -mr-5 shadow-2xl backdrop-blur-sm"
+        // ✅ DYNAMIC: Switched var() to Tailwind primary classes
+        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 border border-[#333] text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:border-primary -mr-5 shadow-2xl backdrop-blur-sm"
         aria-label="Scroll Right"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

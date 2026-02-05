@@ -6,7 +6,7 @@ import AlertModal from './AlertModal';
 interface AlertProps {
   product: any;
   isSmall?: boolean;
-  currentPrice?: number; // ✅ ADDED: Accepts the calculated price
+  currentPrice?: number; 
 }
 
 export default function AlertModalTrigger({ product, isSmall, currentPrice }: AlertProps) {
@@ -16,7 +16,6 @@ export default function AlertModalTrigger({ product, isSmall, currentPrice }: Al
   const handleOpen = useCallback((e: React.MouseEvent) => {
     e.preventDefault();  
     e.stopPropagation(); 
-    console.log("🔔 Opening Alert Modal for:", product?.title);
     setIsOpen(true);
   }, [product]);
 
@@ -24,13 +23,14 @@ export default function AlertModalTrigger({ product, isSmall, currentPrice }: Al
 
   return (
     <>
-      {/* 1. THE TRIGGER BUTTON (Dark Mode Styled) */}
+      {/* 1. THE TRIGGER BUTTON */}
       <button 
         onClick={handleOpen}
         className={
           isSmall 
-            ? "flex items-center justify-center gap-1.5 bg-[#333] hover:bg-[#444] text-white text-[10px] font-black py-2.5 px-4 rounded-full transition-colors border border-[#444] tracking-tighter w-full" 
-            : "flex items-center gap-2 bg-[#333] hover:bg-[#444] text-white px-6 py-3 rounded-xl font-bold transition border border-[#444]"
+            // ✅ DYNAMIC: Hover now uses primary brand color
+            ? "flex items-center justify-center gap-1.5 bg-[#222] hover:bg-primary text-white text-[10px] font-black py-2.5 px-4 rounded-full transition-all border border-[#333] hover:border-primary/50 tracking-tighter w-full shadow-lg hover:shadow-primary/20" 
+            : "flex items-center gap-2 bg-[#222] hover:bg-primary text-white px-6 py-3 rounded-xl font-bold transition-all border border-[#333] hover:border-primary/50 shadow-lg hover:shadow-primary/20"
         }
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className={isSmall ? "w-3.5 h-3.5" : "w-5 h-5"}>
@@ -40,11 +40,10 @@ export default function AlertModalTrigger({ product, isSmall, currentPrice }: Al
       </button>
 
       {/* 2. THE MODAL */}
-      {/* We pass the currentPrice down so the modal logic matches the page logic */}
       {isOpen && (
         <AlertModal 
           product={product} 
-          currentPrice={currentPrice} // ✅ Pass it down
+          currentPrice={currentPrice} 
           isOpen={isOpen} 
           onClose={() => setIsOpen(false)} 
         />

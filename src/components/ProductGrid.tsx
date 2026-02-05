@@ -22,33 +22,27 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
   
   const { trackEvent } = useAnalytics();
 
-  // Sync props
   useEffect(() => {
     setProducts(initialProducts);
     setDisplayCount(totalCount);
   }, [initialProducts, totalCount]);
 
-  // ✅ LISTEN TO URL CHANGES (Header Dropdowns)
   useEffect(() => {
     const urlSearch = searchParams.get('search');
-    // If URL param exists and is different, update search AND trigger loading
     if (urlSearch !== null && urlSearch !== search) {
         setSearch(urlSearch);
-        setLoading(true); // <--- Show blur immediately
+        setLoading(true); 
     } else if (urlSearch === null && search !== '') {
         setSearch('');
         setLoading(true);
     }
   }, [searchParams]);
 
-  // Search Logic
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
-      // If we have a search term OR if we are resetting to empty (and previously had a search)
       if (search.length > 0 || (search === '' && products.length !== initialProducts.length)) {
         setLoading(true);
         try {
-          // If search is empty, fetch default list, else fetch search results
           const query = search ? `search=${encodeURIComponent(search)}` : '';
           const res = await fetch(`/api/products?${query}`);
           const data = await res.json();
@@ -66,7 +60,6 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
           setLoading(false);
         }
       } else {
-        // Reset to initial if needed
         if (search === '') {
             setProducts(initialProducts);
             setDisplayCount(totalCount);
@@ -78,7 +71,6 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
     return () => clearTimeout(delayDebounceFn);
   }, [search, initialProducts, totalCount, trackEvent]);
 
-  // Sort Logic
   const sortedProducts = [...products].sort((a, b) => {
     const priceA = a.lowestPrice || a.minPrice || 0;
     const priceB = b.lowestPrice || b.minPrice || 0;
@@ -87,11 +79,9 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
 
     if (sort === 'price-low') return priceA - priceB;
     if (sort === 'rating') return ratingB - ratingA;
-    // Default: Newest
     return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   });
 
-  // Load More Logic
   async function loadMore() {
     try {
       const skip = products.length;
@@ -118,17 +108,19 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
           <input 
             type="text" 
             placeholder="Search brands, categories..." 
-            className="p-3 pl-10 bg-[#1a1a1a] border border-gray-800 text-white rounded-lg w-full focus:ring-2 focus:ring-[var(--primary)] outline-none transition font-medium placeholder-gray-500"
+            // ✅ DYNAMIC FOCUS RING
+            className="p-3 pl-10 bg-[#1a1a1a] border border-[#333] text-white rounded-xl w-full focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all font-medium placeholder-gray-600"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <svg className="absolute left-3 top-3.5 h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="absolute left-3 top-3.5 h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
 
         <select 
-          className="p-3 bg-[#1a1a1a] border border-gray-800 text-white rounded-lg focus:ring-2 focus:ring-[var(--primary)] outline-none cursor-pointer font-medium text-sm"
+          // ✅ DYNAMIC FOCUS RING
+          className="p-3 bg-[#1a1a1a] border border-[#333] text-white rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none cursor-pointer font-bold text-xs uppercase tracking-widest"
           onChange={(e) => setSort(e.target.value)}
           value={sort}
         >
@@ -141,18 +133,19 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
       {/* RELATIVE CONTAINER FOR GRID & LOADING OVERLAY */}
       <div className="relative min-h-[400px]">
         
-        {/* ✅ LOADING OVERLAY */}
+        {/* ✅ DYNAMIC LOADING OVERLAY */}
         {loading && (
-            <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center rounded-2xl transition-all duration-300">
+            <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-3xl transition-all duration-300">
                 <div className="flex flex-col items-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary)] mb-4"></div>
-                    <span className="text-white font-bold tracking-widest uppercase text-sm animate-pulse">Searching...</span>
+                    {/* Spinner uses primary color */}
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4 shadow-[0_0_15px_rgba(var(--primary-rgb),0.4)]"></div>
+                    <span className="text-white font-black tracking-[0.2em] uppercase text-xs animate-pulse">Searching...</span>
                 </div>
             </div>
         )}
 
         {/* Grid */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 transition-opacity duration-300 ${loading ? 'opacity-20' : 'opacity-100'}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 transition-all duration-500 ${loading ? 'opacity-20 scale-[0.98] blur-sm' : 'opacity-100 scale-100 blur-0'}`}>
             {sortedProducts.length > 0 ? (
                 sortedProducts.map(product => (
                 <ProductCard 
@@ -163,11 +156,12 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
                 ))
             ) : (
                 !loading && (
-                    <div className="col-span-full text-center py-20">
-                        <p className="text-gray-400 text-lg font-medium">No products found matching "{search}"</p>
+                    <div className="col-span-full text-center py-20 bg-[#1a1a1a] rounded-3xl border border-[#333] border-dashed">
+                        <p className="text-gray-500 text-lg font-medium">No products found matching "{search}"</p>
                         <button 
                           onClick={() => setSearch('')} 
-                          className="mt-4 text-[var(--primary)] font-bold hover:opacity-80 transition-opacity underline"
+                          // ✅ DYNAMIC TEXT LINK
+                          className="mt-4 text-primary font-black uppercase text-xs tracking-widest hover:opacity-80 transition-opacity underline decoration-2 underline-offset-4"
                         >
                           Clear Search
                         </button>
@@ -182,7 +176,8 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
         <div className="mt-20 flex justify-center pb-12">
           <button
             onClick={loadMore}
-            className="group relative inline-flex items-center justify-center px-12 py-4 font-black text-white transition-all duration-200 bg-[var(--primary)] rounded-full hover:opacity-90 tracking-widest text-xs uppercase shadow-lg shadow-black/40"
+            // ✅ DYNAMIC PRIMARY BUTTON
+            className="group relative inline-flex items-center justify-center px-12 py-4 font-black text-white transition-all duration-300 bg-primary rounded-full hover:opacity-90 hover:scale-105 tracking-widest text-xs uppercase shadow-xl shadow-primary/20"
           >
             LOAD MORE PLUGINS
           </button>

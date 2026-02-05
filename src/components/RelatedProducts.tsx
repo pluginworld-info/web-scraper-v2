@@ -9,7 +9,7 @@ export default async function RelatedProducts({ currentId, category }: { current
       category: category,
       id: { not: currentId }
     },
-    take: 10, // Increased to 10
+    take: 10, 
     include: { listings: true }
   });
 
@@ -37,12 +37,23 @@ export default async function RelatedProducts({ currentId, category }: { current
 
   return (
     <div className="mt-16">      
+      {/* --- SECTION HEADER WITH THEME ACCENT --- */}
       <div className="flex items-center gap-4 mb-8">
-        <h3 className="font-black text-sm uppercase tracking-widest text-[#aaaaaa]">Similar Deals</h3>
-        <div className="h-px bg-[#333] flex-grow"></div>
+        {/* ✅ DYNAMIC: Brand Colored Indicator */}
+        <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]"></div>
+        
+        <h3 className="font-black text-sm uppercase tracking-widest text-white">
+          Similar <span className="text-primary">Deals</span>
+        </h3>
+        
+        {/* Subtle Fade-out Line */}
+        <div className="h-px bg-gradient-to-r from-[#333] to-transparent flex-grow"></div>
       </div>
       
-      {/* Pass processed data to the Client Carousel */}
+      {/* Pass processed data to the Client Carousel.
+          Since we updated ProductCarousel.tsx already, 
+          it will automatically use the primary/accent colors.
+      */}
       <ProductCarousel products={processedProducts} />
     </div>
   );

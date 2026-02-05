@@ -36,23 +36,17 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
 
   if (!product) return notFound();
 
-  // 2. ✅ FIXED SMART PRICE LOGIC
-  // We grab the first listing from our sorted array. This is the source of truth.
+  // 2. SMART PRICE LOGIC
   const bestListing = product.listings[0]; 
-  
-  // If we have listings, use the first one. If not, fallback to 0.
   const currentBestPrice = bestListing ? bestListing.price : 0;
   
-  // Calculate Anchor Price (Regular Price) for comparison
   const anchorPrice = product.maxRegularPrice > 0 
     ? product.maxRegularPrice 
     : (bestListing?.originalPrice || currentBestPrice);
 
-  // Calculate Savings
   const savingsAmount = Math.max(0, anchorPrice - currentBestPrice);
   const hasDiscount = savingsAmount > 0;
   
-  // Calculate Percentage (Protect against divide by zero)
   const discountPct = anchorPrice > 0 
     ? Math.round((savingsAmount / anchorPrice) * 100) 
     : 0;
@@ -65,7 +59,8 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
 
   // AI Deal Strength Visualization
   let dealStrength = "Good Deal";
-  let dealColor = "bg-blue-900/30 text-blue-400 border border-blue-800";
+  // ✅ DYNAMIC: Default "Good" uses Primary Brand Color
+  let dealColor = "bg-primary/20 text-primary border border-primary/50";
   
   if (discountPct > 70) {
     dealStrength = "🔥 Historic Low";
@@ -84,7 +79,8 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
         <div className="mb-8">
           <Link 
             href="/" 
-            className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-widest text-[#aaaaaa] hover:text-white transition-colors group"
+            // ✅ DYNAMIC HOVER
+            className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-widest text-[#aaaaaa] hover:text-primary transition-colors group"
           >
             <svg className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
@@ -164,7 +160,8 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
           <div className="flex flex-col justify-center">
             
             <div className="flex flex-wrap gap-2 mb-4">
-              <span className="bg-blue-900/50 text-blue-200 border border-blue-800 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter">
+              {/* ✅ DYNAMIC BRAND TAG */}
+              <span className="bg-primary/20 text-primary border border-primary/50 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter">
                 {product.brand || 'Premium Brand'}
               </span>
               <span className="bg-[#333] text-[#aaaaaa] border border-[#444] px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter">
@@ -251,7 +248,6 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
                   </div>
                   <div className="flex flex-col">
                       <span className="font-black text-white uppercase text-sm tracking-tight">{listing.retailer.name}</span>
-                      {/* ✅ FIX: Compare numbers to numbers. Since `currentBestPrice` is derived from listing[0], this will match perfectly. */}
                       {listing.price <= currentBestPrice && (
                         <span className="bg-green-900/30 border border-green-800 text-green-400 text-[9px] px-2 py-0.5 rounded w-fit font-black uppercase mt-1">Best Deal</span>
                       )}
@@ -261,12 +257,12 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
                 <div className="flex items-center gap-6">
                   <span className="font-black text-xl text-white">${listing.price.toFixed(2)}</span>
                   
-                  {/* Tracked Link for Analytics */}
+                  {/* ✅ DYNAMIC CTA BUTTON */}
                   <TrackedLink 
                     url={listing.url}
                     productId={product.id}
                     retailerId={listing.retailerId}
-                    className="bg-black text-white px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-[#333] border border-[#333] transition whitespace-nowrap"
+                    className="bg-primary text-white px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest hover:opacity-90 border border-transparent hover:border-primary/50 transition whitespace-nowrap shadow-lg shadow-primary/20"
                   >
                     Go to Store
                   </TrackedLink>

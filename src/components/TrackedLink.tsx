@@ -10,8 +10,6 @@ interface TrackedLinkProps {
 
 export default function TrackedLink({ url, productId, retailerId, className, children }: TrackedLinkProps) {
   const handleClick = () => {
-    // Send beacon (fire and forget)
-    // We check for window to ensure we are on client
     if (typeof window !== 'undefined') {
        const guestId = localStorage.getItem('guest_user_id') || 'anonymous';
        
@@ -23,7 +21,7 @@ export default function TrackedLink({ url, productId, retailerId, className, chi
           retailerId,
           guestId
         })
-      }).catch(err => console.error("Tracking failed", err)); // Silently fail if tracker is down
+      }).catch(err => console.error("Tracking failed", err));
     }
   };
 
@@ -33,7 +31,10 @@ export default function TrackedLink({ url, productId, retailerId, className, chi
       target="_blank" 
       rel="noopener noreferrer"
       onClick={handleClick}
-      className={className}
+      // ✅ REFINED: Added "transition-all duration-300" 
+      // This ensures that the dynamic primary/accent colors 
+      // fade in/out smoothly when the user hovers.
+      className={`transition-all duration-300 ease-in-out ${className}`}
     >
       {children}
     </a>

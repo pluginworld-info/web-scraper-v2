@@ -20,19 +20,19 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
   const isHot = discount >= 40; 
 
   return (
-    <div className="group relative bg-[#1e1e1e] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-800 flex flex-col h-full">
+    <div className="group relative bg-[#1a1a1a] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-white/5 flex flex-col h-full hover:border-primary/30">
       
-      {/* IMAGE AREA - NOW WITH BLURRED BG */}
-      <div className="relative aspect-square w-full overflow-hidden bg-gray-900 p-4 z-0">
+      {/* IMAGE AREA */}
+      <div className="relative aspect-square w-full overflow-hidden bg-[#111] p-4 z-0">
         
-        {/* 1. THE BLURRED BACKGROUND IMAGE */}
+        {/* THE BLURRED BACKGROUND IMAGE */}
         {product.image && (
           <Image 
             src={product.image} 
             alt="" 
             fill 
             unoptimized={true}
-            className="object-cover blur-xl opacity-60 scale-125 pointer-events-none" 
+            className="object-cover blur-xl opacity-40 scale-125 pointer-events-none" 
           />
         )}
 
@@ -62,7 +62,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
           </div>
         )}
 
-        {/* 2. THE MAIN SHARP IMAGE */}
+        {/* THE MAIN SHARP IMAGE */}
         <Link 
           href={`/product/${product.slug}`}
           onClick={() => onClick && onClick(product.id)}
@@ -74,17 +74,18 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
               alt={product.title} 
               fill 
               unoptimized={true}
-              className="object-contain p-2 group-hover:scale-110 transition-transform duration-500 drop-shadow-xl"
+              className="object-contain p-2 group-hover:scale-105 transition-transform duration-500 drop-shadow-2xl"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-gray-400 font-medium italic bg-black/50 backdrop-blur-md rounded-xl">No Image</div>
+            <div className="flex h-full items-center justify-center text-gray-600 font-medium italic bg-black/20 backdrop-blur-md rounded-xl">No Image</div>
           )}
         </Link>
       </div>
 
       {/* CONTENT AREA */}
-      <div className="p-5 flex-grow flex flex-col items-center text-center relative z-20 bg-[#1e1e1e]">
-        <span className="text-[10px] font-black uppercase text-blue-500 tracking-tighter mb-1">
+      <div className="p-5 flex-grow flex flex-col items-center text-center relative z-20 bg-[#1a1a1a]">
+        {/* ✅ DYNAMIC BRAND COLOR */}
+        <span className="text-[10px] font-black uppercase text-primary tracking-widest mb-1">
           {product.brand || 'Brand'}
         </span>
 
@@ -92,21 +93,22 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
            href={`/product/${product.slug}`}
            onClick={() => onClick && onClick(product.id)}
         >
-          <h3 className="text-white font-bold text-sm mb-2 line-clamp-2 h-10 leading-tight group-hover:text-blue-400 transition-colors cursor-pointer">
+          {/* ✅ DYNAMIC HOVER COLOR */}
+          <h3 className="text-white font-bold text-sm mb-2 line-clamp-2 h-10 leading-tight group-hover:text-primary transition-colors cursor-pointer">
             {product.title}
           </h3>
         </Link>
 
         {/* STAR RATING */}
         <div className="flex items-center gap-1 mb-4">
-          <div className="flex text-yellow-400">
+          <div className="flex text-yellow-500">
              {[...Array(5)].map((_, i) => (
-               <svg key={i} className={`w-3 h-3 ${i < Math.floor(parseFloat(product.avgRating || "0")) ? 'fill-current' : 'text-gray-700 fill-current'}`} viewBox="0 0 20 20">
+               <svg key={i} className={`w-3 h-3 ${i < Math.floor(parseFloat(product.avgRating || "0")) ? 'fill-current' : 'text-gray-800 fill-current'}`} viewBox="0 0 20 20">
                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                </svg>
              ))}
           </div>
-          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">
+          <span className="text-[10px] text-[#555] font-bold uppercase tracking-tighter">
             ({product.reviews?.length || product.reviewCount || 0})
           </span>
         </div>
@@ -115,7 +117,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
         <div className="mb-6">
           <div className="flex items-center justify-center gap-2">
             {discount > 0 && (
-              <span className="text-gray-500 line-through text-xs font-bold">
+              <span className="text-gray-600 line-through text-xs font-bold">
                 ${originalPrice.toFixed(2)}
               </span>
             )}
@@ -130,11 +132,11 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
            <Link 
              href={`/product/${product.slug}`}
              onClick={() => onClick && onClick(product.id)}
-             className="bg-gray-400/10 hover:bg-gray-400/20 text-white text-[10px] font-black py-2.5 rounded-full transition-colors flex items-center justify-center tracking-widest uppercase"
+             // ✅ DYNAMIC BORDER/TEXT HOVER
+             className="bg-white/5 hover:bg-white/10 text-white text-[10px] font-black py-2.5 rounded-full border border-white/5 transition-colors flex items-center justify-center tracking-widest uppercase"
            >
              View
            </Link>
-           {/* ✅ FIX: Pass the exact displayed price to the Alert Modal */}
            <AlertModalTrigger 
              product={product} 
              isSmall 

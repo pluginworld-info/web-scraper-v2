@@ -42,6 +42,7 @@ export default function SettingsPage() {
     }, 3000);
   };
 
+  // This function provides the "Live Preview" effect
   const applyThemeColors = (primary: string, accent: string) => {
     if (typeof document !== 'undefined') {
       const root = document.documentElement;
@@ -64,6 +65,7 @@ export default function SettingsPage() {
              accentColor: data.accentColor || '#ef4444'
            };
            setFormData(newSettings);
+           // Apply loaded colors immediately so the page matches the DB
            applyThemeColors(newSettings.primaryColor, newSettings.accentColor);
         }
         setLoading(false);
@@ -101,7 +103,6 @@ export default function SettingsPage() {
     
     try {
         // 1. Ask Server to delete the HttpOnly Cookie
-        // We do this before clearing client storage to ensure the server session is dead
         await fetch('/api/admin/auth/logout', { method: 'POST' });
         
         // 2. Clear any cosmetic client data
@@ -109,12 +110,10 @@ export default function SettingsPage() {
         sessionStorage.clear();
 
         // 3. FORCE a hard refresh to the login page.
-        // using window.location.href ensures the React state is completely dumped.
         window.location.href = '/admin/login'; 
         
     } catch (e) {
         console.error("Logout failed", e);
-        // Fallback: Force redirect anyway if API fails, so user isn't stuck
         window.location.href = '/admin/login';
     }
   };
@@ -122,14 +121,12 @@ export default function SettingsPage() {
   // ✅ CLEAR CACHE LOGIC
   const executeClearCache = () => {
     setProcessingAction(true);
-    // Simulate a small delay for UX
     setTimeout(() => {
         localStorage.clear();
         sessionStorage.clear();
         showToast("Local cache purged successfully.", "success");
         setActiveModal(null);
         setProcessingAction(false);
-        // Optional: Reload to reset state
         window.location.reload();
     }, 800);
   };
@@ -179,7 +176,8 @@ export default function SettingsPage() {
              <button 
                 onClick={handleSave}
                 disabled={saving}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                // ✅ DYNAMIC SAVE BUTTON (Shows live preview of primary color)
+                className="px-6 py-3 bg-primary hover:opacity-90 text-white text-sm font-bold rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
              >
                 {saving ? (
                     <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Saving...</>
@@ -196,7 +194,8 @@ export default function SettingsPage() {
         <div className="lg:col-span-2 space-y-8">
             <section className="bg-[#1a1a1a] border border-[#333] rounded-2xl overflow-hidden shadow-sm">
                 <div className="px-6 py-4 border-b border-[#333] bg-[#222]/50 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                    {/* ✅ DYNAMIC ICON: PRIMARY */}
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     </div>
                     <h2 className="text-white font-bold text-lg">Identity & Branding</h2>
@@ -210,7 +209,8 @@ export default function SettingsPage() {
                             type="text" 
                             value={formData.siteName}
                             onChange={(e) => setFormData({...formData, siteName: e.target.value})}
-                            className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-all placeholder-[#444]"
+                            // ✅ DYNAMIC FOCUS BORDER & RING
+                            className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder-[#444]"
                             placeholder="e.g. PluginWorld Admin"
                         />
                     </div>
@@ -222,8 +222,9 @@ export default function SettingsPage() {
                             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                             onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
                             onDrop={handleDrop}
+                            // ✅ DYNAMIC DRAG STATE
                             className={`relative w-full h-48 border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all ${
-                                isDragging ? 'border-blue-500 bg-blue-500/10' : 'border-[#333] bg-[#111] hover:border-[#444]'
+                                isDragging ? 'border-primary bg-primary/10' : 'border-[#333] bg-[#111] hover:border-[#444]'
                             }`}
                         >
                             {formData.logoUrl ? (
@@ -266,7 +267,8 @@ export default function SettingsPage() {
             {/* THEME COLORS */}
             <section className="bg-[#1a1a1a] border border-[#333] rounded-2xl overflow-hidden shadow-sm">
                 <div className="px-6 py-4 border-b border-[#333] bg-[#222]/50 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
+                    {/* ✅ DYNAMIC ICON: ACCENT */}
+                    <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
                     </div>
                     <h2 className="text-white font-bold text-lg">Appearance</h2>
@@ -281,6 +283,7 @@ export default function SettingsPage() {
                                     <div className="text-white font-mono text-xs">{formData.primaryColor}</div>
                                 </div>
                             </div>
+                            {/* Live Theme Updater */}
                             <input type="color" value={formData.primaryColor} onChange={(e) => { setFormData({...formData, primaryColor: e.target.value}); applyThemeColors(e.target.value, formData.accentColor); }} className="opacity-0 w-full h-full absolute top-0 left-0 cursor-pointer" />
                         </div>
 
@@ -292,6 +295,7 @@ export default function SettingsPage() {
                                     <div className="text-white font-mono text-xs">{formData.accentColor}</div>
                                 </div>
                             </div>
+                            {/* Live Theme Updater */}
                             <input type="color" value={formData.accentColor} onChange={(e) => { setFormData({...formData, accentColor: e.target.value}); applyThemeColors(formData.primaryColor, e.target.value); }} className="opacity-0 w-full h-full absolute top-0 left-0 cursor-pointer" />
                         </div>
                     </div>
