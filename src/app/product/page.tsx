@@ -13,20 +13,16 @@ export default async function AllProductsPage() {
     take: 12,
     include: {
       listings: {
-        orderBy: { price: 'asc' }, // Get cheapest first, just in case
+        orderBy: { price: 'asc' }, 
         take: 1
       },
       reviews: true
     },
-    // You can now easily change this to: orderBy: { maxDiscount: 'desc' } for a "Deals" page!
     orderBy: { updatedAt: 'desc' }
   });
 
   // 3. Process Data (Optimized)
   const processedProducts = products.map(p => {
-    // SMART PRICE LOGIC:
-    // Use the cached 'minPrice' if available. 
-    // Fallback to the first listing's price if the cache is 0 (e.g. for old data not yet re-ingested).
     const lowestPrice = p.minPrice > 0 
       ? p.minPrice 
       : (p.listings[0]?.price || 0);
@@ -38,7 +34,6 @@ export default async function AllProductsPage() {
       ...p, 
       lowestPrice, 
       avgRating,
-      // We pass these new fields so the Grid Card can show "80% OFF" badges
       maxRegularPrice: p.maxRegularPrice,
       maxDiscount: p.maxDiscount
     };
@@ -46,25 +41,39 @@ export default async function AllProductsPage() {
 
   return (
     <main className="min-h-screen bg-[#111] pb-20">
-      <div className="max-w-7xl mx-auto p-4 md:p-8">
+      {/* ✅ WIDE MODE: Increased from max-w-7xl to max-w-[1600px] */}
+      <div className="max-w-[1600px] mx-auto p-4 md:p-12 lg:px-16">
         
         {/* HEADER */}
-        <div className="flex items-end justify-between mb-10 border-b border-[#333] pb-6">
-           <div>
-             <h1 className="text-3xl font-black text-white tracking-tighter">All Plugins</h1>
-             <p className="text-[#666] font-medium mt-1">Browse the latest deals and drops.</p>
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 border-b border-white/5 pb-8 relative">
+           {/* Subtle Header Accent Glow */}
+           <div className="absolute -top-10 left-0 w-64 h-32 bg-primary/5 blur-[80px] pointer-events-none"></div>
+
+           <div className="relative z-10">
+             <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter">
+               All <span className="text-primary">Plugins</span>
+             </h1>
+             <p className="text-[#666] font-medium mt-2 text-lg">
+               Browse {totalCount} professional deals monitored in real-time.
+             </p>
            </div>
            
            {/* ✅ DYNAMIC RESULT BADGE */}
-           <span className="bg-primary/10 text-primary border border-primary/20 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-[0_0_15px_rgba(var(--primary-rgb),0.2)]">
-             {totalCount} Results
-           </span>
+           <div className="mt-6 md:mt-0 relative z-10">
+             <span className="bg-primary/10 text-primary border border-primary/20 px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(var(--primary-rgb),0.15)]">
+               {totalCount} Results Found
+             </span>
+           </div>
         </div>
         
-        <ProductGrid 
-          initialProducts={processedProducts} 
-          totalCount={totalCount} 
-        />
+        {/* The ProductGrid will now automatically utilize the 1600px width 
+            allowing for more columns on desktop screens. */}
+        <div className="pt-2">
+            <ProductGrid 
+              initialProducts={processedProducts} 
+              totalCount={totalCount} 
+            />
+        </div>
       </div>
     </main>
   );
