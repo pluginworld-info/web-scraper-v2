@@ -29,7 +29,7 @@ export default function AdminFeedsPage() {
   
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false); // ✅ NEW MODAL STATE
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   
   // Real Scheduler State
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
@@ -60,19 +60,25 @@ export default function AdminFeedsPage() {
     }
   }, []);
 
-  // 2. Fetch Real Cloud Scheduler Info
+  // 2. Fetch Real Cloud Scheduler Info (FIXED TO SHOW ERRORS)
   const fetchSchedulerInfo = useCallback(async () => {
     try {
         const res = await fetch('/api/admin/system/scheduler');
-        if (res.ok) {
-            const data = await res.json();
-            if (data.nextRunTime) {
-                setNextRunTime(new Date(data.nextRunTime));
-                setSchedulerState(data.state);
-            }
+        const data = await res.json();
+        
+        if (res.ok && data.nextRunTime) {
+            setNextRunTime(new Date(data.nextRunTime));
+            setSchedulerState(data.state);
+        } else {
+            // 🚨 SHOW REAL ERROR INSTEAD OF "CALCULATING..."
+            const errorMsg = data.error || "Config Error";
+            // Truncate if too long to fit in badge
+            setTimeDisplay(errorMsg.length > 20 ? "Check Logs" : errorMsg);
+            console.error("Scheduler API returned error:", data.error);
         }
     } catch (e) {
-        console.warn("Scheduler info unavailable");
+        console.warn("Scheduler info unavailable", e);
+        setTimeDisplay("API Error");
     }
   }, []);
 
@@ -139,6 +145,7 @@ export default function AdminFeedsPage() {
         } finally {
             completed++;
             setSyncProgress(Math.round((completed / allFeeds.length) * 100));
+            // Update data to show result (Success/Error)
             await fetchFeeds(); 
         }
     }
@@ -278,7 +285,6 @@ export default function AdminFeedsPage() {
           <div className="bg-[#222] border border-[#333] rounded-2xl w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
             <h2 className="text-2xl font-black text-white mb-6">Add New Source</h2>
             <form onSubmit={handleAddSite} className="space-y-4">
-              {/* (Same inputs as before) */}
               <div>
                 <label className="block text-[#666] text-xs font-bold uppercase mb-2">Site Name</label>
                 <input className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:outline-none focus:border-blue-600" value={newSiteName} onChange={e => setNewSiteName(e.target.value)} required />
