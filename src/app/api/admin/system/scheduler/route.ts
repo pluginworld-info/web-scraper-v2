@@ -2,48 +2,48 @@ import { NextResponse } from 'next/server';
 import { CloudSchedulerClient } from '@google-cloud/scheduler';
 
 // ---------------------------------------------------------
-// 🛡️ SAFE IMPORT LOGIC (Fixes "u.parseExpression" Error)
+// 1. IMPORT & TYPE SUPPRESSION
 // ---------------------------------------------------------
-// We require the library, then manually find the function.
-// This handles both Local Dev (CommonJS) and Cloud Run (Webpack/ESM)
-const cronLib = require('cron-parser');
-const parseExpression = cronLib.parseExpression || (cronLib.default && cronLib.default.parseExpression);
+// @ts-ignore
+import rawCronParser from 'cron-parser';
 
-// Double check it loaded
-if (typeof parseExpression !== 'function') {
-  console.error("❌ CRITICAL: Could not load cron-parser. Lib structure:", Object.keys(cronLib));
-}
-// ---------------------------------------------------------
-
-// ✅ YOUR HARDCODED CONFIG (Keep these as they are)
-const PROJECT_ID = 'plugin-scraper-v2'; // Replace if you haven't already
+// ✅ CONFIG
+const PROJECT_ID = 'plugin-scraper-v2'; // Replace with your exact Project ID
 const LOCATION_ID = 'us-central1';
 const JOB_ID = 'daily-feed-sync'; 
 
 const client = new CloudSchedulerClient();
-
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    if (!parseExpression) {
-        throw new Error("Server failed to load cron parser library");
-    }
-
-    if (!PROJECT_ID) {
-      return NextResponse.json({ error: "Missing Project ID Config" }, { status: 500 });
-    }
-
     const name = client.jobPath(PROJECT_ID, LOCATION_ID, JOB_ID);
     
-    // Fetch Job from Google Cloud
+    // 2. Fetch Job
     const [job] = await client.getJob({ name });
 
     if (!job || !job.schedule) {
        return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    // ✅ USE THE SAFE FUNCTION WE FOUND EARLIER
+    // ---------------------------------------------------------
+    // 🛡️ RUNTIME ADAPTER (The Fix)
+    // ---------------------------------------------------------
+    // Cast to 'any' so TypeScript stops complaining about .default
+    const lib = rawCronParser as any;
+
+    let parseExpression = lib.parseExpression;
+    
+    // Check if it's hidden inside .default (CommonJS/ESM mismatch fix)
+    if (!parseExpression && lib.default) {
+        parseExpression = lib.default.parseExpression;
+    }
+
+    if (typeof parseExpression !== 'function') {
+        throw new Error("Could not find parseExpression in cron-parser library");
+    }
+
+    // 3. Execute
     const interval = parseExpression(job.schedule as string, {
         tz: job.timeZone || 'UTC'
     });
@@ -61,10 +61,13 @@ export async function GET() {
   } catch (error: any) {
     console.error("Scheduler API Error:", error);
     
-    // Return the actual error message so the UI shows it
+    // Fallback: Return "Tomorrow" so UI doesn't crash
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     return NextResponse.json({ 
       error: error.message || "Unknown Error",
-      nextRunTime: null // Stop the UI from guessing
+      nextRunTime: tomorrow.toISOString()
     }, { status: 500 });
   }
 }
