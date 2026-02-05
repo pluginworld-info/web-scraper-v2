@@ -7,7 +7,6 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // We will build this API endpoint next
     fetch('/api/admin/stats/overview')
       .then(res => res.json())
       .then(data => {
@@ -17,10 +16,11 @@ export default function AdminDashboard() {
       .catch(err => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-gray-500 animate-pulse">Loading Mission Control...</div>;
+  if (loading) return <div className="text-[#666] animate-pulse">Loading Mission Control...</div>;
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto">
+      
       {/* HEADER */}
       <div className="mb-8">
         <h1 className="text-3xl font-black text-white tracking-tighter">Mission Control</h1>
@@ -39,33 +39,33 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Recent Alerts */}
-        <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl p-6">
+        <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl p-6 shadow-xl">
           <h3 className="text-white font-bold mb-4 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-blue-500"></span> Recent Price Alerts
           </h3>
           <div className="space-y-4">
-             {stats?.recentAlerts?.length > 0 ? (
+              {stats?.recentAlerts?.length > 0 ? (
                 stats.recentAlerts.map((a: any) => (
                   <div key={a.id} className="flex justify-between items-center text-sm border-b border-[#333] pb-2 last:border-0">
                     <span className="text-[#aaa] truncate w-2/3">{a.product.title}</span>
                     <span className="text-white font-mono font-bold">${a.targetPrice}</span>
                   </div>
                 ))
-             ) : (
-               <p className="text-[#444] text-sm italic">No active alerts yet.</p>
-             )}
+              ) : (
+                <p className="text-[#444] text-sm italic">No active alerts yet.</p>
+              )}
           </div>
         </div>
 
         {/* System Health */}
-        <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl p-6">
+        <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl p-6 shadow-xl">
           <h3 className="text-white font-bold mb-4 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500"></span> System Health
           </h3>
           <div className="space-y-4">
-             <HealthRow label="Database Connection" status="Operational" />
-             <HealthRow label="Scraper Engine" status="Idle" />
-             <HealthRow label="Email Service" status="Active" />
+              <HealthRow label="Database Connection" status="Operational" />
+              <HealthRow label="Scraper Engine" status="Idle" />
+              <HealthRow label="Email Service" status="Active" />
           </div>
         </div>
 
@@ -93,7 +93,7 @@ function KpiCard({ label, value, icon, color = "text-white" }: any) {
 
 function HealthRow({ label, status }: any) {
   return (
-    <div className="flex justify-between items-center bg-[#111] p-3 rounded-lg">
+    <div className="flex justify-between items-center bg-[#111] p-3 rounded-lg border border-transparent hover:border-[#333] transition-colors">
       <span className="text-[#aaa] text-sm font-bold">{label}</span>
       <span className="text-green-500 text-xs font-black uppercase tracking-wider bg-green-900/20 px-2 py-1 rounded border border-green-900/50">
         {status}

@@ -98,30 +98,23 @@ export default function SettingsPage() {
   // ✅ ROBUST LOGOUT LOGIC
   const executeLogout = async () => {
     setProcessingAction(true);
+    
     try {
-        // 1. Attempt Server Logout (Best Effort)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        // 1. Ask Server to delete the HttpOnly Cookie
+        // We do this before clearing client storage to ensure the server session is dead
+        await fetch('/api/admin/auth/logout', { method: 'POST' });
         
-        try {
-            await fetch('/api/auth/logout', { 
-                method: 'POST',
-                signal: controller.signal
-            });
-        } catch (e) {
-            console.warn("Server logout api unreachable, forcing client logout.");
-        } finally {
-            clearTimeout(timeoutId);
-        }
-
-        // 2. Clear Client Storage
+        // 2. Clear any cosmetic client data
         localStorage.clear();
         sessionStorage.clear();
-        
-        // 3. Force Redirect
-        window.location.href = '/admin/login';
 
+        // 3. FORCE a hard refresh to the login page.
+        // using window.location.href ensures the React state is completely dumped.
+        window.location.href = '/admin/login'; 
+        
     } catch (e) {
+        console.error("Logout failed", e);
+        // Fallback: Force redirect anyway if API fails, so user isn't stuck
         window.location.href = '/admin/login';
     }
   };
