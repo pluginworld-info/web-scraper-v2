@@ -149,30 +149,39 @@ export default function AlertsDashboard() {
   );
 }
 
-// FINAL ROBUST FIX: INFINITE SCROLL
+// FINAL FIXED STATCARD
 function StatCard({ label, value, color, desc, isText = false }: any) {
-  // 1. Repeat the text enough times to ensure it fills any screen size.
-  // We use 6 copies. The animation scrolls past the first 3 (50%), then snaps back.
-  const content = Array(6).fill(value).map((v, i) => (
-      <span key={i} className="mx-8">
-         {v} <span className="text-[#444] mx-8">•</span>
-      </span>
-  ));
+  
+  // 1. Create the content strip (Repeated 4 times to ensure length)
+  const strip = (
+    <>
+      <span className="mx-4">{value}</span>
+      <span className="text-[#444] mx-4">•</span>
+      <span className="mx-4">{value}</span>
+      <span className="text-[#444] mx-4">•</span>
+      <span className="mx-4">{value}</span>
+      <span className="text-[#444] mx-4">•</span>
+      <span className="mx-4">{value}</span>
+      <span className="text-[#444] mx-4">•</span>
+    </>
+  );
 
   return (
     <div className="bg-[#1a1a1a] border border-[#333] p-6 rounded-2xl shadow-lg relative overflow-hidden flex flex-col justify-center h-36">
        
-       {/* 2. CSS Injection: Uses 'width: max-content' to prevent text cutting */}
        {isText && (
          <style dangerouslySetInnerHTML={{__html: `
-            @keyframes simple-scroll {
+            @keyframes marquee-scroll {
                 0% { transform: translateX(0); }
                 100% { transform: translateX(-50%); } 
             }
-            .force-scroll {
+            .animate-marquee {
                 display: flex;
-                width: max-content; /* 👈 THIS prevents the text from being cut */
-                animation: simple-scroll 30s linear infinite;
+                width: max-content;
+                animation: marquee-scroll 20s linear infinite;
+            }
+            .animate-marquee:hover {
+                animation-play-state: paused;
             }
          `}} />
        )}
@@ -181,10 +190,13 @@ function StatCard({ label, value, color, desc, isText = false }: any) {
          <h3 className="text-[#666] text-xs font-bold uppercase tracking-widest mb-2">{label}</h3>
          
          {isText ? (
-            <div className="w-full relative h-10 flex items-center overflow-hidden">
-                {/* 3. The Sliding Container */}
-                <div className="force-scroll text-xl font-black text-white">
-                    {content}
+            // FIX: "justify-start" prevents the parent from centering the text strip
+            // off the screen. We force it to align left.
+            <div className="w-full relative h-10 flex items-center overflow-hidden justify-start">
+                <div className="animate-marquee text-xl font-black text-white">
+                    {/* Render the strip twice. Animation slides -50% (one strip length) then loops. */}
+                    <div className="flex whitespace-nowrap">{strip}</div>
+                    <div className="flex whitespace-nowrap">{strip}</div>
                 </div>
             </div>
          ) : (
