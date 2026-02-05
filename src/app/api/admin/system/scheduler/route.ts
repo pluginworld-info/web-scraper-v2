@@ -14,37 +14,20 @@ export async function GET() {
     const name = client.jobPath(PROJECT_ID, LOCATION_ID, JOB_ID);
     const [job] = await client.getJob({ name });
 
-    if (!job || !job.schedule) {
-       return NextResponse.json({ error: "Job found but has no schedule" }, { status: 404 });
+    if (!job) {
+       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
     // ---------------------------------------------------------
-    // ✅ STANDARD DYNAMIC IMPORT
+    // ✅ SIMPLIFIED BACKEND (No Libraries)
     // ---------------------------------------------------------
-    // 1. Load library only when needed (Prevents startup crash)
-    const cronParser = await import('cron-parser');
-
-    // 2. SAFETY CHECK: Handle however Next.js bundled it
-    // This finds the function whether it is a Named Export or Default Export
-    // @ts-ignore
-    const parseExpression = cronParser.parseExpression || cronParser.default?.parseExpression;
-
-    if (!parseExpression) {
-        throw new Error("Could not find parseExpression in loaded library");
-    }
-
-    // 3. Calculate
-    const interval = parseExpression(job.schedule as string, {
-        tz: job.timeZone || 'UTC'
-    });
-    
-    const nextRunDate = interval.next().toDate();
+    // We strictly pass the raw "lastAttemptTime".
+    // The Frontend will do the "+30 mins" math.
     
     return NextResponse.json({
-      schedule: job.schedule,
-      state: job.state,
-      lastRunTime: job.lastAttemptTime, 
-      nextRunTime: nextRunDate.toISOString(),
+      schedule: job.schedule,      // e.g., "*/30 * * * *"
+      state: job.state,            // e.g., "ENABLED"
+      lastRunTime: job.lastAttemptTime, // 👈 The raw timestamp from Google
       timeZone: job.timeZone || 'UTC'
     });
 

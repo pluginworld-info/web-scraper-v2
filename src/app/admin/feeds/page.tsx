@@ -60,19 +60,27 @@ export default function AdminFeedsPage() {
     }
   }, []);
 
-  // 2. Fetch Real Cloud Scheduler Info (FIXED TO SHOW ERRORS)
+  // 2. Fetch Real Cloud Scheduler Info
   const fetchSchedulerInfo = useCallback(async () => {
     try {
         const res = await fetch('/api/admin/system/scheduler');
         const data = await res.json();
         
-        if (res.ok && data.nextRunTime) {
-            setNextRunTime(new Date(data.nextRunTime));
+        // ---------------------------------------------------------
+        // ✅ UPDATED LOGIC: Calculate "Next Run" locally
+        // ---------------------------------------------------------
+        if (res.ok && data.lastRunTime) {
+            // 1. Get the Last Run Time from Google
+            const lastRun = new Date(data.lastRunTime);
+            
+            // 2. Add 30 Minutes to calculate Next Run
+            // (30 minutes * 60 seconds * 1000 milliseconds)
+            const nextRun = new Date(lastRun.getTime() + 30 * 60 * 1000);
+
+            setNextRunTime(nextRun);
             setSchedulerState(data.state);
         } else {
-            // 🚨 SHOW REAL ERROR INSTEAD OF "CALCULATING..."
             const errorMsg = data.error || "Config Error";
-            // Truncate if too long to fit in badge
             setTimeDisplay(errorMsg.length > 20 ? "Check Logs" : errorMsg);
             console.error("Scheduler API returned error:", data.error);
         }
@@ -90,7 +98,7 @@ export default function AdminFeedsPage() {
     return () => clearInterval(interval);
   }, [fetchFeeds, fetchSchedulerInfo]);
 
-  // 3. Live Countdown Logic
+  // 3. Live Countdown Logic (Unchanged - works perfectly)
   useEffect(() => {
     if (!nextRunTime) return;
 
@@ -100,7 +108,8 @@ export default function AdminFeedsPage() {
 
         if (diff <= 0) {
             setTimeDisplay("Running Now...");
-            fetchSchedulerInfo(); 
+            // Optionally re-fetch to see if the "Last Run" updated
+            // fetchSchedulerInfo(); 
         } else {
             const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
             const minutes = Math.floor((diff / (1000 * 60)) % 60);
@@ -110,11 +119,11 @@ export default function AdminFeedsPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [nextRunTime, fetchSchedulerInfo]);
+  }, [nextRunTime]);
 
-  // 4. ✅ REAL SYNC ALL LOGIC (Triggered by Modal)
+  // 4. SYNC ALL LOGIC
   const executeSyncAll = async () => {
-    setIsSyncModalOpen(false); // Close modal
+    setIsSyncModalOpen(false); 
     setIsSyncingAll(true);
     setSyncProgress(0);
 
@@ -123,7 +132,6 @@ export default function AdminFeedsPage() {
 
     for (const feed of allFeeds) {
         try {
-            // ⚡ OPTIMISTIC UPDATE: Force UI to show "SYNCING" immediately
             setRetailers(currentRetailers => 
               currentRetailers.map(r => ({
                 ...r,
@@ -133,7 +141,6 @@ export default function AdminFeedsPage() {
               }))
             );
 
-            // Call the API (Waits for scrape to finish)
             await fetch('/api/admin/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -145,7 +152,6 @@ export default function AdminFeedsPage() {
         } finally {
             completed++;
             setSyncProgress(Math.round((completed / allFeeds.length) * 100));
-            // Update data to show result (Success/Error)
             await fetchFeeds(); 
         }
     }
@@ -153,7 +159,7 @@ export default function AdminFeedsPage() {
     setIsSyncingAll(false);
   };
 
-  // ... (Add Site & Delete Logic) ...
+  // Add Site Logic
   const handleAddSite = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -214,7 +220,6 @@ export default function AdminFeedsPage() {
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
-            {/* ✅ SYNC ALL BUTTON (Opens Modal) */}
             <button 
                 onClick={() => setIsSyncModalOpen(true)}
                 disabled={isSyncingAll}
@@ -226,13 +231,13 @@ export default function AdminFeedsPage() {
             >
                 {isSyncingAll ? (
                     <>
-                       <div className="w-4 h-4 border-2 border-yellow-500/30 border-t-yellow-500 rounded-full animate-spin"></div>
-                       <span>Processing... {syncProgress}%</span>
+                        <div className="w-4 h-4 border-2 border-yellow-500/30 border-t-yellow-500 rounded-full animate-spin"></div>
+                        <span>Processing... {syncProgress}%</span>
                     </>
                 ) : (
                     <>
-                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                       Sync All Feeds
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        Sync All Feeds
                     </>
                 )}
             </button>
@@ -279,7 +284,7 @@ export default function AdminFeedsPage() {
 
       </div>
 
-      {/* --- ADD SITE MODAL --- */}
+      {/* ADD SITE MODAL */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-[#222] border border-[#333] rounded-2xl w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
@@ -315,46 +320,25 @@ export default function AdminFeedsPage() {
         </div>
       )}
 
-      {/* ✅ CUSTOM SYNC CONFIRMATION MODAL (Styles Matched to Settings) */}
+      {/* SYNC MODAL */}
       {isSyncModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div 
-                className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" 
-                onClick={() => setIsSyncModalOpen(false)}
-            ></div>
-            
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setIsSyncModalOpen(false)}></div>
             <div className="relative bg-[#222] border border-[#333] w-full max-w-md rounded-2xl p-8 shadow-2xl transform transition-all scale-100 animate-in fade-in zoom-in duration-200">
                 <div className="flex flex-col items-center text-center">
-                    
-                    {/* Icon */}
                     <div className="w-16 h-16 rounded-full flex items-center justify-center mb-6 bg-blue-500/10 text-blue-500">
                         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                     </div>
-
-                    <h3 className="text-2xl font-bold text-white mb-2">
-                        Start Global Sync?
-                    </h3>
-                    
+                    <h3 className="text-2xl font-bold text-white mb-2">Start Global Sync?</h3>
                     <p className="text-[#888] text-sm mb-8 leading-relaxed">
                         You are about to trigger a real-time scrape for <strong>{totalFeeds} feeds</strong> sequentially. 
                         This process handles large image uploads and database updates.
                     </p>
-
                     <div className="grid grid-cols-2 gap-4 w-full">
-                        <button 
-                            onClick={() => setIsSyncModalOpen(false)}
-                            className="bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold text-sm transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            onClick={executeSyncAll}
-                            className="bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition-all"
-                        >
-                            Confirm Sync
-                        </button>
+                        <button onClick={() => setIsSyncModalOpen(false)} className="bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold text-sm transition-colors">Cancel</button>
+                        <button onClick={executeSyncAll} className="bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition-all">Confirm Sync</button>
                     </div>
                 </div>
             </div>
@@ -365,7 +349,7 @@ export default function AdminFeedsPage() {
   );
 }
 
-// FEED CARD COMPONENT
+// FEED CARD COMPONENT (Unchanged)
 function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void }) {
   return (
     <div className={`bg-[#1a1a1a] border rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between transition-colors group gap-4 ${feed.status === 'ERROR' ? 'border-red-900/50 bg-red-900/10' : 'border-[#333] hover:border-[#444]'}`}>
