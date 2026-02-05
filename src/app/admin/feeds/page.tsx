@@ -66,15 +66,11 @@ export default function AdminFeedsPage() {
         const res = await fetch('/api/admin/system/scheduler');
         const data = await res.json();
         
-        // ---------------------------------------------------------
-        // ✅ UPDATED LOGIC: Calculate "Next Run" locally
-        // ---------------------------------------------------------
         if (res.ok && data.lastRunTime) {
             // 1. Get the Last Run Time from Google
             const lastRun = new Date(data.lastRunTime);
             
             // 2. Add 30 Minutes to calculate Next Run
-            // (30 minutes * 60 seconds * 1000 milliseconds)
             const nextRun = new Date(lastRun.getTime() + 30 * 60 * 1000);
 
             setNextRunTime(nextRun);
@@ -98,7 +94,9 @@ export default function AdminFeedsPage() {
     return () => clearInterval(interval);
   }, [fetchFeeds, fetchSchedulerInfo]);
 
-  // 3. Live Countdown Logic (Unchanged - works perfectly)
+  // ---------------------------------------------------------
+  // ✅ FIX: TIMER RESET LOGIC
+  // ---------------------------------------------------------
   useEffect(() => {
     if (!nextRunTime) return;
 
@@ -108,8 +106,12 @@ export default function AdminFeedsPage() {
 
         if (diff <= 0) {
             setTimeDisplay("Running Now...");
-            // Optionally re-fetch to see if the "Last Run" updated
-            // fetchSchedulerInfo(); 
+            
+            // IF it has been stuck on "Running Now" for > 5 seconds...
+            if (diff < -5000) {
+                 // ...Force a refresh to get the NEW time from Google
+                 fetchSchedulerInfo();
+            }
         } else {
             const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
             const minutes = Math.floor((diff / (1000 * 60)) % 60);
@@ -119,7 +121,7 @@ export default function AdminFeedsPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [nextRunTime]);
+  }, [nextRunTime, fetchSchedulerInfo]);
 
   // 4. SYNC ALL LOGIC
   const executeSyncAll = async () => {
