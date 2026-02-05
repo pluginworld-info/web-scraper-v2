@@ -63,7 +63,8 @@ export default function AdminFeedsPage() {
   // 2. Fetch Real Cloud Scheduler Info
   const fetchSchedulerInfo = useCallback(async () => {
     try {
-        const res = await fetch('/api/admin/system/scheduler');
+        // Add timestamp to prevent browser caching
+        const res = await fetch(`/api/admin/system/scheduler?t=${Date.now()}`);
         const data = await res.json();
         
         if (res.ok && data.lastRunTime) {
@@ -76,15 +77,21 @@ export default function AdminFeedsPage() {
             setNextRunTime(nextRun);
             setSchedulerState(data.state);
         } else {
-            const errorMsg = data.error || "Config Error";
-            setTimeDisplay(errorMsg.length > 20 ? "Check Logs" : errorMsg);
-            console.error("Scheduler API returned error:", data.error);
+            // ✅ SILENT FAIL: If api fails during refresh, keep old state.
+            // Only show error on initial load.
+            if (timeDisplay === "Calculating...") {
+               const errorMsg = data.error || "Config Error";
+               setTimeDisplay(errorMsg.length > 20 ? "Check Logs" : errorMsg);
+            }
+            console.warn("Scheduler refresh skipped:", data.error);
         }
     } catch (e) {
-        console.warn("Scheduler info unavailable", e);
-        setTimeDisplay("API Error");
+        // ✅ SILENT FAIL: Don't break UI on network blip
+        if (timeDisplay === "Calculating...") {
+            setTimeDisplay("API Error");
+        }
     }
-  }, []);
+  }, [timeDisplay]);
 
   // Initial Load
   useEffect(() => {
@@ -94,9 +101,7 @@ export default function AdminFeedsPage() {
     return () => clearInterval(interval);
   }, [fetchFeeds, fetchSchedulerInfo]);
 
-  // ---------------------------------------------------------
-  // ✅ FIX: TIMER RESET LOGIC
-  // ---------------------------------------------------------
+  // 3. Live Countdown Logic
   useEffect(() => {
     if (!nextRunTime) return;
 
@@ -107,9 +112,12 @@ export default function AdminFeedsPage() {
         if (diff <= 0) {
             setTimeDisplay("Running Now...");
             
-            // IF it has been stuck on "Running Now" for > 5 seconds...
+            // ✅ THE FIX:
+            // If it has been saying "Running Now" for 5 seconds...
             if (diff < -5000) {
-                 // ...Force a refresh to get the NEW time from Google
+                 // ...Try to fetch the NEW time.
+                 // If Google hasn't updated yet, this function will just fail silently
+                 // and we will try again in the next second.
                  fetchSchedulerInfo();
             }
         } else {
