@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import { CloudSchedulerClient } from '@google-cloud/scheduler';
 
-// @ts-ignore
-import rawCronParser from 'cron-parser';
-
 // ✅ CONFIG
 const PROJECT_ID = 'composite-haiku-480406-b5';
 const LOCATION_ID = 'us-central1';
@@ -22,17 +19,18 @@ export async function GET() {
     }
 
     // ---------------------------------------------------------
-    // 🛡️ UNIVERSAL FIX (Handles TS Error & Runtime Error)
+    // ✅ STANDARD DYNAMIC IMPORT
     // ---------------------------------------------------------
-    
-    // 1. Cast to 'any' to remove the red squiggly line in your editor
-    const lib = rawCronParser as any;
+    // 1. Load library only when needed (Prevents startup crash)
+    const cronParser = await import('cron-parser');
 
-    // 2. Find the function whether it's in .default or root (Fixes the 23h fallback)
-    const parseExpression = lib.parseExpression || (lib.default && lib.default.parseExpression);
+    // 2. SAFETY CHECK: Handle however Next.js bundled it
+    // This finds the function whether it is a Named Export or Default Export
+    // @ts-ignore
+    const parseExpression = cronParser.parseExpression || cronParser.default?.parseExpression;
 
     if (!parseExpression) {
-        throw new Error("CRITICAL: parseExpression function not found in library");
+        throw new Error("Could not find parseExpression in loaded library");
     }
 
     // 3. Calculate
@@ -54,8 +52,8 @@ export async function GET() {
     console.error("Scheduler API Error:", error);
     return NextResponse.json({ 
       error: error.message,
-      debug: "Failed during time calculation",
-      nextRunTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      debug_project: PROJECT_ID,
+      debug_job: JOB_ID
     }, { status: 500 });
   }
 }
