@@ -19,15 +19,27 @@ export async function GET() {
     }
 
     // ---------------------------------------------------------
-    // ✅ SIMPLIFIED BACKEND (No Libraries)
+    // ✅ FIX: Convert Google Timestamp to Standard String
     // ---------------------------------------------------------
-    // We strictly pass the raw "lastAttemptTime".
-    // The Frontend will do the "+30 mins" math.
-    
+    let cleanLastRunTime = null;
+
+    if (job.lastAttemptTime) {
+        // Check if it is a Google Timestamp Object (has 'seconds')
+        if (typeof job.lastAttemptTime === 'object' && 'seconds' in job.lastAttemptTime) {
+            // Convert seconds to milliseconds
+            const seconds = Number(job.lastAttemptTime.seconds);
+            cleanLastRunTime = new Date(seconds * 1000).toISOString();
+        } 
+        // Fallback: If it's already a date or string
+        else {
+            cleanLastRunTime = new Date(job.lastAttemptTime as any).toISOString();
+        }
+    }
+
     return NextResponse.json({
-      schedule: job.schedule,      // e.g., "*/30 * * * *"
-      state: job.state,            // e.g., "ENABLED"
-      lastRunTime: job.lastAttemptTime, // 👈 The raw timestamp from Google
+      schedule: job.schedule,
+      state: job.state,
+      lastRunTime: cleanLastRunTime, // 👈 Now sends a clean string ("2026-02-05...")
       timeZone: job.timeZone || 'UTC'
     });
 
