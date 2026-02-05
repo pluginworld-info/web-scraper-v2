@@ -8,7 +8,7 @@ import { CloudSchedulerClient } from '@google-cloud/scheduler';
 import rawCronParser from 'cron-parser';
 
 // ✅ CONFIG
-const PROJECT_ID = 'plugin-scraper-v2'; // Replace with your exact Project ID
+const PROJECT_ID = 'composite-haiku-480406-b5'; 
 const LOCATION_ID = 'us-central1';
 const JOB_ID = 'daily-feed-sync'; 
 
