@@ -10,7 +10,7 @@ import rawCronParser from 'cron-parser';
 // ✅ CONFIG
 const PROJECT_ID = 'composite-haiku-480406-b5'; 
 const LOCATION_ID = 'us-central1';
-const JOB_ID = 'daily-feed-sync'; 
+const JOB_ID = 'sync-product-feeds'; 
 
 const client = new CloudSchedulerClient();
 export const dynamic = 'force-dynamic';
