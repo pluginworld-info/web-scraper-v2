@@ -62,7 +62,7 @@ export default function AlertsDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <StatCard label="Active Watchers" value={data?.stats?.active || 0} color="text-blue-500" desc="Waiting for drop" />
           <StatCard label="Notifications Sent" value={data?.stats?.triggered || 0} color="text-green-500" desc="Deals delivered" />
-          {/* ✅ Most Wanted Card */}
+          {/* Most Wanted Card */}
           <StatCard label="Most Wanted" value={data?.topProducts?.[0]?.title || 'No Data Yet'} color="text-white" desc="Top Product" isText />
         </div>
 
@@ -149,21 +149,42 @@ export default function AlertsDashboard() {
   );
 }
 
-// ✅ FINAL FIX: SIMPLE CSS MARQUEE
+// FINAL ROBUST FIX: INFINITE SCROLL
 function StatCard({ label, value, color, desc, isText = false }: any) {
+  // 1. Repeat the text enough times to ensure it fills any screen size.
+  // We use 6 copies. The animation scrolls past the first 3 (50%), then snaps back.
+  const content = Array(6).fill(value).map((v, i) => (
+      <span key={i} className="mx-8">
+         {v} <span className="text-[#444] mx-8">•</span>
+      </span>
+  ));
+
   return (
     <div className="bg-[#1a1a1a] border border-[#333] p-6 rounded-2xl shadow-lg relative overflow-hidden flex flex-col justify-center h-36">
        
+       {/* 2. CSS Injection: Uses 'width: max-content' to prevent text cutting */}
+       {isText && (
+         <style dangerouslySetInnerHTML={{__html: `
+            @keyframes simple-scroll {
+                0% { transform: translateX(0); }
+                100% { transform: translateX(-50%); } 
+            }
+            .force-scroll {
+                display: flex;
+                width: max-content; /* 👈 THIS prevents the text from being cut */
+                animation: simple-scroll 30s linear infinite;
+            }
+         `}} />
+       )}
+
        <div className="relative z-10 w-full overflow-hidden">
          <h3 className="text-[#666] text-xs font-bold uppercase tracking-widest mb-2">{label}</h3>
          
          {isText ? (
             <div className="w-full relative h-10 flex items-center overflow-hidden">
-                {/* We use a simple 'whitespace-nowrap' container.
-                   If text is long, it will scroll. If short, it stays still.
-                */}
-                <div className="whitespace-nowrap animate-marquee text-xl font-black text-white">
-                    {value} &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; {value} &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; {value}
+                {/* 3. The Sliding Container */}
+                <div className="force-scroll text-xl font-black text-white">
+                    {content}
                 </div>
             </div>
          ) : (
@@ -174,20 +195,6 @@ function StatCard({ label, value, color, desc, isText = false }: any) {
          
          <p className="text-[#444] text-xs mt-2 font-medium">{desc}</p>
        </div>
-
-       {/* INJECT SIMPLE KEYFRAMES */}
-       {isText && (
-         <style jsx>{`
-            .animate-marquee {
-                display: inline-block;
-                animation: marquee 20s linear infinite;
-            }
-            @keyframes marquee {
-                0% { transform: translateX(0); }
-                100% { transform: translateX(-50%); } 
-            }
-         `}</style>
-       )}
     </div>
   );
 }
