@@ -149,21 +149,29 @@ export default function AlertsDashboard() {
   );
 }
 
-// ✅ FIX: ROBUST SCROLLING TEXT COMPONENT
+// ✅ FIX: SEAMLESS INFINITE SCROLL
 function StatCard({ label, value, color, desc, isText = false }: any) {
+  
+  // Create a repeated string pattern to ensure it fills the width
+  // We repeat the value 4 times in a "strip", then render that strip twice.
+  const stripContent = Array(4).fill(value).map((v, i) => (
+      <span key={i} className="mx-4">
+         {v} <span className="text-[#444] mx-4">•</span>
+      </span>
+  ));
+
   return (
     <div className="bg-[#1a1a1a] border border-[#333] p-6 rounded-2xl shadow-lg relative overflow-hidden flex flex-col justify-center h-36">
        
-       {/* 1. Global CSS Injection for Animation (React Safe Way) */}
        {isText && (
          <style dangerouslySetInnerHTML={{__html: `
             @keyframes scroll-text {
-                0% { transform: translateX(100%); }
-                100% { transform: translateX(-100%); }
+                0% { transform: translateX(0); }
+                100% { transform: translateX(-50%); } /* Move only 50% (one full strip) */
             }
             .animate-scroll {
-                display: inline-block;
-                white-space: nowrap;
+                display: flex;
+                width: max-content;
                 animation: scroll-text 15s linear infinite;
             }
             .animate-scroll:hover {
@@ -177,9 +185,10 @@ function StatCard({ label, value, color, desc, isText = false }: any) {
          
          {isText ? (
             <div className="w-full relative h-10 flex items-center overflow-hidden">
-                {/* 2. Standard Div Structure for Scrolling */}
                 <div className="animate-scroll text-xl font-black text-white">
-                    {value} <span className="text-[#444] mx-4">•</span> {value} <span className="text-[#444] mx-4">•</span> {value}
+                    {/* Render the strip twice. When the first strip scrolls off, the second takes its place instantly. */}
+                    <div className="flex">{stripContent}</div>
+                    <div className="flex">{stripContent}</div>
                 </div>
             </div>
          ) : (
