@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { CloudSchedulerClient } from '@google-cloud/scheduler';
 
-// ✅ NUCLEAR FIX: You MUST use 'require' here. 
-// Do not use 'import' or the red squiggly lines will never go away.
+// NUCLEAR FIX: You MUST use 'require' here. 
 const parser = require('cron-parser');
 
 const PROJECT_ID = 'composite-haiku-480406-b5'; 

@@ -26,9 +26,12 @@ interface Retailer {
 export default function AdminFeedsPage() {
   const [retailers, setRetailers] = useState<Retailer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // REAL SCHEDULER STATE
+  // Modals
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false); // ✅ NEW MODAL STATE
+  
+  // Real Scheduler State
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [timeDisplay, setTimeDisplay] = useState("Calculating...");
   const [schedulerState, setSchedulerState] = useState<string>("UNKNOWN");
@@ -57,7 +60,7 @@ export default function AdminFeedsPage() {
     }
   }, []);
 
-  // 2. FETCH REAL CLOUD SCHEDULER INFO
+  // 2. Fetch Real Cloud Scheduler Info
   const fetchSchedulerInfo = useCallback(async () => {
     try {
         const res = await fetch('/api/admin/system/scheduler');
@@ -77,12 +80,11 @@ export default function AdminFeedsPage() {
   useEffect(() => {
     fetchFeeds();
     fetchSchedulerInfo();
-    // Poll feeds status every 5s (but not scheduler info, that's static until run)
     const interval = setInterval(fetchFeeds, 5000); 
     return () => clearInterval(interval);
   }, [fetchFeeds, fetchSchedulerInfo]);
 
-  // 3. LIVE COUNTDOWN LOGIC
+  // 3. Live Countdown Logic
   useEffect(() => {
     if (!nextRunTime) return;
 
@@ -92,9 +94,8 @@ export default function AdminFeedsPage() {
 
         if (diff <= 0) {
             setTimeDisplay("Running Now...");
-            fetchSchedulerInfo(); // Refresh to get next slot
+            fetchSchedulerInfo(); 
         } else {
-            // Format HH:MM:SS
             const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
             const minutes = Math.floor((diff / (1000 * 60)) % 60);
             const seconds = Math.floor((diff / 1000) % 60);
@@ -105,20 +106,18 @@ export default function AdminFeedsPage() {
     return () => clearInterval(timer);
   }, [nextRunTime, fetchSchedulerInfo]);
 
-  // 4. REAL SYNC ALL LOGIC
-  const handleSyncAll = async () => {
-    if (!confirm("This will trigger a REAL scrape for every feed. Continue?")) return;
-    
+  // 4. ✅ REAL SYNC ALL LOGIC (Triggered by Modal)
+  const executeSyncAll = async () => {
+    setIsSyncModalOpen(false); // Close modal
     setIsSyncingAll(true);
     setSyncProgress(0);
 
-    // Flatten feeds to make iteration easier
     const allFeeds = retailers.flatMap(r => r.feeds);
     let completed = 0;
 
     for (const feed of allFeeds) {
         try {
-            // 1. ⚡ OPTIMISTIC UPDATE: Force UI to show "SYNCING" immediately
+            // ⚡ OPTIMISTIC UPDATE: Force UI to show "SYNCING" immediately
             setRetailers(currentRetailers => 
               currentRetailers.map(r => ({
                 ...r,
@@ -128,7 +127,7 @@ export default function AdminFeedsPage() {
               }))
             );
 
-            // 2. Call the API (Waits for scrape to finish)
+            // Call the API (Waits for scrape to finish)
             await fetch('/api/admin/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -140,8 +139,6 @@ export default function AdminFeedsPage() {
         } finally {
             completed++;
             setSyncProgress(Math.round((completed / allFeeds.length) * 100));
-            
-            // 3. Refresh Data (Shows SUCCESS or ERROR)
             await fetchFeeds(); 
         }
     }
@@ -149,7 +146,7 @@ export default function AdminFeedsPage() {
     setIsSyncingAll(false);
   };
 
-  // ... (Keep handleAddSite and handleDelete exactly as before) ...
+  // ... (Add Site & Delete Logic) ...
   const handleAddSite = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -165,7 +162,7 @@ export default function AdminFeedsPage() {
         }),
       });
       await fetchFeeds(); 
-      setIsModalOpen(false);
+      setIsAddModalOpen(false);
       setNewSiteName('');
       setNewFeedUrl('');
       setIsMaster(false);
@@ -186,6 +183,7 @@ export default function AdminFeedsPage() {
 
   const masterRetailers = retailers.filter(r => r.role === 'MASTER');
   const competitorRetailers = retailers.filter(r => r.role === 'SPOKE');
+  const totalFeeds = retailers.flatMap(r => r.feeds).length;
 
   return (
     <main className="min-h-screen bg-[#111] p-8 font-sans pb-32">
@@ -197,7 +195,7 @@ export default function AdminFeedsPage() {
              <div className="flex items-center gap-4">
                 <h1 className="text-3xl font-black text-white tracking-tighter">Feed Monitor</h1>
                 
-                {/* REAL TIMER BADGE */}
+                {/* TIMER BADGE */}
                 <div className="flex items-center gap-2 bg-[#1a1a1a] border border-[#333] px-3 py-1.5 rounded-lg">
                     <div className={`w-2 h-2 rounded-full ${schedulerState === 'ENABLED' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                     <span className="text-xs font-mono text-[#888] font-bold">
@@ -205,13 +203,13 @@ export default function AdminFeedsPage() {
                     </span>
                 </div>
              </div>
-             <p className="text-[#666] font-medium text-sm">Managing {retailers.flatMap(r => r.feeds).length} active data pipelines.</p>
+             <p className="text-[#666] font-medium text-sm">Managing {totalFeeds} active data pipelines.</p>
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
-            {/* SYNC ALL BUTTON */}
+            {/* ✅ SYNC ALL BUTTON (Opens Modal) */}
             <button 
-                onClick={handleSyncAll}
+                onClick={() => setIsSyncModalOpen(true)}
                 disabled={isSyncingAll}
                 className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold uppercase text-xs tracking-wider border transition-all ${
                     isSyncingAll 
@@ -233,7 +231,7 @@ export default function AdminFeedsPage() {
             </button>
 
             <button 
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => setIsAddModalOpen(true)}
               className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-blue-900/20 transition-all flex-1 md:flex-none text-center"
             >
               + Add Site
@@ -241,45 +239,46 @@ export default function AdminFeedsPage() {
           </div>
         </div>
 
-        {/* SECTION 1: MASTER FEEDS */}
-        <div className="mb-12">
-           <h2 className="text-[#aaaaaa] font-black uppercase tracking-widest text-sm mb-4 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              Master Data Sources
-           </h2>
-           <div className="grid grid-cols-1 gap-4">
-              {masterRetailers.map(retailer => (
-                 retailer.feeds.map(feed => (
-                   <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={handleDelete} />
-                 ))
-              ))}
-           </div>
-        </div>
+        {/* FEEDS LIST SECTION */}
+        <div className="space-y-12">
+            <div>
+                <h2 className="text-[#aaaaaa] font-black uppercase tracking-widest text-sm mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    Master Data Sources
+                </h2>
+                <div className="grid grid-cols-1 gap-4">
+                    {masterRetailers.map(retailer => (
+                        retailer.feeds.map(feed => (
+                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={handleDelete} />
+                        ))
+                    ))}
+                </div>
+            </div>
 
-        {/* SECTION 2: COMPETITOR FEEDS */}
-        <div>
-           <h2 className="text-[#aaaaaa] font-black uppercase tracking-widest text-sm mb-4 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-              Competitor Sub-Sites
-           </h2>
-           <div className="grid grid-cols-1 gap-4">
-              {competitorRetailers.map(retailer => (
-                 retailer.feeds.map(feed => (
-                   <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={handleDelete} />
-                 ))
-              ))}
-           </div>
+            <div>
+                <h2 className="text-[#aaaaaa] font-black uppercase tracking-widest text-sm mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                    Competitor Sub-Sites
+                </h2>
+                <div className="grid grid-cols-1 gap-4">
+                    {competitorRetailers.map(retailer => (
+                        retailer.feeds.map(feed => (
+                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={handleDelete} />
+                        ))
+                    ))}
+                </div>
+            </div>
         </div>
 
       </div>
-      
-      {/* ... Add Site Modal (Same as before) ... */}
-      {isModalOpen && (
+
+      {/* --- ADD SITE MODAL --- */}
+      {isAddModalOpen && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-[#222] border border-[#333] rounded-2xl w-full max-w-md p-8 shadow-2xl">
+          <div className="bg-[#222] border border-[#333] rounded-2xl w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
             <h2 className="text-2xl font-black text-white mb-6">Add New Source</h2>
             <form onSubmit={handleAddSite} className="space-y-4">
-              {/* Inputs... (Same as previous code) */}
+              {/* (Same inputs as before) */}
               <div>
                 <label className="block text-[#666] text-xs font-bold uppercase mb-2">Site Name</label>
                 <input className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:outline-none focus:border-blue-600" value={newSiteName} onChange={e => setNewSiteName(e.target.value)} required />
@@ -302,18 +301,65 @@ export default function AdminFeedsPage() {
                 </div>
               </div>
               <div className="pt-6 flex gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold uppercase text-xs">Cancel</button>
+                <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold uppercase text-xs">Cancel</button>
                 <button disabled={submitting} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold uppercase text-xs disabled:opacity-50">{submitting ? 'Saving...' : 'Add Feed'}</button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* ✅ CUSTOM SYNC CONFIRMATION MODAL (Styles Matched to Settings) */}
+      {isSyncModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" 
+                onClick={() => setIsSyncModalOpen(false)}
+            ></div>
+            
+            <div className="relative bg-[#222] border border-[#333] w-full max-w-md rounded-2xl p-8 shadow-2xl transform transition-all scale-100 animate-in fade-in zoom-in duration-200">
+                <div className="flex flex-col items-center text-center">
+                    
+                    {/* Icon */}
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center mb-6 bg-blue-500/10 text-blue-500">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </div>
+
+                    <h3 className="text-2xl font-bold text-white mb-2">
+                        Start Global Sync?
+                    </h3>
+                    
+                    <p className="text-[#888] text-sm mb-8 leading-relaxed">
+                        You are about to trigger a real-time scrape for <strong>{totalFeeds} feeds</strong> sequentially. 
+                        This process handles large image uploads and database updates.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-4 w-full">
+                        <button 
+                            onClick={() => setIsSyncModalOpen(false)}
+                            className="bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold text-sm transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={executeSyncAll}
+                            className="bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition-all"
+                        >
+                            Confirm Sync
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
     </main>
   );
 }
 
-// ... FeedCard Component (Same as before) ...
+// FEED CARD COMPONENT
 function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void }) {
   return (
     <div className={`bg-[#1a1a1a] border rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between transition-colors group gap-4 ${feed.status === 'ERROR' ? 'border-red-900/50 bg-red-900/10' : 'border-[#333] hover:border-[#444]'}`}>
