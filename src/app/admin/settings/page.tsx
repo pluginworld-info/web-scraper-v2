@@ -100,7 +100,6 @@ export default function SettingsPage() {
     setProcessingAction(true);
     try {
         // 1. Attempt Server Logout (Best Effort)
-        // We use a short timeout so it doesn't hang if the API is broken
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2000);
         
@@ -163,13 +162,13 @@ export default function SettingsPage() {
     if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0]);
   };
 
-  if (loading) return <div className="p-20 text-center text-[#666] animate-pulse">Loading System Preferences...</div>;
+  if (loading) return <div className="text-[#666] animate-pulse">Loading System Preferences...</div>;
 
   return (
-    <main className="max-w-6xl mx-auto pb-24 space-y-8 relative">
+    <div className="max-w-7xl mx-auto space-y-8 relative">
       
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-[#333] pb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-[#333] pb-6">
         <div>
            <h1 className="text-3xl font-black text-white tracking-tight">System Settings</h1>
            <p className="text-[#888] font-medium mt-2">Manage branding, theme, and admin session.</p>
@@ -309,7 +308,7 @@ export default function SettingsPage() {
             {/* DANGER ZONE (Cache Only) */}
             <section className="bg-red-900/5 border border-red-900/20 rounded-2xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-red-900/20 bg-red-900/10 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500">
+                    <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                     </div>
                     <h2 className="text-red-400 font-bold text-lg">Troubleshooting</h2>
@@ -396,6 +395,6 @@ export default function SettingsPage() {
          </div>
       </div>
 
-    </main>
+    </div>
   );
 }

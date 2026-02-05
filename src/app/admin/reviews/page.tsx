@@ -54,16 +54,16 @@ export default function ReviewsManager() {
     return list;
   }, [data.reviews, selectedProductId]);
 
-  if (loading) return <div className="p-20 text-center text-[#444] animate-pulse">Loading Review Hub...</div>;
+  if (loading) return <div className="text-[#666] animate-pulse">Loading Review Hub...</div>;
 
   return (
-    <main className="min-h-screen bg-[#111] p-8 font-sans h-screen flex flex-col">
+    <div className="max-w-7xl mx-auto h-[calc(100vh-6rem)] flex flex-col">
       
       {/* HEADER */}
       <div className="flex justify-between items-end mb-8 shrink-0">
         <div>
-           <h1 className="text-3xl font-black text-white tracking-tighter">Review Intelligence</h1>
-           <p className="text-[#666] font-medium">Manage, moderate, and analyze user feedback.</p>
+           <h1 className="text-3xl font-black text-white tracking-tighter">Reviews Manager</h1>
+           <p className="text-[#666] font-medium">Manage, moderate, and analyze user reviews.</p>
         </div>
         <div className="flex gap-3">
              {/* REFRESH BUTTON (With Animation) */}
@@ -167,7 +167,7 @@ export default function ReviewsManager() {
          </div>
       </div>
 
-      {/* ✅ STYLED DELETE CONFIRMATION MODAL */}
+      {/* STYLED DELETE CONFIRMATION MODAL */}
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div 
@@ -178,7 +178,6 @@ export default function ReviewsManager() {
             <div className="relative bg-[#222] border border-[#333] w-full max-w-sm rounded-2xl p-8 shadow-2xl transform transition-all scale-100 animate-in fade-in zoom-in duration-200">
                 <div className="flex flex-col items-center text-center">
                     
-                    {/* Warning Icon */}
                     <div className="w-16 h-16 rounded-full flex items-center justify-center mb-6 bg-red-500/10 text-red-500">
                         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -210,6 +209,6 @@ export default function ReviewsManager() {
         </div>
       )}
 
-    </main>
+    </div>
   );
 }

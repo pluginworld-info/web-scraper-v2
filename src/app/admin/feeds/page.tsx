@@ -63,30 +63,21 @@ export default function AdminFeedsPage() {
   // 2. Fetch Real Cloud Scheduler Info
   const fetchSchedulerInfo = useCallback(async () => {
     try {
-        // Add timestamp to prevent browser caching
         const res = await fetch(`/api/admin/system/scheduler?t=${Date.now()}`);
         const data = await res.json();
         
         if (res.ok && data.lastRunTime) {
-            // 1. Get the Last Run Time from Google
             const lastRun = new Date(data.lastRunTime);
-            
-            // 2. Add 30 Minutes to calculate Next Run
             const nextRun = new Date(lastRun.getTime() + 30 * 60 * 1000);
-
             setNextRunTime(nextRun);
             setSchedulerState(data.state);
         } else {
-            // ✅ SILENT FAIL: If api fails during refresh, keep old state.
-            // Only show error on initial load.
             if (timeDisplay === "Calculating...") {
                const errorMsg = data.error || "Config Error";
                setTimeDisplay(errorMsg.length > 20 ? "Check Logs" : errorMsg);
             }
-            console.warn("Scheduler refresh skipped:", data.error);
         }
     } catch (e) {
-        // ✅ SILENT FAIL: Don't break UI on network blip
         if (timeDisplay === "Calculating...") {
             setTimeDisplay("API Error");
         }
@@ -112,14 +103,11 @@ export default function AdminFeedsPage() {
         if (diff <= 0) {
             setTimeDisplay("Running Now...");
             
-            // ✅ VISUAL REFRESH: Immediately reload table data when timer hits 0
             if (diff > -2000) { 
                  fetchFeeds(); 
             }
 
-            // If it has been saying "Running Now" for 5 seconds...
             if (diff < -5000) {
-                 // ...Try to fetch the NEW time from Google
                  fetchSchedulerInfo();
             }
         } else {
@@ -204,18 +192,17 @@ export default function AdminFeedsPage() {
     fetchFeeds();
   };
 
-  if (loading) return <div className="p-10 text-center text-[#aaaaaa] animate-pulse">Loading Feed Monitor...</div>;
+  if (loading) return <div className="text-[#666] animate-pulse">Loading Feed Monitor...</div>;
 
   const masterRetailers = retailers.filter(r => r.role === 'MASTER');
   const competitorRetailers = retailers.filter(r => r.role === 'SPOKE');
   const totalFeeds = retailers.flatMap(r => r.feeds).length;
 
-  // ✅ Check if ANY master exists to disable the checkbox
+  // Check if ANY master exists to disable the checkbox
   const hasMaster = masterRetailers.length > 0;
 
   return (
-    <main className="min-h-screen bg-[#111] p-8 font-sans pb-32">
-      <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto pb-32">
         
         {/* HEADER */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-10 border-b border-[#333] pb-6">
@@ -297,8 +284,6 @@ export default function AdminFeedsPage() {
             </div>
         </div>
 
-      </div>
-
       {/* ADD SITE MODAL */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -322,7 +307,7 @@ export default function AdminFeedsPage() {
                      <option value="XML">XML</option>
                    </select>
                 </div>
-                {/* ✅ UPDATED CHECKBOX LOGIC */}
+                {/* UPDATED CHECKBOX LOGIC */}
                 <div className="pt-6">
                    <label className={`flex items-center gap-3 ${hasMaster ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                       <input 
@@ -375,11 +360,11 @@ export default function AdminFeedsPage() {
         </div>
       )}
 
-    </main>
+    </div>
   );
 }
 
-// FEED CARD COMPONENT (Unchanged)
+// FEED CARD COMPONENT
 function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void }) {
   return (
     <div className={`bg-[#1a1a1a] border rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between transition-colors group gap-4 ${feed.status === 'ERROR' ? 'border-red-900/50 bg-red-900/10' : 'border-[#333] hover:border-[#444]'}`}>

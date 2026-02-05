@@ -33,7 +33,7 @@ export default function AlertsDashboard() {
     loadData(true); 
   };
 
-  if (loading) return <div className="p-20 text-center text-[#666] animate-pulse">Loading Dashboard...</div>;
+  if (loading) return <div className="text-[#666] animate-pulse">Loading Dashboard...</div>;
 
   const filteredAlerts = data?.alerts?.filter((a: any) => 
     a.email.toLowerCase().includes(search.toLowerCase()) || 
@@ -41,8 +41,7 @@ export default function AlertsDashboard() {
   ) || [];
 
   return (
-    <main className="min-h-screen bg-[#111] p-8 font-sans">
-      <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-end mb-8">
           <div>
             <h1 className="text-3xl font-black text-white tracking-tighter">Alerts Manager</h1>
@@ -144,8 +143,7 @@ export default function AlertsDashboard() {
             </table>
           </div>
         </div>
-      </div>
-    </main>
+    </div>
   );
 }
 
