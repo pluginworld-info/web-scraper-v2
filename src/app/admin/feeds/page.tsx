@@ -112,9 +112,14 @@ export default function AdminFeedsPage() {
         if (diff <= 0) {
             setTimeDisplay("Running Now...");
             
+            // ✅ VISUAL REFRESH: Immediately reload table data when timer hits 0
+            if (diff > -2000) { 
+                 fetchFeeds(); 
+            }
+
             // If it has been saying "Running Now" for 5 seconds...
             if (diff < -5000) {
-                 // ...Try to fetch the NEW time.
+                 // ...Try to fetch the NEW time from Google
                  fetchSchedulerInfo();
             }
         } else {
@@ -126,7 +131,7 @@ export default function AdminFeedsPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [nextRunTime, fetchSchedulerInfo]);
+  }, [nextRunTime, fetchSchedulerInfo, fetchFeeds]);
 
   // 4. SYNC ALL LOGIC
   const executeSyncAll = async () => {
@@ -204,6 +209,9 @@ export default function AdminFeedsPage() {
   const masterRetailers = retailers.filter(r => r.role === 'MASTER');
   const competitorRetailers = retailers.filter(r => r.role === 'SPOKE');
   const totalFeeds = retailers.flatMap(r => r.feeds).length;
+
+  // ✅ Check if ANY master exists to disable the checkbox
+  const hasMaster = masterRetailers.length > 0;
 
   return (
     <main className="min-h-screen bg-[#111] p-8 font-sans pb-32">
@@ -316,17 +324,17 @@ export default function AdminFeedsPage() {
                 </div>
                 {/* ✅ UPDATED CHECKBOX LOGIC */}
                 <div className="pt-6">
-                   <label className={`flex items-center gap-3 ${masterRetailers.length > 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                   <label className={`flex items-center gap-3 ${hasMaster ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                       <input 
                           type="checkbox" 
                           checked={isMaster} 
-                          onChange={e => setIsMaster(e.target.checked)} 
-                          disabled={masterRetailers.length > 0} 
-                          className="w-5 h-5 rounded bg-[#111] border border-[#333] accent-blue-600" 
+                          onChange={e => !hasMaster && setIsMaster(e.target.checked)} 
+                          disabled={hasMaster} 
+                          className="w-5 h-5 rounded bg-[#111] border border-[#333] accent-blue-600 disabled:opacity-50" 
                       />
                       <span className="text-white font-bold text-sm">Is Master?</span>
                    </label>
-                   {masterRetailers.length > 0 && (
+                   {hasMaster && (
                        <p className="text-[#666] text-[10px] font-bold uppercase tracking-widest mt-2 pl-8">
                            Master already assigned
                        </p>
