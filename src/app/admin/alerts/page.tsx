@@ -62,7 +62,7 @@ export default function AlertsDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <StatCard label="Active Watchers" value={data?.stats?.active || 0} color="text-blue-500" desc="Waiting for drop" />
           <StatCard label="Notifications Sent" value={data?.stats?.triggered || 0} color="text-green-500" desc="Deals delivered" />
-          {/* ✅ UPDATED: Most Wanted card with scrolling */}
+          {/* ✅ Most Wanted Card */}
           <StatCard label="Most Wanted" value={data?.topProducts?.[0]?.title || 'No Data Yet'} color="text-white" desc="Top Product" isText />
         </div>
 
@@ -149,18 +149,37 @@ export default function AlertsDashboard() {
   );
 }
 
-// ✅ UPDATED STAT CARD WITH MARQUEE
+// ✅ FIX: ROBUST SCROLLING TEXT COMPONENT
 function StatCard({ label, value, color, desc, isText = false }: any) {
   return (
     <div className="bg-[#1a1a1a] border border-[#333] p-6 rounded-2xl shadow-lg relative overflow-hidden flex flex-col justify-center h-36">
-       <div className="relative z-10 w-full">
+       
+       {/* 1. Global CSS Injection for Animation (React Safe Way) */}
+       {isText && (
+         <style dangerouslySetInnerHTML={{__html: `
+            @keyframes scroll-text {
+                0% { transform: translateX(100%); }
+                100% { transform: translateX(-100%); }
+            }
+            .animate-scroll {
+                display: inline-block;
+                white-space: nowrap;
+                animation: scroll-text 15s linear infinite;
+            }
+            .animate-scroll:hover {
+                animation-play-state: paused;
+            }
+         `}} />
+       )}
+
+       <div className="relative z-10 w-full overflow-hidden">
          <h3 className="text-[#666] text-xs font-bold uppercase tracking-widest mb-2">{label}</h3>
          
          {isText ? (
-            <div className="w-full overflow-hidden relative h-10 flex items-center">
-                {/* Scrolling Animation */}
-                <div className="whitespace-nowrap animate-marquee absolute text-xl font-black text-white">
-                    {value} &nbsp;&nbsp; • &nbsp;&nbsp; {value} &nbsp;&nbsp; • &nbsp;&nbsp;
+            <div className="w-full relative h-10 flex items-center overflow-hidden">
+                {/* 2. Standard Div Structure for Scrolling */}
+                <div className="animate-scroll text-xl font-black text-white">
+                    {value} <span className="text-[#444] mx-4">•</span> {value} <span className="text-[#444] mx-4">•</span> {value}
                 </div>
             </div>
          ) : (
@@ -171,22 +190,6 @@ function StatCard({ label, value, color, desc, isText = false }: any) {
          
          <p className="text-[#444] text-xs mt-2 font-medium">{desc}</p>
        </div>
-
-       {/* INLINE CSS FOR MARQUEE */}
-       {isText && (
-         <style jsx>{`
-            @keyframes marquee {
-                0% { transform: translateX(100%); }
-                100% { transform: translateX(-100%); }
-            }
-            .animate-marquee {
-                animation: marquee 15s linear infinite;
-            }
-            .animate-marquee:hover {
-                animation-play-state: paused;
-            }
-         `}</style>
-       )}
     </div>
   );
 }
