@@ -149,46 +149,21 @@ export default function AlertsDashboard() {
   );
 }
 
-// ✅ FIX: SEAMLESS INFINITE SCROLL
+// ✅ FINAL FIX: SIMPLE CSS MARQUEE
 function StatCard({ label, value, color, desc, isText = false }: any) {
-  
-  // Create a repeated string pattern to ensure it fills the width
-  // We repeat the value 4 times in a "strip", then render that strip twice.
-  const stripContent = Array(4).fill(value).map((v, i) => (
-      <span key={i} className="mx-4">
-         {v} <span className="text-[#444] mx-4">•</span>
-      </span>
-  ));
-
   return (
     <div className="bg-[#1a1a1a] border border-[#333] p-6 rounded-2xl shadow-lg relative overflow-hidden flex flex-col justify-center h-36">
        
-       {isText && (
-         <style dangerouslySetInnerHTML={{__html: `
-            @keyframes scroll-text {
-                0% { transform: translateX(0); }
-                100% { transform: translateX(-50%); } /* Move only 50% (one full strip) */
-            }
-            .animate-scroll {
-                display: flex;
-                width: max-content;
-                animation: scroll-text 15s linear infinite;
-            }
-            .animate-scroll:hover {
-                animation-play-state: paused;
-            }
-         `}} />
-       )}
-
        <div className="relative z-10 w-full overflow-hidden">
          <h3 className="text-[#666] text-xs font-bold uppercase tracking-widest mb-2">{label}</h3>
          
          {isText ? (
             <div className="w-full relative h-10 flex items-center overflow-hidden">
-                <div className="animate-scroll text-xl font-black text-white">
-                    {/* Render the strip twice. When the first strip scrolls off, the second takes its place instantly. */}
-                    <div className="flex">{stripContent}</div>
-                    <div className="flex">{stripContent}</div>
+                {/* We use a simple 'whitespace-nowrap' container.
+                   If text is long, it will scroll. If short, it stays still.
+                */}
+                <div className="whitespace-nowrap animate-marquee text-xl font-black text-white">
+                    {value} &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; {value} &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; {value}
                 </div>
             </div>
          ) : (
@@ -199,6 +174,20 @@ function StatCard({ label, value, color, desc, isText = false }: any) {
          
          <p className="text-[#444] text-xs mt-2 font-medium">{desc}</p>
        </div>
+
+       {/* INJECT SIMPLE KEYFRAMES */}
+       {isText && (
+         <style jsx>{`
+            .animate-marquee {
+                display: inline-block;
+                animation: marquee 20s linear infinite;
+            }
+            @keyframes marquee {
+                0% { transform: translateX(0); }
+                100% { transform: translateX(-50%); } 
+            }
+         `}</style>
+       )}
     </div>
   );
 }
