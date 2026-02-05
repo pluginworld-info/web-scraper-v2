@@ -112,12 +112,9 @@ export default function AdminFeedsPage() {
         if (diff <= 0) {
             setTimeDisplay("Running Now...");
             
-            // ✅ THE FIX:
             // If it has been saying "Running Now" for 5 seconds...
             if (diff < -5000) {
                  // ...Try to fetch the NEW time.
-                 // If Google hasn't updated yet, this function will just fail silently
-                 // and we will try again in the next second.
                  fetchSchedulerInfo();
             }
         } else {
@@ -317,8 +314,23 @@ export default function AdminFeedsPage() {
                      <option value="XML">XML</option>
                    </select>
                 </div>
-                <div className="flex items-center pt-6">
-                   <label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={isMaster} onChange={e => setIsMaster(e.target.checked)} className="w-5 h-5 rounded bg-[#111] border border-[#333] accent-blue-600" /><span className="text-white font-bold text-sm">Is Master?</span></label>
+                {/* ✅ UPDATED CHECKBOX LOGIC */}
+                <div className="pt-6">
+                   <label className={`flex items-center gap-3 ${masterRetailers.length > 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                      <input 
+                          type="checkbox" 
+                          checked={isMaster} 
+                          onChange={e => setIsMaster(e.target.checked)} 
+                          disabled={masterRetailers.length > 0} 
+                          className="w-5 h-5 rounded bg-[#111] border border-[#333] accent-blue-600" 
+                      />
+                      <span className="text-white font-bold text-sm">Is Master?</span>
+                   </label>
+                   {masterRetailers.length > 0 && (
+                       <p className="text-[#666] text-[10px] font-bold uppercase tracking-widest mt-2 pl-8">
+                           Master already assigned
+                       </p>
+                   )}
                 </div>
               </div>
               <div className="pt-6 flex gap-3">
