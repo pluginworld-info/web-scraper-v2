@@ -5,9 +5,9 @@ import { CloudSchedulerClient } from '@google-cloud/scheduler';
 // Do not use 'import' or the red squiggly lines will never go away.
 const parser = require('cron-parser');
 
-const PROJECT_ID = process.env.GCLOUD_PROJECT_ID; 
-const LOCATION_ID = process.env.GCLOUD_LOCATION_ID || 'us-central1';
-const JOB_ID = process.env.GCLOUD_JOB_ID || 'daily-feed-sync'; 
+const PROJECT_ID = 'composite-haiku-480406-b5'; 
+const LOCATION_ID = 'us-central1';
+const JOB_ID = 'sync-product-feeds'; 
 
 const client = new CloudSchedulerClient();
 

@@ -28,7 +28,7 @@ export default function AdminFeedsPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // ✅ REAL SCHEDULER STATE
+  // REAL SCHEDULER STATE
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [timeDisplay, setTimeDisplay] = useState("Calculating...");
   const [schedulerState, setSchedulerState] = useState<string>("UNKNOWN");
@@ -57,7 +57,7 @@ export default function AdminFeedsPage() {
     }
   }, []);
 
-  // 2. ✅ FETCH REAL CLOUD SCHEDULER INFO
+  // 2. FETCH REAL CLOUD SCHEDULER INFO
   const fetchSchedulerInfo = useCallback(async () => {
     try {
         const res = await fetch('/api/admin/system/scheduler');
@@ -82,7 +82,7 @@ export default function AdminFeedsPage() {
     return () => clearInterval(interval);
   }, [fetchFeeds, fetchSchedulerInfo]);
 
-  // 3. ✅ LIVE COUNTDOWN LOGIC
+  // 3. LIVE COUNTDOWN LOGIC
   useEffect(() => {
     if (!nextRunTime) return;
 
@@ -105,30 +105,44 @@ export default function AdminFeedsPage() {
     return () => clearInterval(timer);
   }, [nextRunTime, fetchSchedulerInfo]);
 
-  // 4. ✅ REAL SYNC ALL LOGIC
+  // 4. REAL SYNC ALL LOGIC
   const handleSyncAll = async () => {
     if (!confirm("This will trigger a REAL scrape for every feed. Continue?")) return;
     
     setIsSyncingAll(true);
     setSyncProgress(0);
 
+    // Flatten feeds to make iteration easier
     const allFeeds = retailers.flatMap(r => r.feeds);
     let completed = 0;
 
     for (const feed of allFeeds) {
         try {
-            // CALL THE REAL SYNC ENDPOINT
+            // 1. ⚡ OPTIMISTIC UPDATE: Force UI to show "SYNCING" immediately
+            setRetailers(currentRetailers => 
+              currentRetailers.map(r => ({
+                ...r,
+                feeds: r.feeds.map(f => 
+                  f.id === feed.id ? { ...f, status: 'SYNCING' } : f
+                )
+              }))
+            );
+
+            // 2. Call the API (Waits for scrape to finish)
             await fetch('/api/admin/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ feedId: feed.id }),
             });
+
         } catch (e) {
             console.error(`Failed to sync ${feed.name}`);
         } finally {
             completed++;
             setSyncProgress(Math.round((completed / allFeeds.length) * 100));
-            await fetchFeeds(); // Update UI immediately to show 'SYNCING' status
+            
+            // 3. Refresh Data (Shows SUCCESS or ERROR)
+            await fetchFeeds(); 
         }
     }
 
@@ -183,7 +197,7 @@ export default function AdminFeedsPage() {
              <div className="flex items-center gap-4">
                 <h1 className="text-3xl font-black text-white tracking-tighter">Feed Monitor</h1>
                 
-                {/* ✅ REAL TIMER BADGE */}
+                {/* REAL TIMER BADGE */}
                 <div className="flex items-center gap-2 bg-[#1a1a1a] border border-[#333] px-3 py-1.5 rounded-lg">
                     <div className={`w-2 h-2 rounded-full ${schedulerState === 'ENABLED' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                     <span className="text-xs font-mono text-[#888] font-bold">
@@ -195,7 +209,7 @@ export default function AdminFeedsPage() {
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
-            {/* ✅ SYNC ALL BUTTON */}
+            {/* SYNC ALL BUTTON */}
             <button 
                 onClick={handleSyncAll}
                 disabled={isSyncingAll}
