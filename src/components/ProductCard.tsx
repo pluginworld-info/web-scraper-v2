@@ -18,8 +18,8 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
   const isHot = discount >= 40; 
 
   return (
-    // ✅ SMOOTH TRANSITION ON CONTAINER
-    <div className="group relative bg-[#1a1a1a] rounded-[32px] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 ease-in-out border border-white/5 flex flex-col h-full hover:border-primary/30 hover:-translate-y-2">
+    // ✅ FIXED: Removed 'hover:-translate-y-2' (caused flickering). Added 'scale' and 'transform-gpu' for smoothness.
+    <div className="group relative bg-[#1a1a1a] rounded-[32px] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 ease-out border border-white/5 flex flex-col h-full hover:border-primary/30 transform-gpu hover:scale-[1.02]">
       
       {/* IMAGE AREA */}
       <div className="relative aspect-square w-full overflow-hidden bg-[#111] p-4 z-0">
@@ -31,7 +31,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
             alt="" 
             fill 
             unoptimized={true}
-            className="object-cover blur-2xl opacity-30 scale-125 pointer-events-none transition-all duration-700 ease-in-out group-hover:opacity-50" 
+            className="object-cover blur-2xl opacity-30 scale-125 pointer-events-none transition-opacity duration-700 ease-out group-hover:opacity-50" 
           />
         )}
 
@@ -73,8 +73,8 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
               alt={product.title} 
               fill 
               unoptimized={true}
-              // ✅ SMOOTH ZOOM ANIMATION
-              className="object-contain p-4 group-hover:scale-110 transition-transform duration-500 ease-in-out drop-shadow-2xl"
+              // ✅ FIXED: Used 'transition-transform' specifically to avoid conflicts
+              className="object-contain p-4 group-hover:scale-110 transition-transform duration-500 ease-out drop-shadow-2xl"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-gray-600 font-medium italic bg-black/20 backdrop-blur-md rounded-xl">No Image</div>
@@ -94,7 +94,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
            onClick={() => onClick && onClick(product.id)}
         >
           {/* ✅ DYNAMIC HOVER COLOR */}
-          <h3 className="text-white font-bold text-sm mb-3 line-clamp-2 h-10 leading-tight group-hover:text-primary transition-colors duration-300 ease-in-out cursor-pointer uppercase tracking-tight">
+          <h3 className="text-white font-bold text-sm mb-3 line-clamp-2 h-10 leading-tight group-hover:text-primary transition-colors duration-300 ease-out cursor-pointer uppercase tracking-tight">
             {product.title}
           </h3>
         </Link>

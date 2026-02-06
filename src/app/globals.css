@@ -1,15 +1,10 @@
 @import "tailwindcss";
 
-* {
-  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
-}
-
 :root {
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 0, 0, 0;
   --background-end-rgb: 0, 0, 0;
 
-  /* ✅ DYNAMIC THEME VARIABLES (Controlled by Admin Settings) */
   /* These defaults will be overwritten by the Settings Page script */
   --primary: #2563eb; /* Default Blue */
   --accent: #ef4444;  /* Default Red */

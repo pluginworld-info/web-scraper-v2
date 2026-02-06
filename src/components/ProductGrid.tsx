@@ -16,7 +16,6 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
 
   const [products, setProducts] = useState(initialProducts);
   const [loading, setLoading] = useState(false);
-  // ✅ NEW STATE: Separate loader for "Load More" action
   const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState(initialSearch); 
   const [sort, setSort] = useState('newest');
@@ -85,7 +84,6 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
   });
 
   async function loadMore() {
-    // ✅ PREVENT DOUBLE CLICKS
     if (loadingMore) return;
     
     setLoadingMore(true);
@@ -116,7 +114,6 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
           <input 
             type="text" 
             placeholder="Search brands, categories..." 
-            // ✅ DYNAMIC FOCUS RING
             className="p-3 pl-10 bg-[#1a1a1a] border border-[#333] text-white rounded-xl w-full focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all font-medium placeholder-gray-600"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -140,7 +137,7 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
       {/* RELATIVE CONTAINER FOR GRID & LOADING OVERLAY */}
       <div className="relative min-h-[400px]">
         
-        {/* ✅ DYNAMIC LOADING OVERLAY (Search Only) */}
+        {/* LOADING OVERLAY */}
         {loading && (
             <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-3xl transition-all duration-300">
                 <div className="flex flex-col items-center">
@@ -150,8 +147,8 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
             </div>
         )}
 
-        {/* Grid - NOW SUPPORTS UP TO 6 COLUMNS ON WIDE SCREENS */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8 transition-all duration-500 ${loading ? 'opacity-20 scale-[0.98] blur-sm' : 'opacity-100 scale-100 blur-0'}`}>
+        {/* ✅ GRID UPDATED: Max 3 columns on large screens, 1 on mobile */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 transition-all duration-500 ease-out ${loading ? 'opacity-20 scale-[0.98] blur-sm' : 'opacity-100 scale-100 blur-0'}`}>
             {sortedProducts.length > 0 ? (
                 sortedProducts.map(product => (
                 <ProductCard 
@@ -182,7 +179,6 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
           <button
             onClick={loadMore}
             disabled={loadingMore}
-            // ✅ DYNAMIC BUTTON WITH SPINNER
             className="group relative inline-flex items-center justify-center gap-3 px-12 py-4 font-black text-white transition-all duration-300 bg-primary rounded-full hover:opacity-90 hover:scale-105 tracking-widest text-xs uppercase shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             {loadingMore ? (

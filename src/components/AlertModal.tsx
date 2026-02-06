@@ -167,4 +167,4 @@ export default function AlertModal({ product, currentPrice, isOpen, onClose }: A
     </div>,
     document.body
   );
-}
+} 

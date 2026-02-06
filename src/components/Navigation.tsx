@@ -13,6 +13,10 @@ interface NavigationProps {
 export default function Navigation({ brands: initialBrands, categories: initialCategories }: NavigationProps) {
   const pathname = usePathname();
   const [wishlistCount, setWishlistCount] = useState(0);
+  
+  const [isOpen, setIsOpen] = useState(false);
+  const [mobileBrandsOpen, setMobileBrandsOpen] = useState(false);
+  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
 
   const [menuBrands, setMenuBrands] = useState<string[]>(initialBrands || []);
   const [menuCategories, setMenuCategories] = useState<string[]>(initialCategories || []);
@@ -21,6 +25,20 @@ export default function Navigation({ brands: initialBrands, categories: initialC
     siteName: 'PluginDeals',
     logoUrl: ''
   });
+
+  useEffect(() => {
+    setIsOpen(false);
+    setMobileBrandsOpen(false);
+    setMobileCategoriesOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     async function fetchData() {
@@ -83,11 +101,11 @@ export default function Navigation({ brands: initialBrands, categories: initialC
 
   return (
     <header className="sticky top-0 z-50 w-full bg-[#111] text-white shadow-xl font-sans border-b border-white/5 backdrop-blur-md bg-opacity-95">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           
-          {/* LOGO SECTION */}
-          <div className="flex-shrink-0">
+          {/* LOGO */}
+          <div className="flex-shrink-0 relative z-50">
             <Link href="/" className="flex items-center gap-2 group">
               {siteSettings.logoUrl ? (
                 <div className="relative h-9 w-40">
@@ -108,8 +126,8 @@ export default function Navigation({ brands: initialBrands, categories: initialC
                     </>
                   ) : (
                     <>
-                       {siteSettings.siteName.slice(0, Math.ceil(siteSettings.siteName.length / 2))}
-                       <span className="text-primary">{siteSettings.siteName.slice(Math.ceil(siteSettings.siteName.length / 2))}</span>
+                        {siteSettings.siteName.slice(0, Math.ceil(siteSettings.siteName.length / 2))}
+                        <span className="text-primary">{siteSettings.siteName.slice(Math.ceil(siteSettings.siteName.length / 2))}</span>
                     </>
                   )}
                 </span>
@@ -119,7 +137,6 @@ export default function Navigation({ brands: initialBrands, categories: initialC
 
           {/* DESKTOP NAV */}
           <nav className="hidden md:flex space-x-8 h-full items-center">
-            
             <Link
               href="/"
               className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-primary flex items-center h-full border-b-2 transition-all ${
@@ -132,7 +149,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
             {/* BRANDS DROPDOWN */}
             <div className="group relative h-full flex items-center">
               <Link
-                href="/product"
+                href="/products"
                 className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-primary flex items-center gap-1 h-full border-b-2 transition-all ${
                   pathname === '/product' ? 'border-primary text-primary' : 'border-transparent text-gray-300'
                 }`}
@@ -146,7 +163,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
                   {menuBrands.length > 0 ? menuBrands.map((brand) => (
                     <Link 
                       key={brand} 
-                      href={`/product?search=${encodeURIComponent(brand)}`} 
+                      href={`/products?search=${encodeURIComponent(brand)}`} 
                       className="block px-4 py-3 text-xs font-bold uppercase hover:bg-primary/10 hover:text-primary transition-colors border-b border-white/5 last:border-0"
                     >
                       {brand}
@@ -174,7 +191,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
                    {menuCategories.length > 0 ? menuCategories.map((cat) => (
                     <Link 
                       key={cat} 
-                      href={`/product?search=${encodeURIComponent(cat)}`} 
+                      href={`/products?search=${encodeURIComponent(cat)}`} 
                       className="block px-4 py-3 text-xs font-bold uppercase hover:bg-primary/10 hover:text-primary transition-colors border-b border-white/5 last:border-0"
                     >
                       {cat}
@@ -186,7 +203,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
               </div>
             </div>
 
-            {/* WISHLIST (Using Accent Color) */}
+            {/* WISHLIST */}
             <Link
               href="/wishlist"
               className={`text-sm font-bold uppercase tracking-wider transition-all flex items-center gap-2 px-4 py-1.5 rounded-full border ${
@@ -210,32 +227,102 @@ export default function Navigation({ brands: initialBrands, categories: initialC
 
             {/* ADMIN ACCESS */}
             <Link
-              href="/admin"
+              href="/admin/login"
               className="text-gray-600 hover:text-primary transition-colors ml-2"
-              title="Admin Access"
             >
                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                </svg>
             </Link>
-
           </nav>
 
-          {/* MOBILE MENU */}
+          {/* MOBILE HAMBURGER ICON */}
           <div className="md:hidden flex items-center gap-4">
              <Link href="/wishlist" className="relative text-gray-300">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6" fill={wishlistCount > 0 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
                 {wishlistCount > 0 && <span className="absolute -top-1 -right-1 bg-accent w-2 h-2 rounded-full"></span>}
              </Link>
-             <Link href="/admin" className="text-gray-500">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-             </Link>
+             
+             <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="relative z-50 p-2 text-white focus:outline-none"
+             >
+                <div className="w-6 h-5 flex flex-col justify-between">
+                  <span className={`w-full h-0.5 bg-white rounded-full transition-all duration-300 ${isOpen ? 'rotate-45 translate-y-2.5 bg-primary' : ''}`}></span>
+                  <span className={`w-full h-0.5 bg-white rounded-full transition-all duration-300 ${isOpen ? 'opacity-0' : ''}`}></span>
+                  <span className={`w-full h-0.5 bg-white rounded-full transition-all duration-300 ${isOpen ? '-rotate-45 -translate-y-2 bg-primary' : ''}`}></span>
+                </div>
+             </button>
           </div>
         </div>
+      </div>
+
+      {/* ✅ MOBILE MENU OVERLAY: Title Case & Single Column Lists */}
+      <div className={`fixed inset-0 bg-black z-40 md:hidden transition-all duration-300 ease-in-out flex flex-col pt-24 px-6 overflow-y-auto h-[100dvh] w-full ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
+          {/* Removed 'uppercase' class from parent to allow "Home" to be mixed case */}
+          <div className="flex flex-col gap-5 text-lg font-bold tracking-widest text-white pb-20">
+             
+             {/* HOME LINK - Title Case */}
+             <Link href="/" className="hover:text-primary transition-colors border-b border-white/5 pb-3 uppercase">
+               Home
+             </Link>
+             
+             {/* BRANDS TOGGLE */}
+             <div className="border-b border-white/5 pb-3">
+               <button 
+                 onClick={() => setMobileBrandsOpen(!mobileBrandsOpen)}
+                 className="flex items-center justify-between w-full hover:text-primary transition-colors py-1 uppercase"
+               >
+                 Brands
+                 <svg className={`w-5 h-5 transition-transform duration-300 ${mobileBrandsOpen ? 'rotate-180 text-primary' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                 </svg>
+               </button>
+               
+               {/* Expandable List: Single Column (flex-col) & No View All */}
+               <div className={`overflow-hidden transition-all duration-500 ease-in-out ${mobileBrandsOpen ? 'max-h-[800px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
+                 <div className="flex flex-col gap-4 pl-4">
+                   {menuBrands.map(b => (
+                      <Link key={b} href={`/products?search=${b}`} className="text-sm font-medium text-gray-400 hover:text-white truncate">
+                        {b}
+                      </Link>
+                   ))}
+                 </div>
+               </div>
+             </div>
+
+             {/* CATEGORIES TOGGLE */}
+             <div className="border-b border-white/5 pb-3">
+               <button 
+                 onClick={() => setMobileCategoriesOpen(!mobileCategoriesOpen)}
+                 className="flex items-center justify-between w-full hover:text-primary transition-colors py-1 uppercase"
+               >
+                 Categories
+                 <svg className={`w-5 h-5 transition-transform duration-300 ${mobileCategoriesOpen ? 'rotate-180 text-primary' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                 </svg>
+               </button>
+               
+               {/* Expandable List: Single Column (flex-col) */}
+               <div className={`overflow-hidden transition-all duration-500 ease-in-out ${mobileCategoriesOpen ? 'max-h-[800px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
+                 <div className="flex flex-col gap-4 pl-4">
+                   {menuCategories.map(c => (
+                      <Link key={c} href={`/products?search=${c}`} className="text-sm font-medium text-gray-400 hover:text-white truncate">
+                        {c}
+                      </Link>
+                   ))}
+                 </div>
+               </div>
+             </div>
+
+             {/* ADMIN LINK */}
+             <Link href="/admin/login" className="flex items-center gap-2 text-gray-500 hover:text-white text-xs font-bold mt-2 uppercase">
+               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+               Admin Access
+             </Link>
+          </div>
       </div>
     </header>
   );
