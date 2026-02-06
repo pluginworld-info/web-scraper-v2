@@ -22,9 +22,15 @@ export default function AdminLogin() {
       });
 
       if (res.ok) {
-        // Success: Redirect to Dashboard
+        // ✅ 1. CRITICAL: Set the session flag so the Layout knows we are valid
+        sessionStorage.setItem('admin_authenticated', 'true');
+
+        // ✅ 2. CRITICAL: Fire the event to instantly unblur the Sidebar
+        window.dispatchEvent(new Event('admin-auth-change'));
+
+        // 3. Success: Redirect to Dashboard
         router.push('/admin');
-        router.refresh(); // Refresh middleware state
+        router.refresh(); 
       } else {
         setError('Invalid Security PIN');
       }
@@ -37,11 +43,10 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-[#111] border border-[#333] rounded-2xl p-8 shadow-2xl">
+      <div className="w-full max-w-sm bg-[#111] border border-[#333] rounded-2xl p-8 shadow-2xl relative z-50">
         
         {/* Header */}
         <div className="text-center mb-8">
-           {/* ✅ DYNAMIC LOGO COLOR */}
            <div className="w-12 h-12 bg-primary rounded-xl mx-auto flex items-center justify-center font-black text-2xl text-white mb-4 shadow-lg shadow-primary/40">
              P
            </div>
@@ -57,7 +62,6 @@ export default function AdminLogin() {
                value={password}
                onChange={(e) => setPassword(e.target.value)}
                placeholder="Security PIN"
-               // ✅ DYNAMIC FOCUS BORDER & RING
                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-center text-lg tracking-[0.5em] font-bold rounded-xl py-4 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:tracking-normal placeholder:font-normal placeholder:text-[#444]"
                autoFocus
              />
@@ -71,7 +75,6 @@ export default function AdminLogin() {
 
            <button
              disabled={loading || !password}
-             // ✅ DYNAMIC BUTTON COLOR
              className="w-full bg-primary text-white font-bold py-4 rounded-xl hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
            >
              {loading ? 'Verifying...' : 'Unlock Dashboard'}
