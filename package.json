@@ -25,6 +25,7 @@
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "react-dropzone": "^14.4.0",
     "react-quill-new": "^3.8.3",
     "recharts": "^2.15.4",
     "sharp": "^0.34.5",

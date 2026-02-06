@@ -1,12 +1,72 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
-
+import { useDropzone } from 'react-dropzone'; 
 import 'react-quill-new/dist/quill.snow.css';
+
+// Dynamic import for the editor
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
+// --- SUB-COMPONENT: IMAGE DROPZONE ---
+const ImageDropzone = ({ label, image, onImageChange }: { label: string, image: string | null, onImageChange: (val: string) => void }) => {
+  
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      // Convert to Base64 for instant preview & storage without external buckets
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) onImageChange(e.target.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  }, [onImageChange]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
+    onDrop, 
+    accept: { 'image/*': [] },
+    multiple: false 
+  });
+
+  return (
+    <div className="bg-[#1a1a1a] p-6 rounded-[32px] border border-white/5 transition-all hover:border-primary/30">
+      <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-4">{label}</label>
+      
+      {image ? (
+        <div className="relative w-full h-48 bg-[#111] rounded-2xl overflow-hidden group border border-white/10">
+          <img src={image} alt="Preview" className="w-full h-full object-contain p-4" />
+          {/* Overlay Remove Button */}
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+             <button 
+               onClick={(e) => { e.stopPropagation(); onImageChange(''); }}
+               className="bg-red-500 text-white px-6 py-2 rounded-full font-bold uppercase text-xs tracking-widest hover:bg-red-600 transform hover:scale-105 transition-all"
+             >
+               Remove Image
+             </button>
+          </div>
+        </div>
+      ) : (
+        <div 
+          {...getRootProps()} 
+          className={`border-2 border-dashed rounded-2xl h-32 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${
+            isDragActive ? 'border-primary bg-primary/10' : 'border-[#333] hover:border-[#555] bg-[#111]'
+          }`}
+        >
+          <input {...getInputProps()} />
+          <div className="text-3xl mb-2 text-[#444] group-hover:text-[#666]">
+            {isDragActive ? '📂' : '☁️'}
+          </div>
+          <p className="text-xs font-bold text-[#666] uppercase tracking-wide">
+            {isDragActive ? 'Drop file now' : 'Drag & Drop or Click to Upload'}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- MAIN PAGE COMPONENT ---
 export default function EmailTemplatePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -17,7 +77,6 @@ export default function EmailTemplatePage() {
     footerImageUrl: ''
   });
 
-  // 1. LOAD DATA
   useEffect(() => {
     fetch('/api/admin/email-template')
       .then(res => res.json())
@@ -27,7 +86,6 @@ export default function EmailTemplatePage() {
       });
   }, []);
 
-  // 2. SAVE DATA
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -44,151 +102,186 @@ export default function EmailTemplatePage() {
     }
   };
 
-  if (loading) return <div className="p-10 text-white animate-pulse">Loading Editor...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-[#444] font-black uppercase tracking-widest animate-pulse">Loading Template Engine...</div>;
 
   return (
-    <main className="min-h-screen bg-[#111] text-white p-4 md:p-12">
-      <div className="max-w-[1600px] mx-auto">
-        
-        <div className="flex justify-between items-end mb-10 border-b border-white/5 pb-8">
-          <div>
-            <h1 className="text-4xl font-black tracking-tighter">Email <span className="text-primary">Template</span></h1>
-            <p className="text-[#666] mt-2 font-medium">Design the automated price alert mailer.</p>
-          </div>
-          <button 
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-primary text-white px-10 py-4 rounded-full font-black uppercase text-xs tracking-widest hover:opacity-90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50"
-          >
-            {saving ? 'Saving...' : 'Save Template'}
-          </button>
+    <div className="max-w-[1600px] mx-auto pb-20">
+      
+      {/* PAGE HEADER */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 border-b border-white/5 pb-8 gap-6">
+        <div>
+          <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white">Email <span className="text-primary">Template</span></h1>
+          <p className="text-[#666] mt-2 font-medium text-lg">Design the automated price alert mailer.</p>
         </div>
+        <button 
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-primary text-white px-10 py-4 rounded-full font-black uppercase text-xs tracking-[0.2em] hover:opacity-90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50 hover:scale-105 active:scale-95"
+        >
+          {saving ? 'Saving Changes...' : 'Save Configuration'}
+        </button>
+      </div>
 
-        <div className="grid lg:grid-cols-2 gap-12">
+      <div className="grid lg:grid-cols-2 gap-12 items-start">
+        
+        {/* --- LEFT COLUMN: EDITOR --- */}
+        <div className="space-y-8">
           
-          {/* --- LEFT COLUMN: THE EDITOR --- */}
-          <div className="space-y-8">
+          {/* 1. SUBJECT */}
+          <div className="bg-[#1a1a1a] p-8 rounded-[32px] border border-white/5 shadow-2xl">
+            <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-4">Email Subject</label>
+            <input 
+              type="text"
+              value={template.subject}
+              onChange={(e) => setTemplate({...template, subject: e.target.value})}
+              className="w-full bg-[#111] border border-[#333] rounded-xl p-5 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-medium"
+              placeholder="e.g. Price Alert: {{product_name}}"
+            />
+          </div>
+
+          {/* 2. HEADER IMAGE DROPZONE */}
+          <ImageDropzone 
+            label="Header Banner" 
+            image={template.headerImageUrl} 
+            onImageChange={(val) => setTemplate(prev => ({ ...prev, headerImageUrl: val }))} 
+          />
+
+          {/* 3. RICH TEXT EDITOR */}
+          <div className="bg-[#1a1a1a] p-8 rounded-[32px] border border-white/5 shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+               <label className="text-[10px] font-black uppercase tracking-widest text-[#555]">Message Body</label>
+               <div className="flex gap-2">
+                 {['product_name', 'current_price', 'target_price', 'url'].map(tag => (
+                   <button 
+                     key={tag}
+                     onClick={() => setTemplate(prev => ({ ...prev, bodyHtml: prev.bodyHtml + ` {{${tag}}} ` }))}
+                     className="bg-[#222] hover:bg-primary hover:text-white text-[#666] text-[9px] font-bold px-2 py-1 rounded border border-[#333] transition-colors uppercase tracking-wider"
+                   >
+                     + {tag}
+                   </button>
+                 ))}
+               </div>
+            </div>
             
-            {/* SUBJECT LINE */}
-            <div className="bg-[#1a1a1a] p-6 rounded-3xl border border-white/5">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-3">Email Subject</label>
-              <input 
-                type="text"
-                value={template.subject}
-                onChange={(e) => setTemplate({...template, subject: e.target.value})}
-                className="w-full bg-[#111] border border-white/5 rounded-xl p-4 text-white focus:ring-2 focus:ring-primary outline-none transition-all"
-                placeholder="Use {{product_name}} for dynamic title"
+            <div className="bg-white rounded-2xl overflow-hidden text-black editor-wrapper">
+              <ReactQuill 
+                theme="snow" 
+                value={template.bodyHtml} 
+                onChange={(content) => setTemplate({...template, bodyHtml: content})}
+                modules={{
+                  toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'align': [] }],
+                    ['link', 'clean']
+                  ],
+                }}
               />
             </div>
-
-            {/* HEADER IMAGE */}
-            <div className="bg-[#1a1a1a] p-6 rounded-3xl border border-white/5">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-3">Header Banner (URL)</label>
-              <div className="flex gap-4">
-                <input 
-                  type="text"
-                  value={template.headerImageUrl || ''}
-                  onChange={(e) => setTemplate({...template, headerImageUrl: e.target.value})}
-                  className="flex-grow bg-[#111] border border-white/5 rounded-xl p-4 text-white focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
-                  placeholder="Paste image URL here..."
-                />
-                {template.headerImageUrl && (
-                  <button onClick={() => setTemplate({...template, headerImageUrl: ''})} className="text-red-500 text-xs font-bold uppercase underline">Remove</button>
-                )}
-              </div>
-            </div>
-
-            {/* RICH TEXT BODY */}
-            <div className="bg-[#1a1a1a] p-6 rounded-3xl border border-white/5">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-3">Email Body Content</label>
-              <div className="bg-white rounded-xl overflow-hidden text-black">
-                <ReactQuill 
-                  theme="snow" 
-                  value={template.bodyHtml} 
-                  onChange={(content) => setTemplate({...template, bodyHtml: content})}
-                  modules={{
-                    toolbar: [
-                      [{ 'header': [1, 2, false] }],
-                      ['bold', 'italic', 'underline', 'strike'],
-                      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                      ['link', 'clean']
-                    ],
-                  }}
-                />
-              </div>
-              <div className="mt-4 flex gap-2 flex-wrap">
-                {['product_name', 'current_price', 'target_price', 'url'].map(tag => (
-                  <span key={tag} className="bg-primary/10 text-primary text-[9px] font-black px-2 py-1 rounded-md border border-primary/20">
-                    {'{{'}{tag}{'}}'}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* FOOTER IMAGE */}
-            <div className="bg-[#1a1a1a] p-6 rounded-3xl border border-white/5">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-3">Footer Image / Signature (URL)</label>
-              <div className="flex gap-4">
-                <input 
-                  type="text"
-                  value={template.footerImageUrl || ''}
-                  onChange={(e) => setTemplate({...template, footerImageUrl: e.target.value})}
-                  className="flex-grow bg-[#111] border border-white/5 rounded-xl p-4 text-white focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
-                  placeholder="Paste image URL here..."
-                />
-                {template.footerImageUrl && (
-                  <button onClick={() => setTemplate({...template, footerImageUrl: ''})} className="text-red-500 text-xs font-bold uppercase underline">Remove</button>
-                )}
-              </div>
-            </div>
           </div>
 
-          {/* --- RIGHT COLUMN: LIVE PREVIEW --- */}
-          <div className="sticky top-12 h-fit">
-             <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-4">Inbox Preview (Simulated)</label>
-             <div className="bg-white rounded-[40px] p-2 shadow-2xl border-[8px] border-[#222] overflow-hidden w-full max-w-[400px] mx-auto min-h-[700px] flex flex-col">
-                <div className="bg-gray-100 p-4 text-black text-center border-b border-gray-200">
-                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Subject Line</p>
-                   <p className="text-sm font-bold truncate">
-                      {template.subject.replace('{{product_name}}', 'Serum Synthesizer').replace('{{current_price}}', '$99.00')}
-                   </p>
-                </div>
-                
-                <div className="bg-white flex-grow p-6 text-black flex flex-col overflow-y-auto custom-scrollbar-light">
-                   {/* Preview Header */}
-                   {template.headerImageUrl && (
-                     <div className="relative w-full h-24 mb-6">
-                        <img src={template.headerImageUrl} alt="Header" className="w-full h-full object-contain" />
-                     </div>
-                   )}
+          {/* 4. FOOTER IMAGE DROPZONE */}
+          <ImageDropzone 
+            label="Footer Signature" 
+            image={template.footerImageUrl} 
+            onImageChange={(val) => setTemplate(prev => ({ ...prev, footerImageUrl: val }))} 
+          />
+        </div>
 
-                   {/* Preview Body */}
+        {/* --- RIGHT COLUMN: PREVIEW --- */}
+        <div className="sticky top-8">
+           <div className="flex items-center gap-3 mb-6">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[#555]">Live Mobile Preview</label>
+           </div>
+           
+           {/* PHONE FRAME */}
+           <div className="bg-white rounded-[40px] p-2 shadow-[0_0_50px_rgba(0,0,0,0.5)] border-[8px] border-[#222] overflow-hidden w-full max-w-[420px] mx-auto min-h-[800px] flex flex-col relative">
+              
+              {/* Fake Status Bar */}
+              <div className="absolute top-0 left-0 right-0 h-6 bg-black z-10 flex justify-between px-6 items-center">
+                 <span className="text-[9px] text-white font-bold">9:41</span>
+                 <div className="flex gap-1">
+                    <div className="w-3 h-3 bg-white rounded-full opacity-20"></div>
+                    <div className="w-3 h-3 bg-white rounded-full opacity-20"></div>
+                 </div>
+              </div>
+
+              {/* Email Client Header */}
+              <div className="bg-gray-50 pt-10 pb-4 px-5 border-b border-gray-100">
+                 <h3 className="font-bold text-gray-900 text-lg leading-tight mb-1">
+                    {template.subject.replace('{{product_name}}', 'Serum Synth') || 'No Subject'}
+                 </h3>
+                 <div className="flex items-center gap-3 mt-3">
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs">P</div>
+                    <div className="flex flex-col">
+                       <span className="text-xs font-bold text-gray-900">Plugin Deals Alerts</span>
+                       <span className="text-[10px] text-gray-500">to me</span>
+                    </div>
+                 </div>
+              </div>
+              
+              {/* Email Content Area */}
+              <div className="flex-grow overflow-y-auto custom-scrollbar-light bg-white">
+                 {/* Preview Header */}
+                 {template.headerImageUrl && (
+                   <img src={template.headerImageUrl} alt="Header" className="w-full h-auto object-cover" />
+                 )}
+
+                 <div className="p-6">
                    <div 
-                    className="prose prose-sm max-w-none text-black mb-8 email-body-preview"
-                    dangerouslySetInnerHTML={{ __html: template.bodyHtml
-                      .replace(/{{product_name}}/g, '<strong>Serum Synthesizer</strong>')
-                      .replace(/{{current_price}}/g, '<span style="color:red; font-weight:bold">$99.00</span>')
-                      .replace(/{{target_price}}/g, '<strong>$100.00</strong>')
+                    className="prose prose-sm max-w-none text-gray-800 email-preview-content"
+                    dangerouslySetInnerHTML={{ __html: (template.bodyHtml || '')
+                      .replace(/{{product_name}}/g, '<strong>Serum Synth</strong>')
+                      .replace(/{{current_price}}/g, '<span style="color:#ef4444; font-weight:bold">$99.00</span>')
+                      .replace(/{{target_price}}/g, '<strong>$149.00</strong>')
+                      .replace(/{{url}}/g, '#')
                     }} 
                    />
 
-                   {/* Call to Action Button (Static Preview) */}
-                   <div className="bg-primary text-white text-center py-3 rounded-lg font-black text-sm uppercase mb-10">
-                      View Deal Now
+                   <div className="mt-8 text-center">
+                      <span className="inline-block bg-primary text-white px-8 py-3 rounded-full font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary/30">
+                        View Deal Now
+                      </span>
                    </div>
+                 </div>
 
-                   {/* Preview Footer */}
-                   {template.footerImageUrl && (
-                     <div className="mt-auto border-t border-gray-100 pt-6">
-                        <img src={template.footerImageUrl} alt="Footer" className="w-full h-auto object-contain max-h-20" />
-                     </div>
-                   )}
-                </div>
-             </div>
-          </div>
-
+                 {/* Preview Footer */}
+                 {template.footerImageUrl && (
+                   <div className="mt-8 border-t border-gray-100 pt-6 px-6 pb-6">
+                      <img src={template.footerImageUrl} alt="Footer" className="w-full h-auto object-contain max-h-16 mx-auto opacity-80" />
+                   </div>
+                 )}
+                 
+                 <div className="pb-10 text-center text-[10px] text-gray-400 px-6 mt-4">
+                    © 2024 Plugin Deals Tracker. <br/>You are receiving this because you subscribed to price alerts.
+                 </div>
+              </div>
+           </div>
         </div>
+
       </div>
-    </main>
+
+      {/* CSS OVERRIDES FOR EDITOR HEIGHT */}
+      <style jsx global>{`
+        .ql-container.ql-snow {
+          min-height: 350px !important;
+          background-color: #fff;
+          font-size: 16px;
+          border-bottom-left-radius: 16px;
+          border-bottom-right-radius: 16px;
+        }
+        .ql-toolbar.ql-snow {
+          background-color: #f3f3f3;
+          border-top-left-radius: 16px;
+          border-top-right-radius: 16px;
+          border-color: #e5e7eb;
+        }
+        .email-preview-content p { margin-bottom: 1em; line-height: 1.6; }
+        .email-preview-content h1 { font-size: 1.5em; font-weight: 800; margin-bottom: 0.5em; }
+        .email-preview-content ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+      `}</style>
+    </div>
   );
 }
