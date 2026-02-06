@@ -5,16 +5,50 @@ import dynamic from 'next/dynamic';
 import { useDropzone } from 'react-dropzone'; 
 import 'react-quill-new/dist/quill.snow.css';
 
-// Dynamic import for the editor
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
+
+// --- SUB-COMPONENT: CUSTOM TOAST NOTIFICATION ---
+const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error', onClose: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000); // Auto dismiss after 3s
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed bottom-8 right-8 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+      <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl border shadow-2xl backdrop-blur-md ${
+        type === 'success' 
+          ? 'bg-[#1a1a1a]/90 border-green-500/30 shadow-green-500/10' 
+          : 'bg-[#1a1a1a]/90 border-red-500/30 shadow-red-500/10'
+      }`}>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+          type === 'success' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
+        }`}>
+          {type === 'success' ? (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+          )}
+        </div>
+        <div>
+          <h4 className={`text-sm font-black uppercase tracking-wider ${type === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+            {type === 'success' ? 'Success' : 'Error'}
+          </h4>
+          <p className="text-white text-xs font-medium mt-0.5">{message}</p>
+        </div>
+        <button onClick={onClose} className="ml-4 text-gray-500 hover:text-white transition-colors">
+           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+  );
+};
 
 // --- SUB-COMPONENT: IMAGE DROPZONE ---
 const ImageDropzone = ({ label, image, onImageChange }: { label: string, image: string | null, onImageChange: (val: string) => void }) => {
-  
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
-      // Convert to Base64 for instant preview & storage without external buckets
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) onImageChange(e.target.result as string);
@@ -36,11 +70,10 @@ const ImageDropzone = ({ label, image, onImageChange }: { label: string, image: 
       {image ? (
         <div className="relative w-full h-48 bg-[#111] rounded-2xl overflow-hidden group border border-white/10">
           <img src={image} alt="Preview" className="w-full h-full object-contain p-4" />
-          {/* Overlay Remove Button */}
           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
              <button 
                onClick={(e) => { e.stopPropagation(); onImageChange(''); }}
-               className="bg-red-500 text-white px-6 py-2 rounded-full font-bold uppercase text-xs tracking-widest hover:bg-red-600 transform hover:scale-105 transition-all"
+               className="bg-red-500 text-white px-6 py-2 rounded-full font-bold uppercase text-xs tracking-widest hover:bg-red-600 transform hover:scale-105 transition-all shadow-lg shadow-red-500/20"
              >
                Remove Image
              </button>
@@ -54,10 +87,10 @@ const ImageDropzone = ({ label, image, onImageChange }: { label: string, image: 
           }`}
         >
           <input {...getInputProps()} />
-          <div className="text-3xl mb-2 text-[#444] group-hover:text-[#666]">
+          <div className="text-3xl mb-2 text-[#444] group-hover:text-[#666] transition-colors">
             {isDragActive ? '📂' : '☁️'}
           </div>
-          <p className="text-xs font-bold text-[#666] uppercase tracking-wide">
+          <p className="text-xs font-bold text-[#666] uppercase tracking-wide group-hover:text-[#888] transition-colors">
             {isDragActive ? 'Drop file now' : 'Drag & Drop or Click to Upload'}
           </p>
         </div>
@@ -66,10 +99,10 @@ const ImageDropzone = ({ label, image, onImageChange }: { label: string, image: 
   );
 };
 
-// --- MAIN PAGE COMPONENT ---
 export default function EmailTemplatePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [template, setTemplate] = useState({
     subject: '',
     bodyHtml: '',
@@ -94,9 +127,14 @@ export default function EmailTemplatePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(template),
       });
-      if (res.ok) alert("Template saved successfully!");
+      if (res.ok) {
+        // ✅ REPLACED ALERT WITH TOAST
+        setToast({ message: "Template updated successfully.", type: 'success' });
+      } else {
+        throw new Error();
+      }
     } catch (err) {
-      alert("Failed to save.");
+      setToast({ message: "Failed to save configuration.", type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -118,7 +156,7 @@ export default function EmailTemplatePage() {
           disabled={saving}
           className="bg-primary text-white px-10 py-4 rounded-full font-black uppercase text-xs tracking-[0.2em] hover:opacity-90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50 hover:scale-105 active:scale-95"
         >
-          {saving ? 'Saving Changes...' : 'Save Configuration'}
+          {saving ? 'Saving...' : 'Save Configuration'}
         </button>
       </div>
 
@@ -127,7 +165,7 @@ export default function EmailTemplatePage() {
         {/* --- LEFT COLUMN: EDITOR --- */}
         <div className="space-y-8">
           
-          {/* 1. SUBJECT */}
+          {/* SUBJECT */}
           <div className="bg-[#1a1a1a] p-8 rounded-[32px] border border-white/5 shadow-2xl">
             <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-4">Email Subject</label>
             <input 
@@ -139,14 +177,14 @@ export default function EmailTemplatePage() {
             />
           </div>
 
-          {/* 2. HEADER IMAGE DROPZONE */}
+          {/* HEADER IMAGE */}
           <ImageDropzone 
             label="Header Banner" 
             image={template.headerImageUrl} 
             onImageChange={(val) => setTemplate(prev => ({ ...prev, headerImageUrl: val }))} 
           />
 
-          {/* 3. RICH TEXT EDITOR */}
+          {/* EDITOR */}
           <div className="bg-[#1a1a1a] p-8 rounded-[32px] border border-white/5 shadow-2xl">
             <div className="flex justify-between items-center mb-6">
                <label className="text-[10px] font-black uppercase tracking-widest text-[#555]">Message Body</label>
@@ -181,7 +219,7 @@ export default function EmailTemplatePage() {
             </div>
           </div>
 
-          {/* 4. FOOTER IMAGE DROPZONE */}
+          {/* FOOTER IMAGE */}
           <ImageDropzone 
             label="Footer Signature" 
             image={template.footerImageUrl} 
@@ -196,10 +234,7 @@ export default function EmailTemplatePage() {
               <label className="text-[10px] font-black uppercase tracking-widest text-[#555]">Live Mobile Preview</label>
            </div>
            
-           {/* PHONE FRAME */}
            <div className="bg-white rounded-[40px] p-2 shadow-[0_0_50px_rgba(0,0,0,0.5)] border-[8px] border-[#222] overflow-hidden w-full max-w-[420px] mx-auto min-h-[800px] flex flex-col relative">
-              
-              {/* Fake Status Bar */}
               <div className="absolute top-0 left-0 right-0 h-6 bg-black z-10 flex justify-between px-6 items-center">
                  <span className="text-[9px] text-white font-bold">9:41</span>
                  <div className="flex gap-1">
@@ -208,7 +243,6 @@ export default function EmailTemplatePage() {
                  </div>
               </div>
 
-              {/* Email Client Header */}
               <div className="bg-gray-50 pt-10 pb-4 px-5 border-b border-gray-100">
                  <h3 className="font-bold text-gray-900 text-lg leading-tight mb-1">
                     {template.subject.replace('{{product_name}}', 'Serum Synth') || 'No Subject'}
@@ -222,9 +256,7 @@ export default function EmailTemplatePage() {
                  </div>
               </div>
               
-              {/* Email Content Area */}
               <div className="flex-grow overflow-y-auto custom-scrollbar-light bg-white">
-                 {/* Preview Header */}
                  {template.headerImageUrl && (
                    <img src={template.headerImageUrl} alt="Header" className="w-full h-auto object-cover" />
                  )}
@@ -247,7 +279,6 @@ export default function EmailTemplatePage() {
                    </div>
                  </div>
 
-                 {/* Preview Footer */}
                  {template.footerImageUrl && (
                    <div className="mt-8 border-t border-gray-100 pt-6 px-6 pb-6">
                       <img src={template.footerImageUrl} alt="Footer" className="w-full h-auto object-contain max-h-16 mx-auto opacity-80" />
@@ -263,7 +294,9 @@ export default function EmailTemplatePage() {
 
       </div>
 
-      {/* CSS OVERRIDES FOR EDITOR HEIGHT */}
+      {/* ✅ RENDER TOAST IF ACTIVE */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
       <style jsx global>{`
         .ql-container.ql-snow {
           min-height: 350px !important;
