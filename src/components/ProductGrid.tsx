@@ -16,6 +16,8 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
 
   const [products, setProducts] = useState(initialProducts);
   const [loading, setLoading] = useState(false);
+  // ✅ NEW STATE: Separate loader for "Load More" action
+  const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState(initialSearch); 
   const [sort, setSort] = useState('newest');
   const [displayCount, setDisplayCount] = useState(totalCount);
@@ -83,6 +85,10 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
   });
 
   async function loadMore() {
+    // ✅ PREVENT DOUBLE CLICKS
+    if (loadingMore) return;
+    
+    setLoadingMore(true);
     try {
       const skip = products.length;
       const response = await fetch(`/api/products?skip=${skip}&search=${encodeURIComponent(search)}`); 
@@ -93,6 +99,8 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
       }
     } catch (error) {
       console.error("Failed to load more products:", error);
+    } finally {
+      setLoadingMore(false);
     }
   }
 
@@ -119,7 +127,6 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
         </div>
 
         <select 
-          // ✅ DYNAMIC FOCUS RING
           className="p-3 bg-[#1a1a1a] border border-[#333] text-white rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none cursor-pointer font-bold text-xs uppercase tracking-widest"
           onChange={(e) => setSort(e.target.value)}
           value={sort}
@@ -133,19 +140,18 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
       {/* RELATIVE CONTAINER FOR GRID & LOADING OVERLAY */}
       <div className="relative min-h-[400px]">
         
-        {/* ✅ DYNAMIC LOADING OVERLAY */}
+        {/* ✅ DYNAMIC LOADING OVERLAY (Search Only) */}
         {loading && (
             <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-3xl transition-all duration-300">
                 <div className="flex flex-col items-center">
-                    {/* Spinner uses primary color */}
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4 shadow-[0_0_15px_rgba(var(--primary-rgb),0.4)]"></div>
                     <span className="text-white font-black tracking-[0.2em] uppercase text-xs animate-pulse">Searching...</span>
                 </div>
             </div>
         )}
 
-        {/* Grid */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 transition-all duration-500 ${loading ? 'opacity-20 scale-[0.98] blur-sm' : 'opacity-100 scale-100 blur-0'}`}>
+        {/* Grid - NOW SUPPORTS UP TO 6 COLUMNS ON WIDE SCREENS */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8 transition-all duration-500 ${loading ? 'opacity-20 scale-[0.98] blur-sm' : 'opacity-100 scale-100 blur-0'}`}>
             {sortedProducts.length > 0 ? (
                 sortedProducts.map(product => (
                 <ProductCard 
@@ -160,7 +166,6 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
                         <p className="text-gray-500 text-lg font-medium">No products found matching "{search}"</p>
                         <button 
                           onClick={() => setSearch('')} 
-                          // ✅ DYNAMIC TEXT LINK
                           className="mt-4 text-primary font-black uppercase text-xs tracking-widest hover:opacity-80 transition-opacity underline decoration-2 underline-offset-4"
                         >
                           Clear Search
@@ -171,15 +176,26 @@ export default function ProductGrid({ initialProducts, totalCount }: ProductGrid
         </div>
       </div>
 
-      {/* Load More */}
+      {/* Load More Button */}
       {products.length < displayCount && !loading && (
         <div className="mt-20 flex justify-center pb-12">
           <button
             onClick={loadMore}
-            // ✅ DYNAMIC PRIMARY BUTTON
-            className="group relative inline-flex items-center justify-center px-12 py-4 font-black text-white transition-all duration-300 bg-primary rounded-full hover:opacity-90 hover:scale-105 tracking-widest text-xs uppercase shadow-xl shadow-primary/20"
+            disabled={loadingMore}
+            // ✅ DYNAMIC BUTTON WITH SPINNER
+            className="group relative inline-flex items-center justify-center gap-3 px-12 py-4 font-black text-white transition-all duration-300 bg-primary rounded-full hover:opacity-90 hover:scale-105 tracking-widest text-xs uppercase shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
-            LOAD MORE PLUGINS
+            {loadingMore ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                LOADING...
+              </>
+            ) : (
+              'LOAD MORE PLUGINS'
+            )}
           </button>
         </div>
       )}

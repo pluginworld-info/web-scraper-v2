@@ -11,16 +11,15 @@ interface ProductCardProps {
 export default function ProductCard({ product, onClick }: ProductCardProps) {
   const viewCount = product.views?.length || 0;
   
-  // LOGIC: Same as Detail Page
   const lowestPrice = product.lowestPrice || product.minPrice || 0;
   const originalPrice = product.maxRegularPrice || product.originalPrice || lowestPrice;
   const discount = product.maxDiscount || (originalPrice > lowestPrice ? Math.round(((originalPrice - lowestPrice) / originalPrice) * 100) : 0);
   
-  // Hot = 40% off or more
   const isHot = discount >= 40; 
 
   return (
-    <div className="group relative bg-[#1a1a1a] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-white/5 flex flex-col h-full hover:border-primary/30">
+    // ✅ SMOOTH TRANSITION ON CONTAINER
+    <div className="group relative bg-[#1a1a1a] rounded-[32px] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 ease-in-out border border-white/5 flex flex-col h-full hover:border-primary/30 hover:-translate-y-2">
       
       {/* IMAGE AREA */}
       <div className="relative aspect-square w-full overflow-hidden bg-[#111] p-4 z-0">
@@ -32,7 +31,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
             alt="" 
             fill 
             unoptimized={true}
-            className="object-cover blur-xl opacity-40 scale-125 pointer-events-none" 
+            className="object-cover blur-2xl opacity-30 scale-125 pointer-events-none transition-all duration-700 ease-in-out group-hover:opacity-50" 
           />
         )}
 
@@ -74,7 +73,8 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
               alt={product.title} 
               fill 
               unoptimized={true}
-              className="object-contain p-2 group-hover:scale-105 transition-transform duration-500 drop-shadow-2xl"
+              // ✅ SMOOTH ZOOM ANIMATION
+              className="object-contain p-4 group-hover:scale-110 transition-transform duration-500 ease-in-out drop-shadow-2xl"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-gray-600 font-medium italic bg-black/20 backdrop-blur-md rounded-xl">No Image</div>
@@ -83,9 +83,9 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
       </div>
 
       {/* CONTENT AREA */}
-      <div className="p-5 flex-grow flex flex-col items-center text-center relative z-20 bg-[#1a1a1a]">
+      <div className="p-6 flex-grow flex flex-col items-center text-center relative z-20 bg-[#1a1a1a]">
         {/* ✅ DYNAMIC BRAND COLOR */}
-        <span className="text-[10px] font-black uppercase text-primary tracking-widest mb-1">
+        <span className="text-[10px] font-black uppercase text-primary tracking-widest mb-2 transition-colors duration-300">
           {product.brand || 'Brand'}
         </span>
 
@@ -94,46 +94,45 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
            onClick={() => onClick && onClick(product.id)}
         >
           {/* ✅ DYNAMIC HOVER COLOR */}
-          <h3 className="text-white font-bold text-sm mb-2 line-clamp-2 h-10 leading-tight group-hover:text-primary transition-colors cursor-pointer">
+          <h3 className="text-white font-bold text-sm mb-3 line-clamp-2 h-10 leading-tight group-hover:text-primary transition-colors duration-300 ease-in-out cursor-pointer uppercase tracking-tight">
             {product.title}
           </h3>
         </Link>
 
         {/* STAR RATING */}
-        <div className="flex items-center gap-1 mb-4">
-          <div className="flex text-yellow-500">
+        <div className="flex items-center gap-1 mb-5 opacity-60 group-hover:opacity-100 transition-opacity duration-500">
+          <div className="flex text-yellow-500 gap-0.5">
              {[...Array(5)].map((_, i) => (
-               <svg key={i} className={`w-3 h-3 ${i < Math.floor(parseFloat(product.avgRating || "0")) ? 'fill-current' : 'text-gray-800 fill-current'}`} viewBox="0 0 20 20">
+               <svg key={i} className={`w-3 h-3 ${i < Math.floor(parseFloat(product.avgRating || "0")) ? 'fill-current' : 'text-[#333] fill-current'}`} viewBox="0 0 20 20">
                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                </svg>
              ))}
           </div>
-          <span className="text-[10px] text-[#555] font-bold uppercase tracking-tighter">
+          <span className="text-[10px] text-[#555] font-bold uppercase tracking-tighter ml-1">
             ({product.reviews?.length || product.reviewCount || 0})
           </span>
         </div>
 
         {/* PRICING */}
         <div className="mb-6">
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-3">
             {discount > 0 && (
-              <span className="text-gray-600 line-through text-xs font-bold">
+              <span className="text-[#555] line-through text-xs font-bold transition-colors duration-500 group-hover:text-[#666]">
                 ${originalPrice.toFixed(2)}
               </span>
             )}
-            <span className="text-red-500 font-black text-xl tracking-tighter">
+            <span className="text-white font-black text-2xl tracking-tighter group-hover:text-primary transition-colors duration-300">
               ${lowestPrice.toFixed(2)}
             </span>
           </div>
         </div>
 
         {/* BUTTONS */}
-        <div className="grid grid-cols-2 gap-3 w-full mt-auto">
+        <div className="grid grid-cols-2 gap-3 w-full mt-auto opacity-80 group-hover:opacity-100 transition-opacity duration-300">
            <Link 
              href={`/product/${product.slug}`}
              onClick={() => onClick && onClick(product.id)}
-             // ✅ DYNAMIC BORDER/TEXT HOVER
-             className="bg-white/5 hover:bg-white/10 text-white text-[10px] font-black py-2.5 rounded-full border border-white/5 transition-colors flex items-center justify-center tracking-widest uppercase"
+             className="bg-white/5 hover:bg-white/10 text-white text-[10px] font-black py-3 rounded-xl border border-white/5 transition-all flex items-center justify-center tracking-widest uppercase hover:scale-105 active:scale-95"
            >
              View
            </Link>
