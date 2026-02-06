@@ -277,3 +277,20 @@ enum FeedStatus {
   SUCCESS
   ERROR
 }
+
+// --- EMAIL & CAMPAIGN MODELS ---
+
+model EmailTemplate {
+  id              String   @id @default(cuid())
+  
+  // Design Elements
+  headerImageUrl  String?
+  footerImageUrl  String?
+  
+  // Content
+  subject         String   @default("Price Drop Alert: {{product_name}} is now {{current_price}}!")
+  bodyHtml        String   @default("<h1>Good news!</h1><p>Your price alert for <strong>{{product_name}}</strong> has been triggered.</p>")
+  
+  // Meta
+  updatedAt       DateTime @updatedAt
+}
