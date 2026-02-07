@@ -59,4 +59,4 @@ export async function DELETE(req: Request) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }
-}
+} 

@@ -1,6 +1,7 @@
-import { prisma } from '../../db/prisma'; // Keep your working relative import
+import { prisma } from '../../db/prisma'; 
 import { fetchPage } from './fetcher';
 import * as cheerio from 'cheerio';
+import { sendPriceAlertEmail } from '../../mailer';
 
 export interface ScrapedProduct {
   url: string;
@@ -38,8 +39,6 @@ export abstract class BaseScraper {
     
     if (result.status !== 200) {
       console.error(`⛔ Stopping scrape because status is ${result.status} (Expected 200)`);
-      // If it's a 403, it means we are still being blocked.
-      // If it's a 404, the URL is wrong.
       return;
     }
     // --- DEBUGGING BLOCK END ---
@@ -50,7 +49,6 @@ export abstract class BaseScraper {
 
     if (!data) {
       console.error(`❌ Failed to parse data (Selectors didn't match anything)`);
-      // Optional: Log a snippet to see what we actually got
       console.log(`   HTML Snippet: ${result.data.substring(0, 500)}...`);
       return;
     }
@@ -64,6 +62,7 @@ export abstract class BaseScraper {
   private async saveData(data: ScrapedProduct, retailerId: string) {
     console.log(`💾 Saving: ${data.title} - $${data.price}`);
 
+    // 1. Upsert Listing
     const listing = await prisma.listing.upsert({
       where: { url: data.url },
       update: {
@@ -82,11 +81,63 @@ export abstract class BaseScraper {
       },
     });
 
+    // 2. Save Price History
     await prisma.priceHistory.create({
       data: {
         price: data.price,
         listingId: listing.id,
       },
     });
+
+    // ---------------------------------------------------------
+    // ⚡ 3. INSTANT ALERT TRIGGER (The Fix)
+    // ---------------------------------------------------------
+    
+    // Only check alerts if this listing is actually linked to a Product
+    if (listing.productId) {
+        
+        // Find alerts for this product where:
+        // A) The Alert hasn't been fired yet (isTriggered: false)
+        // B) The User's Target Price is GREATER OR EQUAL to the new scraped price
+        const activeAlerts = await prisma.priceAlert.findMany({
+            where: {
+                productId: listing.productId,
+                isTriggered: false,
+                targetPrice: { gte: data.price } 
+            },
+            include: { product: true } // Include product details for the email
+        });
+
+        if (activeAlerts.length > 0) {
+            console.log(`⚡ Found ${activeAlerts.length} matching alerts! Sending emails...`);
+
+            // Send all emails in parallel
+            await Promise.all(activeAlerts.map(async (alert) => {
+                try {
+                    // Send the email
+                    await sendPriceAlertEmail(
+                        alert.email,
+                        alert.product.title,
+                        data.price,
+                        alert.targetPrice,
+                        listing.url // Direct link to the store deal
+                    );
+
+                    // Mark as Triggered so we don't spam them
+                    await prisma.priceAlert.update({
+                        where: { id: alert.id },
+                        data: { 
+                            isTriggered: true, 
+                            triggeredAt: new Date() 
+                        }
+                    });
+                    
+                    console.log(`✅ INSTANT ALERT SENT to ${alert.email}`);
+                } catch (err) {
+                    console.error(`❌ Failed to send alert to ${alert.email}`, err);
+                }
+            }));
+        }
+    }
   }
 }
