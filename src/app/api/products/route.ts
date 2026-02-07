@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   
@@ -13,7 +15,7 @@ export async function GET(request: Request) {
         where: { id },
         include: {
           listings: {
-             include: { retailer: true } // Include retailer for logos
+             include: { retailer: true } 
           },
           reviews: true
         }
@@ -23,11 +25,14 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Product not found" }, { status: 404 });
       }
 
-      // Process single product (Same logic as Grid)
-      // Use cached fields first, fall back to listings
-      const lowestPrice = product.minPrice > 0 
-        ? product.minPrice 
-        : (product.listings[0]?.price || 0);
+      // ✅ FIX: Calculate lowest price from live listings
+      let calculatedLowest = 0;
+      if (product.listings && product.listings.length > 0) {
+         const prices = product.listings.map(l => l.price).filter(p => p > 0);
+         if (prices.length > 0) calculatedLowest = Math.min(...prices);
+      }
+      
+      const lowestPrice = calculatedLowest > 0 ? calculatedLowest : (product.minPrice || 0);
 
       const totalRating = product.reviews.reduce((acc, r) => acc + r.rating, 0);
       const avgRating = product.reviews.length > 0 ? (totalRating / product.reviews.length).toFixed(1) : "0.0";
@@ -37,7 +42,6 @@ export async function GET(request: Request) {
         lowestPrice, 
         avgRating,
         reviewCount: product.reviews.length,
-        // Pass these so the card can show discounts
         maxRegularPrice: product.maxRegularPrice,
         maxDiscount: product.maxDiscount
       };
@@ -66,7 +70,7 @@ export async function GET(request: Request) {
       take: 12,
       include: {
         listings: {
-            include: { retailer: true } // Include retailer so grid cards show logos if needed
+            include: { retailer: true }
         },
         reviews: true
       },
@@ -74,10 +78,15 @@ export async function GET(request: Request) {
     });
 
     const processed = products.map(p => {
-      // Smart Price Logic
-      const lowestPrice = p.minPrice > 0 
-        ? p.minPrice 
-        : (p.listings[0]?.price || 0);
+      // ✅ FIX: Calculate lowest price from live listings here too
+      let calculatedLowest = 0;
+      if (p.listings && p.listings.length > 0) {
+         const prices = p.listings.map(l => l.price).filter(price => price > 0);
+         if (prices.length > 0) calculatedLowest = Math.min(...prices);
+      }
+
+      // Prioritize the calculated fresh price over the cached 'minPrice'
+      const lowestPrice = calculatedLowest > 0 ? calculatedLowest : (p.minPrice || 0);
         
       const totalRating = p.reviews.reduce((acc, r) => acc + r.rating, 0);
       const avgRating = p.reviews.length > 0 ? (totalRating / p.reviews.length).toFixed(1) : "0.0";

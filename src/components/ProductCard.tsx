@@ -11,14 +11,31 @@ interface ProductCardProps {
 export default function ProductCard({ product, onClick }: ProductCardProps) {
   const viewCount = product.views?.length || 0;
   
-  const lowestPrice = product.lowestPrice || product.minPrice || 0;
+  // ----------------------------------------------------------------------
+  // ✅ FIX: CALCULATE TRUE LOWEST PRICE FROM LISTINGS
+  // ----------------------------------------------------------------------
+  let lowestPrice = product.minPrice || product.lowestPrice || 0;
+
+  // If listings are available, double-check we actually have the lowest price
+  if (product.listings && Array.isArray(product.listings) && product.listings.length > 0) {
+    const validPrices = product.listings
+      .map((l: any) => l.price)
+      .filter((p: number) => typeof p === 'number' && p > 0); // Filter out 0 or null
+
+    if (validPrices.length > 0) {
+      lowestPrice = Math.min(...validPrices);
+    }
+  }
+  // ----------------------------------------------------------------------
+
   const originalPrice = product.maxRegularPrice || product.originalPrice || lowestPrice;
+  
+  // Recalculate discount based on the new lowestPrice
   const discount = product.maxDiscount || (originalPrice > lowestPrice ? Math.round(((originalPrice - lowestPrice) / originalPrice) * 100) : 0);
   
   const isHot = discount >= 40; 
 
   return (
-    // ✅ FIXED: Removed 'hover:-translate-y-2' (caused flickering). Added 'scale' and 'transform-gpu' for smoothness.
     <div className="group relative bg-[#1a1a1a] rounded-[32px] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 ease-out border border-white/5 flex flex-col h-full hover:border-primary/30 transform-gpu hover:scale-[1.02]">
       
       {/* IMAGE AREA */}
@@ -73,7 +90,6 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
               alt={product.title} 
               fill 
               unoptimized={true}
-              // ✅ FIXED: Used 'transition-transform' specifically to avoid conflicts
               className="object-contain p-4 group-hover:scale-110 transition-transform duration-500 ease-out drop-shadow-2xl"
             />
           ) : (
