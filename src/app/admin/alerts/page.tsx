@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -8,28 +8,15 @@ export default function AlertsDashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  // Track auto-check state
-  const [isAutoChecking, setIsAutoChecking] = useState(false);
-  const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null);
-  
-  // Countdown State
-  const [timeUntilNext, setTimeUntilNext] = useState<string>('05:00');
-  const nextRunRef = useRef<number | null>(null);
-
   const [search, setSearch] = useState('');
 
-  // --- HELPERS ---
+  // --- NEW: SERVER-SYNCED TIMER STATE ---
+  const [schedulerState, setSchedulerState] = useState<string>("UNKNOWN");
+  const [timeUntilNext, setTimeUntilNext] = useState<string>("Checking...");
+  const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
 
-  const formatTime = (ms: number) => {
-    if (ms <= 0) return '00:00';
-    const m = Math.floor(ms / 60000);
-    const s = Math.floor((ms % 60000) / 1000);
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  // 1. Fetch Dashboard Data (Stats & Table)
-  const loadData = async () => {
+  // 1. Fetch Alerts Data
+  const loadData = useCallback(async () => {
     try {
         const res = await fetch(`/api/admin/alerts?t=${Date.now()}`);
         const d = await res.json();
@@ -38,76 +25,83 @@ export default function AlertsDashboard() {
         console.error("Failed to load alerts", error);
     } finally {
         setLoading(false);
+        setIsRefreshing(false);
     }
-  };
+  }, []);
 
-  // 2. The Auto-Check Function (Hits the Backfill API)
-  const runAutoCheck = async () => {
-    setIsAutoChecking(true);
+  // 2. Fetch Real Scheduler Info (Sync with Server)
+  const fetchSchedulerInfo = useCallback(async () => {
     try {
-      // Calls the backfill script
-      const res = await fetch('/api/admin/alerts/check-all', { method: 'POST' });
-      await res.json();
-      
-      const now = new Date();
-      setLastCheckTime(now);
-      
-      // ✅ RESET TIMER: Set next run to 5 minutes from now
-      const nextRun = now.getTime() + (5 * 60 * 1000);
-      nextRunRef.current = nextRun;
-      localStorage.setItem('alert_next_run', nextRun.toString());
-      
-      // Reload stats
-      await loadData();
+        // We can reuse the same system endpoint, or assume the cron schedule
+        // Since we know the cron runs every 5 mins, we can calculate the next "bucket"
+        const now = new Date();
+        const minutes = now.getMinutes();
+        const remainder = 5 - (minutes % 5);
+        const nextRun = new Date(now.getTime() + remainder * 60 * 1000 - (now.getSeconds() * 1000));
+        
+        setNextRunTime(nextRun);
+        setSchedulerState("ACTIVE");
     } catch (e) {
-      console.error("Auto-Check Failed", e);
+        console.error("Timer Sync Failed");
+    }
+  }, []);
+
+  // 3. Force Run (Manual Button)
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+        // Trigger the check manually
+        await fetch('/api/admin/alerts/check-all', { method: 'POST' });
+        // Reload table
+        await loadData();
+    } catch (e) {
+        console.error("Manual trigger failed");
     } finally {
-      setIsAutoChecking(false);
-      setIsRefreshing(false); // Stop spinning if triggered by button
+        setIsRefreshing(false);
     }
   };
 
-  // 3. ✅ MANUAL REFRESH (Triggers Scan + Data Load)
-  const handleManualRefresh = () => {
-    setIsRefreshing(true);
-    runAutoCheck(); // This triggers the scan AND reloads data
-  };
-
-  // 4. ✅ INITIAL MOUNT & TIMER LOGIC
+  // Initial Load & Intervals
   useEffect(() => {
     loadData();
+    fetchSchedulerInfo();
 
-    // Check LocalStorage for saved timer to prevent reset on refresh
-    const savedNextRun = localStorage.getItem('alert_next_run');
-    if (savedNextRun) {
-        const next = parseInt(savedNextRun);
-        if (next > Date.now()) {
-            nextRunRef.current = next;
+    // Poll for data updates every 30 seconds (to see new "Sent" statuses)
+    const dataInterval = setInterval(loadData, 30000);
+    
+    // Sync timer info every minute
+    const syncInterval = setInterval(fetchSchedulerInfo, 60000);
+
+    return () => {
+        clearInterval(dataInterval);
+        clearInterval(syncInterval);
+    };
+  }, [loadData, fetchSchedulerInfo]);
+
+  // Visual Countdown Timer (Updates every second)
+  useEffect(() => {
+    if (!nextRunTime) return;
+
+    const timer = setInterval(() => {
+        const now = new Date();
+        const diff = nextRunTime.getTime() - now.getTime();
+
+        if (diff <= 0) {
+            setTimeDisplay("Running...");
+            // Resync after a moment to get the next slot
+            setTimeout(fetchSchedulerInfo, 2000);
         } else {
-            // If saved time is in the past, run immediately
-            runAutoCheck();
-        }
-    } else {
-        runAutoCheck();
-    }
-
-    // Interval to update the VISUAL countdown every second
-    const timerId = setInterval(() => {
-        if (nextRunRef.current) {
-            const diff = nextRunRef.current - Date.now();
-            
-            if (diff <= 0) {
-                // Time is up! Run check and reset.
-                runAutoCheck();
-            } else {
-                // Just update visual text
-                setTimeUntilNext(formatTime(diff));
-            }
+            const m = Math.floor(diff / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            setTimeUntilNext(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
         }
     }, 1000);
 
-    return () => clearInterval(timerId);
-  }, []);
+    return () => clearInterval(timer);
+  }, [nextRunTime, fetchSchedulerInfo]);
+
+  // Helper for display
+  const setTimeDisplay = (msg: string) => setTimeUntilNext(msg);
 
   const handleDelete = async (id: string) => {
     if(!confirm("Delete this alert?")) return;
@@ -130,28 +124,21 @@ export default function AlertsDashboard() {
             <div className="flex items-center gap-3 mt-1">
                 <p className="text-[#666] font-medium">Monitor active price watches and notifications.</p>
                 
-                {/* ✅ VISUAL TIMER INDICATOR */}
+                {/* ✅ DYNAMIC SERVER-SYNCED TIMER */}
                 <span className="text-[10px] font-mono bg-[#222] border border-[#333] px-2 py-0.5 rounded text-[#888] flex items-center gap-2">
-                    {isAutoChecking ? (
-                        <span className="flex items-center gap-1 text-primary">
-                             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                             Checking...
-                        </span>
-                    ) : (
-                        <span className="font-bold text-white">Next check: {timeUntilNext}</span>
-                    )}
-                    {lastCheckTime && <span className="text-[#444]">| Last: {lastCheckTime.toLocaleTimeString()}</span>}
+                    <span className={`w-2 h-2 rounded-full ${schedulerState === 'ACTIVE' ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`}></span>
+                    <span className="font-bold text-white">Next Auto-Check: <span className="text-primary">{timeUntilNext}</span></span>
                 </span>
             </div>
           </div>
           
           <button 
             onClick={handleManualRefresh} 
-            disabled={isRefreshing || isAutoChecking}
-            className={`text-sm font-bold uppercase flex items-center gap-2 transition-colors ${isRefreshing || isAutoChecking ? 'text-[#666] cursor-wait' : 'text-primary hover:text-white'}`}
+            disabled={isRefreshing}
+            className={`text-sm font-bold uppercase flex items-center gap-2 transition-colors ${isRefreshing ? 'text-[#666] cursor-wait' : 'text-primary hover:text-white'}`}
           >
-            <span className={`text-lg ${isRefreshing || isAutoChecking ? 'animate-spin' : ''}`}>↻</span>
-            {isRefreshing || isAutoChecking ? 'Scanning...' : 'Force Scan & Refresh'}
+            <span className={`text-lg ${isRefreshing ? 'animate-spin' : ''}`}>↻</span>
+            {isRefreshing ? 'Scanning...' : 'Force Scan & Refresh'}
           </button>
         </div>
 

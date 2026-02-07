@@ -68,7 +68,7 @@ export default function AdminFeedsPage() {
         
         if (res.ok && data.lastRunTime) {
             const lastRun = new Date(data.lastRunTime);
-            const nextRun = new Date(lastRun.getTime() + 30 * 60 * 1000);
+            const nextRun = new Date(lastRun.getTime() + 15 * 60 * 1000);
             setNextRunTime(nextRun);
             setSchedulerState(data.state);
         } else {
