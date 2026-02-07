@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -8,15 +8,28 @@ export default function AlertsDashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // Track if the auto-checker is running
+  
+  // Track auto-check state
   const [isAutoChecking, setIsAutoChecking] = useState(false);
   const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null);
+  
+  // Countdown State
+  const [timeUntilNext, setTimeUntilNext] = useState<string>('05:00');
+  const nextRunRef = useRef<number | null>(null);
+
   const [search, setSearch] = useState('');
 
+  // --- HELPERS ---
+
+  const formatTime = (ms: number) => {
+    if (ms <= 0) return '00:00';
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   // 1. Fetch Dashboard Data (Stats & Table)
-  const loadData = async (isManualRefresh = false) => {
-    if (isManualRefresh) setIsRefreshing(true);
-    
+  const loadData = async () => {
     try {
         const res = await fetch(`/api/admin/alerts?t=${Date.now()}`);
         const d = await res.json();
@@ -25,7 +38,6 @@ export default function AlertsDashboard() {
         console.error("Failed to load alerts", error);
     } finally {
         setLoading(false);
-        setIsRefreshing(false);
     }
   };
 
@@ -33,40 +45,74 @@ export default function AlertsDashboard() {
   const runAutoCheck = async () => {
     setIsAutoChecking(true);
     try {
-      // Calls the backfill script we created earlier
+      // Calls the backfill script
       const res = await fetch('/api/admin/alerts/check-all', { method: 'POST' });
-      const result = await res.json();
-      console.log("Auto-Check Result:", result);
-      setLastCheckTime(new Date());
+      await res.json();
       
-      // Reload the dashboard stats to reflect any new "Sent" alerts
+      const now = new Date();
+      setLastCheckTime(now);
+      
+      // ✅ RESET TIMER: Set next run to 5 minutes from now
+      const nextRun = now.getTime() + (5 * 60 * 1000);
+      nextRunRef.current = nextRun;
+      localStorage.setItem('alert_next_run', nextRun.toString());
+      
+      // Reload stats
       await loadData();
     } catch (e) {
       console.error("Auto-Check Failed", e);
     } finally {
       setIsAutoChecking(false);
+      setIsRefreshing(false); // Stop spinning if triggered by button
     }
   };
 
-  // Initial Load
-  useEffect(() => { loadData(); }, []);
+  // 3. ✅ MANUAL REFRESH (Triggers Scan + Data Load)
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    runAutoCheck(); // This triggers the scan AND reloads data
+  };
 
-  // 3. ✅ THE 5-MINUTE TIMER (300,000 ms)
+  // 4. ✅ INITIAL MOUNT & TIMER LOGIC
   useEffect(() => {
-    // Run immediately on mount (optional, or wait 5 mins)
-    runAutoCheck();
+    loadData();
 
-    const intervalId = setInterval(() => {
-      runAutoCheck();
-    }, 5 * 60 * 1000); // 5 Minutes
+    // Check LocalStorage for saved timer to prevent reset on refresh
+    const savedNextRun = localStorage.getItem('alert_next_run');
+    if (savedNextRun) {
+        const next = parseInt(savedNextRun);
+        if (next > Date.now()) {
+            nextRunRef.current = next;
+        } else {
+            // If saved time is in the past, run immediately
+            runAutoCheck();
+        }
+    } else {
+        runAutoCheck();
+    }
 
-    return () => clearInterval(intervalId); // Cleanup on unmount
+    // Interval to update the VISUAL countdown every second
+    const timerId = setInterval(() => {
+        if (nextRunRef.current) {
+            const diff = nextRunRef.current - Date.now();
+            
+            if (diff <= 0) {
+                // Time is up! Run check and reset.
+                runAutoCheck();
+            } else {
+                // Just update visual text
+                setTimeUntilNext(formatTime(diff));
+            }
+        }
+    }, 1000);
+
+    return () => clearInterval(timerId);
   }, []);
 
   const handleDelete = async (id: string) => {
     if(!confirm("Delete this alert?")) return;
     await fetch(`/api/admin/alerts?id=${id}`, { method: 'DELETE' });
-    loadData(true); 
+    loadData(); 
   };
 
   if (loading) return <div className="text-[#666] animate-pulse">Loading Dashboard...</div>;
@@ -83,7 +129,8 @@ export default function AlertsDashboard() {
             <h1 className="text-3xl font-black text-white tracking-tighter">Alerts Manager</h1>
             <div className="flex items-center gap-3 mt-1">
                 <p className="text-[#666] font-medium">Monitor active price watches and notifications.</p>
-                {/* Visual Indicator for the Timer */}
+                
+                {/* ✅ VISUAL TIMER INDICATOR */}
                 <span className="text-[10px] font-mono bg-[#222] border border-[#333] px-2 py-0.5 rounded text-[#888] flex items-center gap-2">
                     {isAutoChecking ? (
                         <span className="flex items-center gap-1 text-primary">
@@ -91,7 +138,7 @@ export default function AlertsDashboard() {
                              Checking...
                         </span>
                     ) : (
-                        <span>Next check in 5m</span>
+                        <span className="font-bold text-white">Next check: {timeUntilNext}</span>
                     )}
                     {lastCheckTime && <span className="text-[#444]">| Last: {lastCheckTime.toLocaleTimeString()}</span>}
                 </span>
@@ -99,12 +146,12 @@ export default function AlertsDashboard() {
           </div>
           
           <button 
-            onClick={() => loadData(true)} 
-            disabled={isRefreshing}
-            className={`text-sm font-bold uppercase flex items-center gap-2 transition-colors ${isRefreshing ? 'text-[#666] cursor-wait' : 'text-primary hover:text-white'}`}
+            onClick={handleManualRefresh} 
+            disabled={isRefreshing || isAutoChecking}
+            className={`text-sm font-bold uppercase flex items-center gap-2 transition-colors ${isRefreshing || isAutoChecking ? 'text-[#666] cursor-wait' : 'text-primary hover:text-white'}`}
           >
-            <span className={`text-lg ${isRefreshing ? 'animate-spin' : ''}`}>↻</span>
-            {isRefreshing ? 'Updating...' : 'Refresh'}
+            <span className={`text-lg ${isRefreshing || isAutoChecking ? 'animate-spin' : ''}`}>↻</span>
+            {isRefreshing || isAutoChecking ? 'Scanning...' : 'Force Scan & Refresh'}
           </button>
         </div>
 
