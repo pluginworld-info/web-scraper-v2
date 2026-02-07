@@ -1,51 +1,56 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // ✅ Added useRouter
 import { useState, useEffect } from 'react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter(); // ✅ Init Router
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // ✅ STATE: Default to false (locked) until checked
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  // ✅ STATE: Default to TRUE (Optimistic) to prevent flicker on reload.
+  // We let the checkAuth function turn it OFF if needed.
+  const [isAuthorized, setIsAuthorized] = useState(true);
 
-  // ✅ LOGIC: Robust check function
   const checkAuth = () => {
-    // Safety check for window to avoid SSR errors
     if (typeof window !== 'undefined') {
       const authStatus = sessionStorage.getItem('admin_authenticated');
-      // If we are on the login page specifically, we might want to keep it locked
-      // But generally, we trust the session storage.
-      setIsAuthorized(authStatus === 'true');
+      const isAuth = authStatus === 'true';
+      
+      setIsAuthorized(isAuth);
+
+      // ✅ NEW: If not authorized and NOT on login page, kick them out.
+      // This fixes the "Blurred Sidebar" issue by sending them to Login instead of showing a broken page.
+      if (!isAuth && pathname !== '/admin/login') {
+          router.push('/admin/login');
+      }
     }
   };
 
   useEffect(() => {
-    // 1. Check immediately on mount
     checkAuth();
 
-    // 2. Listen for custom event from Login Page (Instant Unlock)
     const handleAuthChange = () => checkAuth();
     window.addEventListener('admin-auth-change', handleAuthChange);
-    
-    // 3. Re-check on storage changes (Multi-tab support)
     window.addEventListener('storage', handleAuthChange);
 
     return () => {
       window.removeEventListener('admin-auth-change', handleAuthChange);
       window.removeEventListener('storage', handleAuthChange);
     };
-  }, [pathname]); // Also re-check when URL changes
+  }, [pathname]); 
 
+  // ... (Rest of your component stays exactly the same)
+  // ...
+  
   // NAVIGATION ITEMS
   const navItems = [
     { name: 'Overview', href: '/admin', icon: <HomeIcon /> },
     { name: 'Analytics', href: '/admin/analytics', icon: <ChartBarIcon /> }, 
     { name: 'Data Feeds', href: '/admin/feeds', icon: <CloudArrowDownIcon /> },
     { name: 'Price Alerts', href: '/admin/alerts', icon: <BellIcon /> },
-    { name: 'Email Template', href: '/admin/email-template', icon: <EnvelopeIcon /> }, // ✅ NEW
+    { name: 'Email Template', href: '/admin/email-template', icon: <EnvelopeIcon /> },
     { name: 'Reviews', href: '/admin/reviews', icon: <ChatIcon /> },
     { name: 'Site Settings', href: '/admin/settings', icon: <CogIcon /> }, 
   ];
