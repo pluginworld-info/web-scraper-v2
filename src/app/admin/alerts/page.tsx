@@ -8,8 +8,12 @@ export default function AlertsDashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  // Track if the auto-checker is running
+  const [isAutoChecking, setIsAutoChecking] = useState(false);
+  const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null);
   const [search, setSearch] = useState('');
 
+  // 1. Fetch Dashboard Data (Stats & Table)
   const loadData = async (isManualRefresh = false) => {
     if (isManualRefresh) setIsRefreshing(true);
     
@@ -25,7 +29,39 @@ export default function AlertsDashboard() {
     }
   };
 
+  // 2. The Auto-Check Function (Hits the Backfill API)
+  const runAutoCheck = async () => {
+    setIsAutoChecking(true);
+    try {
+      // Calls the backfill script we created earlier
+      const res = await fetch('/api/admin/alerts/check-all', { method: 'POST' });
+      const result = await res.json();
+      console.log("Auto-Check Result:", result);
+      setLastCheckTime(new Date());
+      
+      // Reload the dashboard stats to reflect any new "Sent" alerts
+      await loadData();
+    } catch (e) {
+      console.error("Auto-Check Failed", e);
+    } finally {
+      setIsAutoChecking(false);
+    }
+  };
+
+  // Initial Load
   useEffect(() => { loadData(); }, []);
+
+  // 3. ✅ THE 5-MINUTE TIMER (300,000 ms)
+  useEffect(() => {
+    // Run immediately on mount (optional, or wait 5 mins)
+    runAutoCheck();
+
+    const intervalId = setInterval(() => {
+      runAutoCheck();
+    }, 5 * 60 * 1000); // 5 Minutes
+
+    return () => clearInterval(intervalId); // Cleanup on unmount
+  }, []);
 
   const handleDelete = async (id: string) => {
     if(!confirm("Delete this alert?")) return;
@@ -45,13 +81,26 @@ export default function AlertsDashboard() {
         <div className="flex justify-between items-end mb-8">
           <div>
             <h1 className="text-3xl font-black text-white tracking-tighter">Alerts Manager</h1>
-            <p className="text-[#666] font-medium">Monitor active price watches and notifications.</p>
+            <div className="flex items-center gap-3 mt-1">
+                <p className="text-[#666] font-medium">Monitor active price watches and notifications.</p>
+                {/* Visual Indicator for the Timer */}
+                <span className="text-[10px] font-mono bg-[#222] border border-[#333] px-2 py-0.5 rounded text-[#888] flex items-center gap-2">
+                    {isAutoChecking ? (
+                        <span className="flex items-center gap-1 text-primary">
+                             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                             Checking...
+                        </span>
+                    ) : (
+                        <span>Next check in 5m</span>
+                    )}
+                    {lastCheckTime && <span className="text-[#444]">| Last: {lastCheckTime.toLocaleTimeString()}</span>}
+                </span>
+            </div>
           </div>
           
           <button 
             onClick={() => loadData(true)} 
             disabled={isRefreshing}
-            // ✅ DYNAMIC REFRESH BUTTON
             className={`text-sm font-bold uppercase flex items-center gap-2 transition-colors ${isRefreshing ? 'text-[#666] cursor-wait' : 'text-primary hover:text-white'}`}
           >
             <span className={`text-lg ${isRefreshing ? 'animate-spin' : ''}`}>↻</span>
@@ -60,10 +109,8 @@ export default function AlertsDashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {/* ✅ DYNAMIC STAT CARD COLOR */}
           <StatCard label="Active Watchers" value={data?.stats?.active || 0} color="text-primary" desc="Waiting for drop" />
           <StatCard label="Notifications Sent" value={data?.stats?.triggered || 0} color="text-green-500" desc="Deals delivered" />
-          {/* Most Wanted Card */}
           <StatCard label="Most Wanted" value={data?.topProducts?.[0]?.title || 'No Data Yet'} color="text-white" desc="Top Product" isText />
         </div>
 
@@ -102,7 +149,6 @@ export default function AlertsDashboard() {
                       {alert.isTriggered ? (
                           <span className="bg-green-900/20 text-green-500 px-2 py-1 rounded text-[10px] font-black uppercase border border-green-900/50">Sent</span>
                       ) : (
-                          // ✅ DYNAMIC ACTIVE BADGE
                           <span className="bg-primary/20 text-primary px-2 py-1 rounded text-[10px] font-black uppercase border border-primary/50">Active</span>
                       )}
                     </td>
@@ -113,7 +159,6 @@ export default function AlertsDashboard() {
                               <Image src={alert.product.image} alt="" fill className="object-cover" />
                             </div>
                           )}
-                          {/* ✅ DYNAMIC LINK HOVER */}
                           <Link href={`/product/${alert.product.slug}`} target="_blank" className="text-white font-bold text-sm hover:text-primary truncate max-w-[200px] block transition-colors">
                              {alert.product.title}
                           </Link>
@@ -153,8 +198,6 @@ export default function AlertsDashboard() {
 
 // FINAL FIXED STATCARD
 function StatCard({ label, value, color, desc, isText = false }: any) {
-  
-  // 1. Create the content strip (Repeated 4 times to ensure length)
   const strip = (
     <>
       <span className="mx-4">{value}</span>
@@ -170,7 +213,6 @@ function StatCard({ label, value, color, desc, isText = false }: any) {
 
   return (
     <div className="bg-[#1a1a1a] border border-[#333] p-6 rounded-2xl shadow-lg relative overflow-hidden flex flex-col justify-center h-36">
-       
        {isText && (
          <style dangerouslySetInnerHTML={{__html: `
             @keyframes marquee-scroll {
@@ -192,11 +234,8 @@ function StatCard({ label, value, color, desc, isText = false }: any) {
          <h3 className="text-[#666] text-xs font-bold uppercase tracking-widest mb-2">{label}</h3>
          
          {isText ? (
-            // FIX: "justify-start" prevents the parent from centering the text strip
-            // off the screen. We force it to align left.
             <div className="w-full relative h-10 flex items-center overflow-hidden justify-start">
                 <div className="animate-marquee text-xl font-black text-white">
-                    {/* Render the strip twice. Animation slides -50% (one strip length) then loops. */}
                     <div className="flex whitespace-nowrap">{strip}</div>
                     <div className="flex whitespace-nowrap">{strip}</div>
                 </div>
@@ -211,4 +250,4 @@ function StatCard({ label, value, color, desc, isText = false }: any) {
        </div>
     </div>
   );
-} 
+}
