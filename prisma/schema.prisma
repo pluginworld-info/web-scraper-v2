@@ -249,8 +249,8 @@ model SiteSettings {
   siteName        String   @default("PluginDeals")
   description     String?  @default("The best audio plugin deals.")
   
-  logoUrl         String?
-  faviconUrl      String?
+  logoUrl         String?  @db.Text
+  faviconUrl      String?  @db.Text // ✅ THIS IS THE NEW FIELD
   
   primaryColor    String   @default("#ffa600") 
   accentColor     String   @default("#ff0059") 

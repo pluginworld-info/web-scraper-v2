@@ -8,20 +8,29 @@ const inter = Inter({ subsets: ['latin'] });
 
 // Helper to convert Hex to RGB channels for Tailwind Opacity support
 const hexToRgbChannels = (hex: string): string => {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  // Handle shorthand hex (e.g. #FFF)
+  const fullHex = hex.length === 4 
+    ? '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3] 
+    : hex;
+    
+  const r = parseInt(fullHex.slice(1, 3), 16);
+  const g = parseInt(fullHex.slice(3, 5), 16);
+  const b = parseInt(fullHex.slice(5, 7), 16);
   return `${r} ${g} ${b}`;
 };
 
 export async function generateMetadata() {
   try {
     const settings = await prisma.siteSettings.findFirst();
+    
     return {
       title: settings?.siteName || 'Plugin Deals Tracker',
       description: settings?.description || 'Real-time price tracking for audio plugins',
       icons: {
+        // ✅ DYNAMIC FAVICON: Falls back to default if not set
         icon: settings?.faviconUrl || '/favicon.ico', 
+        shortcut: settings?.faviconUrl || '/favicon.ico',
+        apple: settings?.faviconUrl || '/favicon.ico',
       },
     };
   } catch (e) {
@@ -59,9 +68,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* ✅ THE FLICKER-FIX SCRIPT
-            This runs before the page renders to apply cached theme colors instantly.
-        */}
+        {/* ✅ THE FLICKER-FIX SCRIPT: Prevents "Flash of Default Color" */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
             try {
@@ -73,9 +80,12 @@ export default async function RootLayout({
                 root.style.setProperty('--accent', a);
                 
                 const toRgb = (hex) => {
-                  const r = parseInt(hex.slice(1, 3), 16);
-                  const g = parseInt(hex.slice(3, 5), 16);
-                  const b = parseInt(hex.slice(5, 7), 16);
+                  const fullHex = hex.length === 4 
+                    ? '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3] 
+                    : hex;
+                  const r = parseInt(fullHex.slice(1, 3), 16);
+                  const g = parseInt(fullHex.slice(3, 5), 16);
+                  const b = parseInt(fullHex.slice(5, 7), 16);
                   return r + " " + g + " " + b;
                 };
                 
@@ -92,7 +102,6 @@ export default async function RootLayout({
       >
         <ThemeProvider>
           <Header /> 
-          {/* ✅ DARK THEME BACKGROUND */}
           <main className="min-h-screen bg-[#111]">
             {children}
           </main>
