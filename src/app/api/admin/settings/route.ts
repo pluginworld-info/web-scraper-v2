@@ -14,7 +14,8 @@ export async function GET() {
       siteName: "PluginDeals",
       primaryColor: "#2563eb",
       accentColor: "#ef4444",
-      logoUrl: ""
+      logoUrl: "",
+      faviconUrl: "" // ✅ ADDED: Return default if none exists
     });
 
   } catch (error) {
@@ -30,17 +31,20 @@ export async function POST(req: Request) {
     // We use a fixed ID or findFirst to ensure we only have one settings row
     const firstSetting = await prisma.siteSettings.findFirst();
     
+    // ✅ ADDED: 'faviconUrl' to both update and create blocks
     const settings = await prisma.siteSettings.upsert({
       where: { id: firstSetting?.id || "default-id" },
       update: {
         siteName: body.siteName,
         logoUrl: body.logoUrl,
+        faviconUrl: body.faviconUrl, // <--- WAS MISSING
         primaryColor: body.primaryColor,
         accentColor: body.accentColor
       },
       create: {
         siteName: body.siteName,
         logoUrl: body.logoUrl,
+        faviconUrl: body.faviconUrl, // <--- WAS MISSING
         primaryColor: body.primaryColor,
         accentColor: body.accentColor
       }
