@@ -128,7 +128,6 @@ export default function EmailTemplatePage() {
         body: JSON.stringify(template),
       });
       if (res.ok) {
-        // ✅ REPLACED ALERT WITH TOAST
         setToast({ message: "Template updated successfully.", type: 'success' });
       } else {
         throw new Error();
@@ -211,7 +210,7 @@ export default function EmailTemplatePage() {
                     [{ 'header': [1, 2, 3, false] }],
                     ['bold', 'italic', 'underline', 'strike'],
                     [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'align': [] }],
+                    [{ 'align': [] }], // This adds alignment buttons
                     ['link', 'clean']
                   ],
                 }}
@@ -286,7 +285,7 @@ export default function EmailTemplatePage() {
                  )}
                  
                  <div className="pb-10 text-center text-[10px] text-gray-400 px-6 mt-4">
-                    © 2024 Plugin Deals Tracker. <br/>You are receiving this because you subscribed to price alerts.
+                   © 2024 Plugin Deals Tracker. <br/>You are receiving this because you subscribed to price alerts.
                  </div>
               </div>
            </div>
@@ -314,6 +313,11 @@ export default function EmailTemplatePage() {
         .email-preview-content p { margin-bottom: 1em; line-height: 1.6; }
         .email-preview-content h1 { font-size: 1.5em; font-weight: 800; margin-bottom: 0.5em; }
         .email-preview-content ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+        
+        /* ✅ FIX: Support for Quill Alignment Classes */
+        .ql-align-center { text-align: center; }
+        .ql-align-right { text-align: right; }
+        .ql-align-justify { text-align: justify; }
       `}</style>
     </div>
   );

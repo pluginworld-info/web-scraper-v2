@@ -112,14 +112,28 @@ export default function SettingsPage() {
     }
   };
 
+  // ✅ FIXED: Clear Cache Logic (Preserves Login Token)
   const executeClearCache = () => {
     setProcessingAction(true);
+    
+    // 1. Save the login token
+    const authSession = sessionStorage.getItem('admin_authenticated');
+
     setTimeout(() => {
+        // 2. Clear everything
         localStorage.clear();
         sessionStorage.clear();
+
+        // 3. Restore the login token immediately
+        if (authSession) {
+            sessionStorage.setItem('admin_authenticated', authSession);
+        }
+
         showToast("Local cache purged successfully.", "success");
         setActiveModal(null);
         setProcessingAction(false);
+        
+        // 4. Reload (Sidebar will stay visible now)
         window.location.reload();
     }, 800);
   };
@@ -409,4 +423,4 @@ export default function SettingsPage() {
 
     </div>
   );
-} 
+}
