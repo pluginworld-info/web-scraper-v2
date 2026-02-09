@@ -137,22 +137,19 @@ export default function Navigation({ brands: initialBrands, categories: initialC
 
           {/* DESKTOP NAV */}
           <nav className="hidden md:flex space-x-8 h-full items-center">
+            {/* HOME - No Active State */}
             <Link
               href="/"
-              className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-primary flex items-center h-full border-b-2 transition-all ${
-                pathname === '/' ? 'border-primary text-primary' : 'border-transparent text-gray-300'
-              }`}
+              className="text-sm font-bold uppercase tracking-wider transition-colors hover:text-primary flex items-center h-full border-b-2 border-transparent text-gray-300"
             >
               Home
             </Link>
 
-            {/* BRANDS DROPDOWN */}
+            {/* BRANDS DROPDOWN - No Active State */}
             <div className="group relative h-full flex items-center">
               <Link
-                href="/products"
-                className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-primary flex items-center gap-1 h-full border-b-2 transition-all ${
-                  pathname === '/product' ? 'border-primary text-primary' : 'border-transparent text-gray-300'
-                }`}
+                href="/product" 
+                className="text-sm font-bold uppercase tracking-wider transition-colors hover:text-primary flex items-center gap-1 h-full border-b-2 border-transparent text-gray-300"
               >
                 Brands
                 <svg className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
@@ -163,7 +160,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
                   {menuBrands.length > 0 ? menuBrands.map((brand) => (
                     <Link 
                       key={brand} 
-                      href={`/products?search=${encodeURIComponent(brand)}`} 
+                      href={`/product?search=${encodeURIComponent(brand)}`} 
                       className="block px-4 py-3 text-xs font-bold uppercase hover:bg-primary/10 hover:text-primary transition-colors border-b border-white/5 last:border-0"
                     >
                       {brand}
@@ -175,12 +172,10 @@ export default function Navigation({ brands: initialBrands, categories: initialC
               </div>
             </div>
 
-            {/* CATEGORIES DROPDOWN */}
+            {/* CATEGORIES DROPDOWN - No Active State */}
             <div className="group relative h-full flex items-center">
               <button
-                className={`text-sm font-bold uppercase tracking-wider transition-colors hover:text-primary flex items-center gap-1 h-full border-b-2 transition-all ${
-                  pathname.includes('category') ? 'border-primary text-primary' : 'border-transparent text-gray-300'
-                }`}
+                className="text-sm font-bold uppercase tracking-wider transition-colors hover:text-primary flex items-center gap-1 h-full border-b-2 border-transparent text-gray-300"
               >
                 Categories
                 <svg className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
@@ -191,7 +186,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
                    {menuCategories.length > 0 ? menuCategories.map((cat) => (
                     <Link 
                       key={cat} 
-                      href={`/products?search=${encodeURIComponent(cat)}`} 
+                      href={`/product?search=${encodeURIComponent(cat)}`} 
                       className="block px-4 py-3 text-xs font-bold uppercase hover:bg-primary/10 hover:text-primary transition-colors border-b border-white/5 last:border-0"
                     >
                       {cat}
@@ -203,14 +198,10 @@ export default function Navigation({ brands: initialBrands, categories: initialC
               </div>
             </div>
 
-            {/* WISHLIST */}
+            {/* WISHLIST - No Active State */}
             <Link
               href="/wishlist"
-              className={`text-sm font-bold uppercase tracking-wider transition-all flex items-center gap-2 px-4 py-1.5 rounded-full border ${
-                pathname === '/wishlist'
-                  ? 'text-accent border-accent bg-accent/10' 
-                  : 'text-gray-300 border-white/10 hover:border-accent hover:text-accent hover:bg-accent/5'
-              }`}
+              className="text-sm font-bold uppercase tracking-wider transition-all flex items-center gap-2 px-4 py-1.5 rounded-full border text-gray-300 border-white/10 hover:border-accent hover:text-accent hover:bg-accent/5"
             >
               <div className="relative">
                 <svg className="w-4 h-4" fill={wishlistCount > 0 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
@@ -259,12 +250,11 @@ export default function Navigation({ brands: initialBrands, categories: initialC
         </div>
       </div>
 
-      {/* ✅ MOBILE MENU OVERLAY: Title Case & Single Column Lists */}
+      {/* MOBILE MENU OVERLAY */}
       <div className={`fixed inset-0 bg-black z-40 md:hidden transition-all duration-300 ease-in-out flex flex-col pt-24 px-6 overflow-y-auto h-[100dvh] w-full ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
-          {/* Removed 'uppercase' class from parent to allow "Home" to be mixed case */}
           <div className="flex flex-col gap-5 text-lg font-bold tracking-widest text-white pb-20">
              
-             {/* HOME LINK - Title Case */}
+             {/* HOME LINK */}
              <Link href="/" className="hover:text-primary transition-colors border-b border-white/5 pb-3 uppercase">
                Home
              </Link>
@@ -281,11 +271,10 @@ export default function Navigation({ brands: initialBrands, categories: initialC
                  </svg>
                </button>
                
-               {/* Expandable List: Single Column (flex-col) & No View All */}
                <div className={`overflow-hidden transition-all duration-500 ease-in-out ${mobileBrandsOpen ? 'max-h-[800px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
                  <div className="flex flex-col gap-4 pl-4">
                    {menuBrands.map(b => (
-                      <Link key={b} href={`/products?search=${b}`} className="text-sm font-medium text-gray-400 hover:text-white truncate">
+                      <Link key={b} href={`/product?search=${b}`} className="text-sm font-medium text-gray-400 hover:text-white truncate">
                         {b}
                       </Link>
                    ))}
@@ -305,11 +294,10 @@ export default function Navigation({ brands: initialBrands, categories: initialC
                  </svg>
                </button>
                
-               {/* Expandable List: Single Column (flex-col) */}
                <div className={`overflow-hidden transition-all duration-500 ease-in-out ${mobileCategoriesOpen ? 'max-h-[800px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
                  <div className="flex flex-col gap-4 pl-4">
                    {menuCategories.map(c => (
-                      <Link key={c} href={`/products?search=${c}`} className="text-sm font-medium text-gray-400 hover:text-white truncate">
+                      <Link key={c} href={`/product?search=${c}`} className="text-sm font-medium text-gray-400 hover:text-white truncate">
                         {c}
                       </Link>
                    ))}
