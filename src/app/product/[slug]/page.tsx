@@ -68,7 +68,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
   }
 
   return (
-    <main className="min-h-screen bg-[#111] pb-20">
+    <main className="min-h-screen pb-20">
       
       {/* ✅ WIDE CONTAINER */}
       <div className="max-w-[1400px] mx-auto p-4 md:p-12">

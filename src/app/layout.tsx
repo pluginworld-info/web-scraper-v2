@@ -24,7 +24,7 @@ export async function generateMetadata() {
     const settings = await prisma.siteSettings.findFirst();
     
     return {
-      title: settings?.siteName || 'Plugin Deals Tracker',
+      title: settings?.siteName || 'Plugin Deals Info',
       description: settings?.description || 'Real-time price tracking for audio plugins',
       icons: {
         // ✅ DYNAMIC FAVICON: Falls back to default if not set
@@ -98,12 +98,12 @@ export default async function RootLayout({
         ` }} />
       </head>
       <body 
-        className={`${inter.className} bg-[#111] text-white selection:bg-primary/30`} 
+        className={`${inter.className} text-white selection:bg-primary/30`} 
         style={themeStyle}
       >
         <ThemeProvider>
           <Header /> 
-          <main className="min-h-screen bg-[#111]">
+          <main className="min-h-screen">
             {children}
           </main>
         </ThemeProvider>

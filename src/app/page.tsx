@@ -58,7 +58,7 @@ export default async function HomePage() {
   });
 
   return (
-    <main className="min-h-screen bg-[#111] pb-20">
+    <main className="min-h-screen pb-20">
       
       {/* ✅ INCREASED WIDTH: Changed max-w-7xl to max-w-[1600px] */}
       <div className="max-w-[1600px] mx-auto px-4 md:px-12 lg:px-16">

@@ -66,7 +66,7 @@ export default async function AllProductsPage({ searchParams }: PageProps) {
   });
 
   return (
-    <main className="min-h-screen bg-[#111] pb-20">
+    <main className="min-h-screen pb-20">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-8 md:px-12 lg:px-16 py-8 md:py-12">
         
         {/* HEADER */}

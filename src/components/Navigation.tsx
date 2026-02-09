@@ -100,7 +100,7 @@ export default function Navigation({ brands: initialBrands, categories: initialC
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#111] text-white shadow-xl font-sans border-b border-white/5 backdrop-blur-md bg-opacity-95">
+    <header className="sticky top-0 z-50 w-full text-white shadow-x1 font-sans border-b border-white/5 backdrop-blur-md bg-opacity-98">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           
