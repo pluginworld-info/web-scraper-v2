@@ -66,7 +66,8 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en">
+    // ✅ ADDED suppressHydrationWarning to silence errors caused by the theme script
+    <html lang="en" suppressHydrationWarning={true}>
       <head>
         {/* ✅ THE FLICKER-FIX SCRIPT: Prevents "Flash of Default Color" */}
         <script dangerouslySetInnerHTML={{ __html: `
