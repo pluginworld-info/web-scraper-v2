@@ -55,6 +55,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
           />
         )}
 
+        {/* TOP LEFT BADGES */}
         <div className="absolute top-3 left-3 flex flex-col gap-2 z-20 pointer-events-none items-start">
            {isHot && (
             <span className="bg-red-600 text-white text-[10px] font-black uppercase px-2 py-1 rounded-md flex items-center gap-1 shadow-md w-fit animate-pulse">
@@ -99,9 +100,20 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
 
       {/* CONTENT AREA */}
       <div className="p-6 flex-grow flex flex-col items-center text-center relative z-20 bg-[#1a1a1a]">
-        <span className="text-[10px] font-black uppercase text-primary tracking-widest mb-2 transition-colors duration-300">
+        
+        {/* BRAND NAME */}
+        <span className="text-[10px] font-black uppercase text-primary tracking-widest mb-3 transition-colors duration-300">
           {product.brand || 'Brand'}
         </span>
+
+        {/* ✅ CENTERED CATEGORY CAPSULE */}
+        {product.category && (
+          <div className="mb-4">
+            <span className="bg-white text-black text-[9px] font-black uppercase px-2.5 py-1 rounded-md shadow-sm tracking-widest">
+              {product.category}
+            </span>
+          </div>
+        )}
 
         <Link 
            href={`/product/${product.slug}`}
@@ -140,7 +152,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
           </div>
         </div>
 
-        {/* ✅ DYNAMIC STORE COUNT */}
+        {/* DYNAMIC STORE COUNT */}
         {activeStoreCount > 0 && (
           <div className="flex items-center justify-center gap-1.5 mb-6 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
              <svg className="w-3.5 h-3.5 text-primary" viewBox="0 0 20 20" fill="currentColor">
