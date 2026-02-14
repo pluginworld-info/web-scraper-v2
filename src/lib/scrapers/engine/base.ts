@@ -35,7 +35,7 @@ export abstract class BaseScraper {
       console.error(`❌ BaseScraper: Fetch returned NULL for ${url}`);
       return;
     }
-    console.log(`📡 Status Code Received: ${result.status}`);
+    // console.log(`📡 Status Code Received: ${result.status}`);
     
     if (result.status !== 200) {
       console.error(`⛔ Stopping scrape because status is ${result.status} (Expected 200)`);
@@ -49,7 +49,7 @@ export abstract class BaseScraper {
 
     if (!data) {
       console.error(`❌ Failed to parse data (Selectors didn't match anything)`);
-      console.log(`   HTML Snippet: ${result.data.substring(0, 500)}...`);
+      // console.log(`   HTML Snippet: ${result.data.substring(0, 500)}...`);
       return;
     }
 
@@ -82,19 +82,74 @@ export abstract class BaseScraper {
     });
 
     // 2. Save Price History
-    await prisma.priceHistory.create({
-      data: {
-        price: data.price,
-        listingId: listing.id,
-      },
-    });
+    // We only save history if the price is > 0
+    if (data.price > 0) {
+        await prisma.priceHistory.create({
+        data: {
+            price: data.price,
+            listingId: listing.id,
+        },
+        });
+    }
 
     // ---------------------------------------------------------
-    // ⚡ 3. INSTANT ALERT TRIGGER (The Fix)
+    // ⚡ 3. UPDATE PRODUCT METRICS (Fluctuations & MinPrice)
     // ---------------------------------------------------------
-    
-    // Only check alerts if this listing is actually linked to a Product
     if (listing.productId) {
+        try {
+            // A. Calculate Fluctuations (Last 30 Days)
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            // Fetch history for ALL listings of this product (Market Activity)
+            const history = await prisma.priceHistory.findMany({
+                where: {
+                    listing: { productId: listing.productId },
+                    date: { gte: thirtyDaysAgo }
+                },
+                orderBy: { date: 'asc' },
+                select: { price: true }
+            });
+
+            let fluctuations = 0;
+            if (history.length > 1) {
+                for (let i = 1; i < history.length; i++) {
+                    // Count if price changed from previous record
+                    if (Math.abs(history[i].price - history[i-1].price) > 0.01) {
+                        fluctuations++;
+                    }
+                }
+            }
+
+            // B. Update Product
+            // Check current minPrice to see if we hit a new all-time low
+            const product = await prisma.product.findUnique({ 
+                where: { id: listing.productId },
+                select: { minPrice: true }
+            });
+
+            if (product) {
+                const currentMin = product.minPrice || 0;
+                // Update minPrice if current price is lower than saved min (and > 0)
+                const newMinPrice = (data.price > 0 && (currentMin === 0 || data.price < currentMin)) 
+                    ? data.price 
+                    : undefined;
+
+                await prisma.product.update({
+                    where: { id: listing.productId },
+                    data: {
+                        priceChangeCount: fluctuations, // ✅ Update Fluctuation Count
+                        ...(newMinPrice !== undefined && { minPrice: newMinPrice }) // ✅ Update Min Price if needed
+                    }
+                });
+            }
+        } catch (err) {
+            console.error("Failed to update product metrics:", err);
+        }
+
+        // ---------------------------------------------------------
+        // ⚡ 4. INSTANT ALERT TRIGGER
+        // ---------------------------------------------------------
         
         // Find alerts for this product where:
         // A) The Alert hasn't been fired yet (isTriggered: false)
@@ -105,25 +160,22 @@ export abstract class BaseScraper {
                 isTriggered: false,
                 targetPrice: { gte: data.price } 
             },
-            include: { product: true } // Include product details for the email
+            include: { product: true } 
         });
 
         if (activeAlerts.length > 0) {
             console.log(`⚡ Found ${activeAlerts.length} matching alerts! Sending emails...`);
 
-            // Send all emails in parallel
             await Promise.all(activeAlerts.map(async (alert) => {
                 try {
-                    // Send the email
                     await sendPriceAlertEmail(
                         alert.email,
                         alert.product.title,
                         data.price,
                         alert.targetPrice,
-                        listing.url // Direct link to the store deal
+                        listing.url 
                     );
 
-                    // Mark as Triggered so we don't spam them
                     await prisma.priceAlert.update({
                         where: { id: alert.id },
                         data: { 

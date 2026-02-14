@@ -10,6 +10,8 @@ import AlertModalTrigger from '@/components/AlertModalTrigger';
 import RelatedProducts from '@/components/RelatedProducts'; 
 import ReviewsSection from '@/components/ReviewsSection'; 
 import TrackedLink from '@/components/TrackedLink';
+// ✅ NEW IMPORT
+import ProductViewTracker from '@/components/ProductViewTracker';
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
   const slug = params?.slug;
@@ -70,6 +72,9 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
   return (
     <main className="min-h-screen pb-20">
       
+      {/* ✅ VIEW TRACKER (Invisible, runs on load) */}
+      <ProductViewTracker productId={product.id} />
+
       {/* ✅ WIDE CONTAINER */}
       <div className="max-w-[1400px] mx-auto p-4 md:p-12">
       

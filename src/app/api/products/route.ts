@@ -43,7 +43,10 @@ export async function GET(request: Request) {
         avgRating,
         reviewCount: product.reviews.length,
         maxRegularPrice: product.maxRegularPrice,
-        maxDiscount: product.maxDiscount
+        maxDiscount: product.maxDiscount,
+        // ✅ Explicitly include new badge fields
+        viewCount: product.viewCount,
+        priceChangeCount: product.priceChangeCount
       };
 
       return NextResponse.json({ product: processedProduct });
@@ -97,7 +100,10 @@ export async function GET(request: Request) {
           avgRating,
           reviewCount: p.reviews.length,
           maxRegularPrice: p.maxRegularPrice,
-          maxDiscount: p.maxDiscount
+          maxDiscount: p.maxDiscount,
+          // ✅ Explicitly include new badge fields
+          viewCount: p.viewCount,
+          priceChangeCount: p.priceChangeCount
       };
     });
 

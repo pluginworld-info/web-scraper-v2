@@ -9,39 +9,49 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onClick }: ProductCardProps) {
-  const viewCount = product.views?.length || 0;
   
   // ----------------------------------------------------------------------
-  // ✅ FIX: CALCULATE TRUE LOWEST PRICE FROM LISTINGS
+  // ✅ 1. CALCULATE TRUE LOWEST PRICE
   // ----------------------------------------------------------------------
   let lowestPrice = product.minPrice || product.lowestPrice || 0;
 
-  // If listings are available, double-check we actually have the lowest price
   if (product.listings && Array.isArray(product.listings) && product.listings.length > 0) {
     const validPrices = product.listings
       .map((l: any) => l.price)
-      .filter((p: number) => typeof p === 'number' && p > 0); // Filter out 0 or null
+      .filter((p: number) => typeof p === 'number' && p > 0);
 
     if (validPrices.length > 0) {
       lowestPrice = Math.min(...validPrices);
     }
   }
+
+  // ----------------------------------------------------------------------
+  // ✅ 2. BADGE LOGIC (Matched to your new requirements)
+  // ----------------------------------------------------------------------
+  
+  // HOT: More than 25 views globally
+  const isHot = (product.viewCount || 0) > 25;
+
+  // LOWEST PRICE: Current price matches all-time low AND has history of fluctuations
+  // (Requires the scraper update to work)
+  const isLowestPrice = 
+    (lowestPrice > 0) && 
+    (product.minPrice > 0) && 
+    (lowestPrice <= product.minPrice) && 
+    ((product.priceChangeCount || 0) >= 10);
+
   // ----------------------------------------------------------------------
 
   const originalPrice = product.maxRegularPrice || product.originalPrice || lowestPrice;
-  
-  // Recalculate discount based on the new lowestPrice
   const discount = product.maxDiscount || (originalPrice > lowestPrice ? Math.round(((originalPrice - lowestPrice) / originalPrice) * 100) : 0);
   
-  const isHot = discount >= 40; 
-
   return (
     <div className="group relative bg-[#1a1a1a] rounded-[32px] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 ease-out border border-white/5 flex flex-col h-full hover:border-primary/30 transform-gpu hover:scale-[1.02]">
       
       {/* IMAGE AREA */}
       <div className="relative aspect-square w-full overflow-hidden bg-[#111] p-4 z-0">
         
-        {/* THE BLURRED BACKGROUND IMAGE */}
+        {/* BLURRED BACKGROUND */}
         {product.image && (
           <Image 
             src={product.image} 
@@ -52,18 +62,22 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
           />
         )}
 
-        {/* --- BADGES (Top Left) --- */}
+        {/* --- DYNAMIC BADGES (Top Left) --- */}
         <div className="absolute top-3 left-3 flex flex-col gap-2 z-20 pointer-events-none items-start">
+           
+           {/* HOT BADGE */}
            {isHot && (
-            <span className="bg-red-600 text-white text-[10px] font-black uppercase px-2 py-1 rounded-md flex items-center gap-1 shadow-md w-fit animate-pulse">
+            <span className="bg-orange-600 text-white text-[10px] font-black uppercase px-2 py-1 rounded-md flex items-center gap-1 shadow-md w-fit animate-pulse">
                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" /></svg>
-               Hot
+               Hot Deal
             </span>
            )}
            
-           {discount > 70 && (
-             <span className="bg-yellow-400 text-yellow-900 text-[10px] font-black uppercase px-2 py-1 rounded-md shadow-md w-fit">
-               Lowest Price
+           {/* LOWEST PRICE BADGE */}
+           {isLowestPrice && (
+             <span className="bg-green-500 text-black text-[10px] font-black uppercase px-2 py-1 rounded-md shadow-md w-fit flex items-center gap-1">
+               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>
+               All Time Low
              </span>
            )}
         </div>
@@ -78,7 +92,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
           </div>
         )}
 
-        {/* THE MAIN SHARP IMAGE */}
+        {/* MAIN IMAGE */}
         <Link 
           href={`/product/${product.slug}`}
           onClick={() => onClick && onClick(product.id)}
@@ -100,7 +114,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
 
       {/* CONTENT AREA */}
       <div className="p-6 flex-grow flex flex-col items-center text-center relative z-20 bg-[#1a1a1a]">
-        {/* ✅ DYNAMIC BRAND COLOR */}
+        
         <span className="text-[10px] font-black uppercase text-primary tracking-widest mb-2 transition-colors duration-300">
           {product.brand || 'Brand'}
         </span>
@@ -109,7 +123,6 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
            href={`/product/${product.slug}`}
            onClick={() => onClick && onClick(product.id)}
         >
-          {/* ✅ DYNAMIC HOVER COLOR */}
           <h3 className="text-white font-bold text-sm mb-3 line-clamp-2 h-10 leading-tight group-hover:text-primary transition-colors duration-300 ease-out cursor-pointer uppercase tracking-tight">
             {product.title}
           </h3>

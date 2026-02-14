@@ -3,7 +3,7 @@ export const revalidate = 0;
 
 import AIRecommendations from '@/components/AIRecommendations';
 import { prisma } from '@/lib/db/prisma';
-import ProductGrid from '@/components/ProductGrid';
+import ProductGrid from '@/components/ProductGrid'; 
 
 export default async function HomePage() {
   const totalCount = await prisma.product.count();
@@ -16,7 +16,7 @@ export default async function HomePage() {
           retailer: true 
         },
         orderBy: { price: 'asc' },
-        // ❌ REMOVED 'take: 1' - We need ALL listings to find the real lowest price
+        // REMOVED 'take: 1' - We need ALL listings to find the real lowest price
       },
       reviews: true
     },
@@ -24,7 +24,7 @@ export default async function HomePage() {
   });
 
   const processedProducts = products.map(p => {
-    // ✅ FIX 1: Calculate the Real Lowest Price from the fetched listings
+    // FIX 1: Calculate the Real Lowest Price from the fetched listings
     let calculatedLowest = 0;
     
     if (p.listings && p.listings.length > 0) {
@@ -35,7 +35,7 @@ export default async function HomePage() {
       }
     }
 
-    // ✅ FIX 2: Prioritize the calculated fresh price over the cached 'minPrice'
+    // FIX 2: Prioritize the calculated fresh price over the cached 'minPrice'
     const lowestPrice = calculatedLowest > 0 ? calculatedLowest : (p.minPrice || 0);
 
     const bestListing = p.listings[0]; // Still useful for fallbacks
@@ -60,7 +60,7 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen pb-20">
       
-      {/* ✅ INCREASED WIDTH: Changed max-w-7xl to max-w-[1600px] */}
+      {/* INCREASED WIDTH: Changed max-w-7xl to max-w-[1600px] */}
       <div className="max-w-[1600px] mx-auto px-4 md:px-12 lg:px-16">
 
         {/* 1. HERO SECTION (Themed) */}
@@ -74,7 +74,7 @@ export default async function HomePage() {
                Live Price Tracking Active
              </span>
              
-             {/* ✅ LARGER TEXT FOR WIDE SCREEN */}
+             {/* LARGER TEXT FOR WIDE SCREEN */}
              <h1 className="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-none">
                Plugin Deals <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-white">Tracker</span>
              </h1>
