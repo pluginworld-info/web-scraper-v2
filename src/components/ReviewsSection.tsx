@@ -71,18 +71,19 @@ export default function ReviewsSection({ productId, reviews }: { productId: stri
            reviews.map((review) => (
             <div key={review.id} className="border-b border-white/5 last:border-0 pb-8 last:pb-0">
               <div className="flex items-center justify-between mb-2">
-                 <div className="flex items-center gap-3">
-                   {/* ✅ DYNAMIC: Avatar border uses Primary */}
-                   <div className="w-8 h-8 rounded-full bg-[#111] flex items-center justify-center font-bold text-xs text-white border border-primary/20">
-                      {review.authorName ? review.authorName.charAt(0).toUpperCase() : 'G'}
-                   </div>
-                   <span className="font-bold text-sm text-white">
-                      {review.authorName || "Guest"}
-                   </span>
-                 </div>
-                 <span className="text-[10px] text-[#555] font-black uppercase tracking-tighter">
-                    {new Date(review.createdAt).toLocaleDateString()}
-                 </span>
+                  <div className="flex items-center gap-3">
+                    {/* ✅ DYNAMIC: Avatar border uses Primary */}
+                    <div className="w-8 h-8 rounded-full bg-[#111] flex items-center justify-center font-bold text-xs text-white border border-primary/20">
+                       {review.authorName ? review.authorName.charAt(0).toUpperCase() : 'G'}
+                    </div>
+                    <span className="font-bold text-sm text-white">
+                       {review.authorName || "Guest"}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[#555] font-black uppercase tracking-tighter">
+                     {/* ✅ FIX: Stable Date Format to prevent Hydration Error */}
+                     {new Date(review.createdAt).toISOString().split('T')[0]}
+                  </span>
               </div>
               
               <div className="flex text-yellow-500 mb-2">

@@ -17,7 +17,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
 
   if (!slug) return notFound();
 
-  // 1. Fetch Product
+  // 1. Fetch Product with FULL History
   const product = await prisma.product.findUnique({
     where: { slug: slug },
     include: {
@@ -37,7 +37,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
   if (!product) return notFound();
 
   // ---------------------------------------------------------
-  // ✅ 2. SMART PRICE LOGIC (UPDATED)
+  // ✅ 2. SMART PRICE LOGIC (STRICTER "HISTORIC" CHECK)
   // ---------------------------------------------------------
   const bestListing = product.listings[0]; 
   const currentBestPrice = bestListing ? bestListing.price : 0;
@@ -54,18 +54,44 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
     ? Math.round((savingsAmount / anchorPrice) * 100) 
     : 0;
 
+  // --- 🔎 HISTORY ANALYSIS ---
+  // 1. Get pool of all prices (History + Current)
+  const allHistoryPrices = product.listings.flatMap(l => l.history.map(h => h.price));
+  const allLivePrices = product.listings.map(l => l.price);
+  const fullPricePool = [...allHistoryPrices, ...allLivePrices].filter(p => p > 0);
+  
+  // 2. Calculate Extremes
+  const lowestEverRecorded = fullPricePool.length > 0 ? Math.min(...fullPricePool) : currentBestPrice;
+  const highestEverRecorded = fullPricePool.length > 0 ? Math.max(...fullPricePool) : currentBestPrice;
+
+  // 3. Volatility Check: Has the price actually moved?
+  // If High == Low, the price is static. Static prices cannot be "Historic Lows".
+  const hasFluctuated = highestEverRecorded > lowestEverRecorded;
+  
+  // 4. Drop from Peak: How much lower is this than the highest price seen?
+  const dropFromPeak = highestEverRecorded > 0 
+    ? ((highestEverRecorded - currentBestPrice) / highestEverRecorded) * 100
+    : 0;
+
   // --- DEAL STRENGTH CALCULATION ---
   let dealStrength = "Standard Price";
   let dealColor = "bg-white/5 text-[#888] border border-white/10"; // Default Gray
   
-  // Check against DB minPrice to see if it's the actual Lowest Price Ever recorded
-  // (We check > 0 to ensure minPrice is actually populated)
-  const isHistoricLow = product.minPrice > 0 && currentBestPrice <= product.minPrice;
+  // ✅ STRICTER LOGIC:
+  // 1. HISTORIC LOW: Must be bottom price + Must have dropped at least 10% from its peak (proof of deal).
+  // 2. GREAT PRICE: Must be > 40% off MSRP (regardless of history).
+  // 3. GOOD DEAL: Any discount > 0.
+  
+  const isHistoricLow = 
+      currentBestPrice > 0 && 
+      currentBestPrice <= lowestEverRecorded && // It is the bottom
+      hasFluctuated &&                          // It is not static
+      dropFromPeak >= 10;                       // It dropped at least 10% from the high
 
   if (isHistoricLow) {
     dealStrength = "🔥 Historic Low";
     dealColor = "bg-red-900/30 text-red-400 border border-red-800 shadow-[0_0_15px_rgba(248,113,113,0.2)]";
-  } else if (discountPct > 50) {
+  } else if (discountPct >= 40) {
     dealStrength = "⚡ Great Price";
     dealColor = "bg-orange-900/30 text-orange-400 border border-orange-800";
   } else if (hasDiscount) {
@@ -82,10 +108,9 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
   return (
     <main className="min-h-screen pb-20">
       
-      {/* ✅ VIEW TRACKER (Invisible, runs on load) */}
+      {/* VIEW TRACKER */}
       <ProductViewTracker productId={product.id} />
 
-      {/* ✅ WIDE CONTAINER */}
       <div className="max-w-[1400px] mx-auto p-4 md:p-12">
       
         {/* --- BACK BUTTON --- */}
@@ -209,7 +234,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
           </div>
         </div>
 
-        {/* --- ✅ COMPARISON TABLE FIXED FOR MOBILE --- */}
+        {/* --- COMPARISON TABLE --- */}
         <div className="bg-[#1a1a1a] rounded-[32px] border border-white/5 overflow-hidden mb-20 shadow-2xl">
           <div className="bg-[#222] px-6 md:px-10 py-6 border-b border-white/5 flex justify-between items-center">
             <h3 className="font-black text-xs md:text-sm uppercase tracking-[0.2em] text-[#888]">Verified Store Comparison</h3>
@@ -220,7 +245,6 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
           </div>
           <div className="divide-y divide-white/5">
             {product.listings.map((listing) => (
-              // ✅ FLEX COLUMN on Mobile, ROW on Desktop
               <div key={listing.id} className="flex flex-col md:flex-row md:items-center justify-between p-5 md:p-8 gap-5 hover:bg-white/[0.02] transition-colors">
                 
                 {/* Retailer Info */}
@@ -240,7 +264,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
                   </div>
                 </div>
                 
-                {/* Price & Action - ✅ Full width row on mobile */}
+                {/* Price & Action */}
                 <div className="flex items-center justify-between md:justify-end gap-4 md:gap-10 w-full md:w-auto">
                   <span className="font-black text-2xl md:text-3xl text-white tracking-tighter">${listing.price.toFixed(2)}</span>
                   <TrackedLink 
