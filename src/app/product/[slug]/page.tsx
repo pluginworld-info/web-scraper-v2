@@ -10,7 +10,6 @@ import AlertModalTrigger from '@/components/AlertModalTrigger';
 import RelatedProducts from '@/components/RelatedProducts'; 
 import ReviewsSection from '@/components/ReviewsSection'; 
 import TrackedLink from '@/components/TrackedLink';
-// ✅ NEW IMPORT
 import ProductViewTracker from '@/components/ProductViewTracker';
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
@@ -37,10 +36,13 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
 
   if (!product) return notFound();
 
-  // 2. SMART PRICE LOGIC
+  // ---------------------------------------------------------
+  // ✅ 2. SMART PRICE LOGIC (UPDATED)
+  // ---------------------------------------------------------
   const bestListing = product.listings[0]; 
   const currentBestPrice = bestListing ? bestListing.price : 0;
   
+  // Calculate Anchor (MSRP)
   const anchorPrice = product.maxRegularPrice > 0 
     ? product.maxRegularPrice 
     : (bestListing?.originalPrice || currentBestPrice);
@@ -52,22 +54,30 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
     ? Math.round((savingsAmount / anchorPrice) * 100) 
     : 0;
 
+  // --- DEAL STRENGTH CALCULATION ---
+  let dealStrength = "Standard Price";
+  let dealColor = "bg-white/5 text-[#888] border border-white/10"; // Default Gray
+  
+  // Check against DB minPrice to see if it's the actual Lowest Price Ever recorded
+  // (We check > 0 to ensure minPrice is actually populated)
+  const isHistoricLow = product.minPrice > 0 && currentBestPrice <= product.minPrice;
+
+  if (isHistoricLow) {
+    dealStrength = "🔥 Historic Low";
+    dealColor = "bg-red-900/30 text-red-400 border border-red-800 shadow-[0_0_15px_rgba(248,113,113,0.2)]";
+  } else if (discountPct > 50) {
+    dealStrength = "⚡ Great Price";
+    dealColor = "bg-orange-900/30 text-orange-400 border border-orange-800";
+  } else if (hasDiscount) {
+    dealStrength = "Good Deal";
+    dealColor = "bg-green-900/30 text-green-400 border border-green-800";
+  }
+
   // 3. Rating Logic
   const reviewCount = product.reviews.length;
   const averageRating = reviewCount > 0 
     ? product.reviews.reduce((acc, review) => acc + review.rating, 0) / reviewCount 
     : 0;
-
-  let dealStrength = "Good Deal";
-  let dealColor = "bg-primary/20 text-primary border border-primary/50";
-  
-  if (discountPct > 70) {
-    dealStrength = "🔥 Historic Low";
-    dealColor = "bg-red-900/30 text-red-400 border border-red-800";
-  } else if (discountPct > 50) {
-    dealStrength = "⚡ Great Price";
-    dealColor = "bg-orange-900/30 text-orange-400 border border-orange-800";
-  }
 
   return (
     <main className="min-h-screen pb-20">
@@ -92,31 +102,35 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
         </div>
 
         {/* --- AI DEAL INSIGHT --- */}
-        {hasDiscount && (
-          <div className="mb-12 bg-[#1a1a1a] rounded-[32px] p-1 border border-white/5">
-              <div className="bg-[#222] p-6 md:p-8 rounded-[28px] flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="flex items-center gap-6">
-                      <div className={`px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg ${dealColor}`}>
-                          {dealStrength}
-                      </div>
-                      <span className="text-[#888] text-sm font-medium hidden lg:inline-block">
-                          We found {product.listings.length} verified sellers offering this plugin.
-                      </span>
-                  </div>
-                  <div className="flex items-center gap-10">
-                      <div className="text-right hidden md:block">
-                          <span className="block text-[#666] text-[10px] font-black uppercase mb-1 tracking-widest">Global Best Price</span>
-                          <span className="text-white font-black text-3xl tracking-tighter">${currentBestPrice.toFixed(2)}</span>
-                      </div>
-                      <div className="h-12 w-px bg-white/10 hidden md:block"></div>
-                      <div className="text-right">
-                            <span className="block text-[#666] text-[10px] font-black uppercase mb-1 tracking-widest">Total Savings</span>
-                            <span className="text-green-500 font-black text-3xl tracking-tighter">${savingsAmount.toFixed(2)}</span>
-                      </div>
-                  </div>
-              </div>
-          </div> 
-        )}
+        <div className="mb-12 bg-[#1a1a1a] rounded-[32px] p-1 border border-white/5">
+            <div className="bg-[#222] p-6 md:p-8 rounded-[28px] flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-6">
+                    {/* DYNAMIC CAPSULE */}
+                    <div className={`px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg transition-all duration-300 ${dealColor}`}>
+                        {dealStrength}
+                    </div>
+                    <span className="text-[#888] text-sm font-medium hidden lg:inline-block">
+                        We found {product.listings.length} verified sellers offering this plugin.
+                    </span>
+                </div>
+                <div className="flex items-center gap-10">
+                    <div className="text-right hidden md:block">
+                        <span className="block text-[#666] text-[10px] font-black uppercase mb-1 tracking-widest">Global Best Price</span>
+                        <span className="text-white font-black text-3xl tracking-tighter">${currentBestPrice.toFixed(2)}</span>
+                    </div>
+                    
+                    {hasDiscount && (
+                      <>
+                        <div className="h-12 w-px bg-white/10 hidden md:block"></div>
+                        <div className="text-right">
+                              <span className="block text-[#666] text-[10px] font-black uppercase mb-1 tracking-widest">Total Savings</span>
+                              <span className="text-green-500 font-black text-3xl tracking-tighter">${savingsAmount.toFixed(2)}</span>
+                        </div>
+                      </>
+                    )}
+                </div>
+            </div>
+        </div> 
 
         {/* --- MAIN HEADER SECTION --- */}
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 mb-20 items-start">

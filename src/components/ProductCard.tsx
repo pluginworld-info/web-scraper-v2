@@ -58,7 +58,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
             alt="" 
             fill 
             unoptimized={true}
-            className="object-cover blur-2xl opacity-30 scale-125 pointer-events-none transition-opacity duration-700 ease-out group-hover:opacity-50" 
+            className="object-cover blur-2xl opacity-95 scale-125 pointer-events-none transition-opacity duration-700 ease-out group-hover:opacity-50" 
           />
         )}
 
