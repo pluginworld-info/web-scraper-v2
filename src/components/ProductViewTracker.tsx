@@ -15,4 +15,4 @@ export default function ProductViewTracker({ productId }: { productId: string })
   }, [productId]);
 
   return null; // This component is invisible
-}
+} 
