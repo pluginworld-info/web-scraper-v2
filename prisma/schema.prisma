@@ -100,6 +100,8 @@ model Feed {
   name           String        // e.g. "Main JSON Feed"
   url            String        // The dynamic URL to monitor
   type           FeedType      @default(JSON)
+
+  affiliateTag   String?
    
   status         FeedStatus    @default(IDLE)
   lastSyncedAt   DateTime?
