@@ -61,6 +61,7 @@ export default function AdminFeedsPage() {
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [feedToDelete, setFeedToDelete] = useState<string | null>(null); // ⚡ NEW: Tracks which feed to delete
   
   // Real Scheduler State
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
@@ -220,10 +221,22 @@ export default function AdminFeedsPage() {
     }
   };
 
-  const handleDelete = async (feedId: string) => {
-    if (!confirm("Are you sure? This will stop monitoring this feed.")) return;
-    await fetch(`/api/admin/feeds?id=${feedId}`, { method: 'DELETE' });
-    fetchFeeds();
+  // ⚡ NEW: Opens the styled modal instead of the ugly browser alert
+  const initiateDelete = (feedId: string) => {
+    setFeedToDelete(feedId);
+  };
+
+  // ⚡ NEW: Actually executes the delete when they click "Confirm" in the modal
+  const confirmDelete = async () => {
+    if (!feedToDelete) return;
+    try {
+      await fetch(`/api/admin/feeds?id=${feedToDelete}`, { method: 'DELETE' });
+      await fetchFeeds();
+    } catch (err) {
+      console.error("Failed to delete feed");
+    } finally {
+      setFeedToDelete(null); // Close the modal
+    }
   };
 
   if (loading) return <div className="text-[#666] animate-pulse">Loading Feed Monitor...</div>;
@@ -232,7 +245,10 @@ export default function AdminFeedsPage() {
   const competitorRetailers = retailers.filter(r => r.role === 'SPOKE');
   const totalFeeds = retailers.flatMap(r => r.feeds).length;
 
-  const hasMaster = masterRetailers.length > 0;
+  // SMART LOCK: Only lock if a Master exists AND you aren't typing its exact name
+  const existingMaster = masterRetailers[0];
+  const isTypingExistingMaster = existingMaster && newSiteName.trim().toLowerCase() === existingMaster.name.toLowerCase();
+  const isMasterLocked = masterRetailers.length > 0 && !isTypingExistingMaster;
 
   return (
     <div className="max-w-7xl mx-auto pb-32">
@@ -295,7 +311,7 @@ export default function AdminFeedsPage() {
                 <div className="grid grid-cols-1 gap-4">
                     {masterRetailers.map(retailer => (
                         retailer.feeds.map(feed => (
-                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={handleDelete} />
+                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={initiateDelete} />
                         ))
                     ))}
                 </div>
@@ -309,7 +325,7 @@ export default function AdminFeedsPage() {
                 <div className="grid grid-cols-1 gap-4">
                     {competitorRetailers.map(retailer => (
                         retailer.feeds.map(feed => (
-                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={handleDelete} />
+                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={initiateDelete} />
                         ))
                     ))}
                 </div>
@@ -352,17 +368,18 @@ export default function AdminFeedsPage() {
                    </select>
                 </div>
                 <div className="pt-6">
-                   <label className={`flex items-center gap-3 ${hasMaster ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                   <label className={`flex items-center gap-3 ${isMasterLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                       <input 
                           type="checkbox" 
-                          checked={isMaster} 
-                          onChange={e => !hasMaster && setIsMaster(e.target.checked)} 
-                          disabled={hasMaster} 
+                          // Auto-checks the box if they type the master's name to prevent demotion
+                          checked={isMaster || (isTypingExistingMaster || false)} 
+                          onChange={e => !isMasterLocked && setIsMaster(e.target.checked)} 
+                          disabled={isMasterLocked} 
                           className="w-5 h-5 rounded bg-[#111] border border-[#333] accent-primary disabled:opacity-50" 
                       />
                       <span className="text-white font-bold text-sm">Is Master?</span>
                    </label>
-                   {hasMaster && (
+                   {isMasterLocked && (
                        <p className="text-[#666] text-[10px] font-bold uppercase tracking-widest mt-2 pl-8">
                            Master already assigned
                        </p>
@@ -397,6 +414,30 @@ export default function AdminFeedsPage() {
                     <div className="grid grid-cols-2 gap-4 w-full">
                         <button onClick={() => setIsSyncModalOpen(false)} className="bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold text-sm transition-colors">Cancel</button>
                         <button onClick={executeSyncAll} className="bg-primary hover:opacity-90 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition-all">Confirm Sync</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* ⚡ NEW: SLEEK DELETE CONFIRMATION MODAL */}
+      {feedToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setFeedToDelete(null)}></div>
+            <div className="relative bg-[#222] border border-red-900/50 w-full max-w-md rounded-2xl p-8 shadow-[0_0_40px_rgba(220,38,38,0.15)] transform transition-all scale-100 animate-in fade-in zoom-in duration-200">
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center mb-6 bg-red-500/10 text-red-500 border border-red-500/20">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Delete Feed?</h3>
+                    <p className="text-[#888] text-sm mb-8 leading-relaxed">
+                        Are you sure you want to delete this feed? This will permanently stop monitoring and syncing price data from this source.
+                    </p>
+                    <div className="grid grid-cols-2 gap-4 w-full">
+                        <button onClick={() => setFeedToDelete(null)} className="bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold text-sm transition-colors">Cancel</button>
+                        <button onClick={confirmDelete} className="bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all">Delete Feed</button>
                     </div>
                 </div>
             </div>
