@@ -6,8 +6,8 @@ import Image from 'next/image';
 
 // --- TYPES ---
 type NotificationType = 'success' | 'error';
-// ⚡ NEW: Added 'garbage_collect' to ModalType
-type ModalType = 'logout' | 'clear_cache' | 'garbage_collect' | null;
+// ⚡ NEW: Added 'db_cleanup' for our new Zombie Product cleaner
+type ModalType = 'logout' | 'clear_cache' | 'garbage_collect' | 'db_cleanup' | null;
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -138,7 +138,7 @@ export default function SettingsPage() {
     }, 800);
   };
 
-  // ⚡ NEW: Garbage Collection Executor
+  // Your EXISTING Cloud Storage GC
   const executeGarbageCollection = async () => {
     setProcessingAction(true);
     try {
@@ -149,6 +149,26 @@ export default function SettingsPage() {
         showToast(`Cleanup complete: ${data.stats.orphansDeleted} orphans removed.`, "success");
       } else {
         showToast(data.error || "Garbage collection failed.", "error");
+      }
+    } catch (e) {
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      setProcessingAction(false);
+      setActiveModal(null);
+    }
+  };
+
+  // ⚡ NEW: Database GC (Zombie Products)
+  const executeDbCleanup = async () => {
+    setProcessingAction(true);
+    try {
+      const res = await fetch('/api/admin/system/cleanup', { method: 'POST' });
+      const data = await res.json();
+      
+      if (res.ok) {
+        showToast(`Database clean: ${data.deletedCount} zombie products removed.`, "success");
+      } else {
+        showToast(data.error || "Database cleanup failed.", "error");
       }
     } catch (e) {
       showToast("Network error. Please try again.", "error");
@@ -373,15 +393,26 @@ export default function SettingsPage() {
                         Clear Local Cache
                     </button>
 
-                    {/* ⚡ NEW: Garbage Collector Button */}
+                    {/* EXISTING: Cloud Garbage Collector Button */}
                     <p className="text-[#888] text-xs mt-6 mb-3 leading-relaxed border-t border-red-900/20 pt-4">
-                        Reclaim Google Cloud Storage space by deleting orphaned product images that no longer exist in the database.
+                        Reclaim Google Cloud Storage space by deleting orphaned images that do not have a matching database product.
                     </p>
                     <button 
                         onClick={() => setActiveModal('garbage_collect')}
                         className="w-full bg-[#111] hover:bg-orange-900/20 border border-orange-900/30 text-orange-400 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
                     >
                         Run Storage Cleanup
+                    </button>
+
+                    {/* ⚡ NEW: Database Zombie Cleanup Button */}
+                    <p className="text-[#888] text-xs mt-6 mb-3 leading-relaxed border-t border-red-900/20 pt-4">
+                        Clean database by removing "Zombie Products" (products with 0 active store listings) caused by aborted syncs.
+                    </p>
+                    <button 
+                        onClick={() => setActiveModal('db_cleanup')}
+                        className="w-full bg-[#111] hover:bg-purple-900/20 border border-purple-900/30 text-purple-400 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+                    >
+                        Purge Zombie Products
                     </button>
                 </div>
             </section>
@@ -402,12 +433,15 @@ export default function SettingsPage() {
                     <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 ${
                         activeModal === 'logout' ? 'bg-red-500/10 text-red-500' : 
                         activeModal === 'garbage_collect' ? 'bg-orange-500/10 text-orange-500' : 
+                        activeModal === 'db_cleanup' ? 'bg-purple-500/10 text-purple-500' :
                         'bg-yellow-500/10 text-yellow-500'
                     }`}>
                         {activeModal === 'logout' ? (
                              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                         ) : activeModal === 'garbage_collect' ? (
                              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        ) : activeModal === 'db_cleanup' ? (
+                             <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7h16M4 7a2 2 0 012-2h12a2 2 0 012 2M4 7v12a2 2 0 002 2h12a2 2 0 002-2V7m-8 4v8m-4-8v8" /></svg>
                         ) : (
                              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                         )}
@@ -416,6 +450,7 @@ export default function SettingsPage() {
                     <h3 className="text-2xl font-bold text-white mb-2">
                         {activeModal === 'logout' ? 'Sign Out?' : 
                          activeModal === 'garbage_collect' ? 'Run Storage Cleanup?' :
+                         activeModal === 'db_cleanup' ? 'Purge Zombie Products?' :
                          'Clear Cache?'}
                     </h3>
                     
@@ -424,6 +459,8 @@ export default function SettingsPage() {
                            ? 'You are about to end your secure session. You will need to sign in again to access the admin panel.' 
                            : activeModal === 'garbage_collect'
                            ? 'This will scan Google Cloud Storage and permanently delete any images that do not have a matching product in your database. This action cannot be undone.'
+                           : activeModal === 'db_cleanup'
+                           ? 'This will scan your database for orphaned products that currently have zero active store listings, and permanently delete them and their cloud images.'
                            : 'This will reset your local dashboard preferences and view settings. Your data on the server will not be affected.'
                         }
                     </p>
@@ -440,18 +477,21 @@ export default function SettingsPage() {
                             onClick={
                                 activeModal === 'logout' ? executeLogout : 
                                 activeModal === 'garbage_collect' ? executeGarbageCollection :
+                                activeModal === 'db_cleanup' ? executeDbCleanup :
                                 executeClearCache
                             }
                             disabled={processingAction}
                             className={`py-3 rounded-xl font-bold text-sm text-white shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
                                 activeModal === 'logout' ? 'bg-red-600 hover:bg-red-500' : 
                                 activeModal === 'garbage_collect' ? 'bg-orange-600 hover:bg-orange-500' :
+                                activeModal === 'db_cleanup' ? 'bg-purple-600 hover:bg-purple-500' :
                                 'bg-yellow-600 hover:bg-yellow-500'
                             }`}
                         >
                             {processingAction && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
                             {activeModal === 'logout' ? 'Sign Out' : 
                              activeModal === 'garbage_collect' ? 'Purge Storage' : 
+                             activeModal === 'db_cleanup' ? 'Purge Database' : 
                              'Confirm Clear'}
                         </button>
                     </div>

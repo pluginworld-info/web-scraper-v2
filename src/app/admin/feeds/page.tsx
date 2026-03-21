@@ -239,6 +239,16 @@ export default function AdminFeedsPage() {
     }
   };
 
+  // ⚡ NEW: Safely aborts a running sync
+  const handleAbort = async (feedId: string) => {
+    try {
+      await fetch(`/api/admin/feeds/${feedId}/abort`, { method: 'POST' });
+      await fetchFeeds(); // Instantly refresh UI to show IDLE state
+    } catch (error) {
+      console.error("Failed to abort sync");
+    }
+  };
+
   if (loading) return <div className="text-[#666] animate-pulse">Loading Feed Monitor...</div>;
 
   const masterRetailers = retailers.filter(r => r.role === 'MASTER');
@@ -311,7 +321,7 @@ export default function AdminFeedsPage() {
                 <div className="grid grid-cols-1 gap-4">
                     {masterRetailers.map(retailer => (
                         retailer.feeds.map(feed => (
-                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={initiateDelete} />
+                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={initiateDelete} onAbort={handleAbort} />
                         ))
                     ))}
                 </div>
@@ -325,7 +335,7 @@ export default function AdminFeedsPage() {
                 <div className="grid grid-cols-1 gap-4">
                     {competitorRetailers.map(retailer => (
                         retailer.feeds.map(feed => (
-                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={initiateDelete} />
+                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={initiateDelete} onAbort={handleAbort} />
                         ))
                     ))}
                 </div>
@@ -449,7 +459,7 @@ export default function AdminFeedsPage() {
 }
 
 // FEED CARD COMPONENT
-function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void }) {
+function FeedCard({ retailer, feed, onDelete, onAbort }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void, onAbort: (id: string) => void }) {
   const isSyncing = feed.status === 'SYNCING';
   
   // ⚡ Use our new hook to get live progress ONLY when syncing
@@ -511,7 +521,34 @@ function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed
        </div>
        <div className="flex items-center gap-3 w-full md:w-auto pl-0 md:pl-4 border-t md:border-t-0 md:border-l border-[#333] pt-4 md:pt-0 mt-2 md:mt-0">
           <div className="flex-1 md:flex-none"><FeedSyncButton feed={feed} /></div>
-          <button onClick={() => onDelete(feed.id)} className="p-3 text-[#666] hover:text-red-500 hover:bg-[#333] rounded-lg transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+          
+          {/* ⚡ NEW: ABORT BUTTON (Only shows when syncing) */}
+          {isSyncing && (
+             <button 
+                 onClick={() => onAbort(feed.id)} 
+                 title="Abort Sync"
+                 className="p-3 text-yellow-500 hover:text-white hover:bg-yellow-600/20 rounded-lg transition-colors"
+             >
+                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                 </svg>
+             </button>
+          )}
+
+          {/* ⚡ UPDATED: DELETE BUTTON (Disabled while syncing) */}
+          <button 
+              onClick={() => !isSyncing && onDelete(feed.id)} 
+              disabled={isSyncing}
+              title={isSyncing ? "Cannot delete while syncing" : "Delete Feed"}
+              className={`p-3 rounded-lg transition-colors ${
+                  isSyncing 
+                      ? 'text-[#444] cursor-not-allowed opacity-50' 
+                      : 'text-[#666] hover:text-red-500 hover:bg-[#333]'
+              }`}
+          >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </button>
        </div>
     </div>
   );

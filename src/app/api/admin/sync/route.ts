@@ -90,6 +90,7 @@ export async function POST(req: Request) {
     let processed = 0;
     let skipped = 0;
     let errors = 0;
+    let isAborted = false; // ⚡ KILL SWITCH FLAG
     const activeSlugs = new Set<string>();
     const deduplicatedItems = new Map();
 
@@ -250,19 +251,34 @@ export async function POST(req: Request) {
 
         processed++;
         
-        // ⚡ PROGRESS: Update the database every 100 items so the frontend progress bar moves
+        // ⚡ PROGRESS & KILL SWITCH
         if (processed % 100 === 0) {
             console.log(`Synced ${processed} products...`);
-            await prisma.feed.update({
+            
+            // Update progress and grab current status in one call
+            const currentFeedState = await prisma.feed.update({
                 where: { id: feedId as string },
-                data: { processedItems: processed }
+                data: { processedItems: processed },
+                select: { status: true }
             });
+
+            // If the user hit abort, the frontend changed status to IDLE. Break the loop!
+            if (currentFeedState.status !== 'SYNCING') {
+                console.log(`🛑 Sync gracefully aborted for feed: ${feedId}`);
+                isAborted = true;
+                break;
+            }
         }
 
       } catch (itemErr) {
         console.error(`❌ Failed item ${targetSlug}:`, itemErr);
         errors++;
       }
+    }
+
+    // ⚡ SAFE EXIT: If aborted, skip cleanup and don't mark as success
+    if (isAborted) {
+        return NextResponse.json({ success: false, aborted: true, processed, skipped, errors });
     }
 
     // 6. CLEANUP
