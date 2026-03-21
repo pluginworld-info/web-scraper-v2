@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { processAndUploadImage, deleteImageFromBucket } from '../../../../../scripts/utils/image-uploader';
+import { mapProductData } from '../../../../../scripts/utils/universal-mapper'; 
+import * as Papa from 'papaparse';
 
 // Helper to sanitize slug
 function slugify(text: string) {
@@ -14,7 +16,6 @@ function slugify(text: string) {
 }
 
 export async function POST(req: Request) {
-  // Define variable here so it is accessible in the catch block
   let feedId: string | null = null;
 
   try {
@@ -29,78 +30,79 @@ export async function POST(req: Request) {
 
     if (!feed) return NextResponse.json({ error: "Feed not found" }, { status: 404 });
 
-    // Update Status to SYNCING
     await prisma.feed.update({
       where: { id: feedId as string },
       data: { status: 'SYNCING', errorMessage: null }
     });
 
-    // 2. Fetch the JSON File
-    console.log(`📥 Fetching JSON from: ${feed.url}`);
+    // 2. Fetch the Raw File
+    console.log(`📥 Fetching data from: ${feed.url}`);
     const response = await fetch(feed.url);
-    
     if (!response.ok) throw new Error(`Failed to download feed: ${response.statusText}`);
     
-    const data = await response.json();
-    const products = Array.isArray(data) ? data : (data.products || []);
+    const rawText = await response.text();
+    let rawItems = [];
 
-    console.log(`📦 Found ${products.length} products. Processing...`);
+    // ⚡ FIX: DYNAMIC PARSING FOR JSON OR CSV
+    if (feed.type === 'CSV') {
+        const parsed = Papa.parse(rawText, { header: true, skipEmptyLines: true });
+        rawItems = parsed.data;
+    } else {
+        const parsedJson = JSON.parse(rawText);
+        rawItems = Array.isArray(parsedJson) ? parsedJson : (parsedJson.products || []);
+    }
+
+    console.log(`📦 Found ${rawItems.length} raw items. Processing...`);
 
     let processed = 0;
+    let skipped = 0; // ⚡ NEW: Track how much compute we saved
     const processedSlugs: string[] = []; 
     
-    for (const item of products) {
-      // ✅ MAPPING
-      const title = item.title || item.name;
-      const url = item.url || item.link;
-      const rawPrice = item.price || item.sale_price || "0";
-      const price = parseFloat(String(rawPrice).replace(/[^0-9.]/g, ""));
+    for (const rawItem of rawItems) {
+      // ⚡ FIX: PASS THROUGH UNIVERSAL MAPPER
+      const mapped = mapProductData(rawItem, feed.affiliateTag);
+      
+      if (!mapped.title || !mapped.url) continue;
 
-      // Parse Original Price
-      const rawOriginal = 
-        item.originalPrice ||  
-        item.original_price || 
-        item.regular_price || 
-        item.rrp || 
-        item.msrp || 
-        item.price; 
-
-      const originalPrice = parseFloat(String(rawOriginal).replace(/[^0-9.]/g, ""));
-      const finalOriginal = originalPrice < price ? price : originalPrice;
-
-      const incomingImage = item.image || item.image_url || item.img;
-      const brand = item.brand || item.developer || "Unknown";
-      const category = item.category || item.type || "Plugin";
-      const description = item.description || "";
-
-      if (!title || !url) continue;
-
-      const slug = slugify(title);
+      const slug = slugify(mapped.title);
       processedSlugs.push(slug);
 
       // --- LOGIC: FETCH CURRENT STATE ---
       const existingProduct = await prisma.product.findUnique({
           where: { slug: slug },
-          select: { id: true, sourceImageUrl: true, image: true }
+          include: { 
+            listings: { where: { retailerId: feed.retailer.id } } 
+          }
       });
+
+      const existingListing = existingProduct?.listings[0];
+
+      // ⚡ FIX: THE "SMART SKIP" OPTIMIZATION
+      // If the product exists, and the price, original price, and image haven't changed, DO NOTHING.
+      if (existingProduct && existingListing) {
+          const priceUnchanged = existingListing.price === mapped.price;
+          const originalPriceUnchanged = existingListing.originalPrice === mapped.originalPrice;
+          const imageUnchanged = existingProduct.sourceImageUrl === mapped.image;
+
+          if (priceUnchanged && originalPriceUnchanged && imageUnchanged) {
+              skipped++;
+              continue; // 🚀 SKIPS DATABASE WRITE AND IMAGE LOGIC ENTIRELY
+          }
+      }
 
       // --- LOGIC: SMART IMAGE UPLOAD ---
       let finalBucketUrl = existingProduct?.image || null; 
       let shouldUpload = false;
 
-      // Only MASTER feeds (like Plugin Boutique) manage images
-      if (feed.retailer.role === 'MASTER' && incomingImage) {
+      if (feed.retailer.role === 'MASTER' && mapped.image) {
           const isBucketUrl = existingProduct?.image?.includes('storage.googleapis.com');
 
           if (!existingProduct) {
-              // Case 1: New Product -> Upload
               shouldUpload = true;
-          } else if (existingProduct.sourceImageUrl !== incomingImage) {
-              // Case 2: Affiliate changed the image link -> Re-upload
+          } else if (existingProduct.sourceImageUrl !== mapped.image) {
               console.log(`🔄 Image changed for ${slug}. Re-uploading...`);
               shouldUpload = true;
           } else if (!existingProduct.image || !isBucketUrl) {
-              // Case 3 (RESCUE): Source matches, but we don't have a valid bucket URL
               console.log(`🛠️ Image missing/broken for ${slug}. Retrying upload...`);
               shouldUpload = true;
           }
@@ -108,9 +110,7 @@ export async function POST(req: Request) {
 
       if (shouldUpload) {
           try {
-             // 🚨 CRITICAL CHANGE: Stop the sync if upload fails
-             const bucketUrl = await processAndUploadImage(incomingImage, slug);
-             
+             const bucketUrl = await processAndUploadImage(mapped.image, slug);
              if (bucketUrl) {
                  finalBucketUrl = bucketUrl;
              } else {
@@ -118,25 +118,28 @@ export async function POST(req: Request) {
              }
           } catch (imgErr: any) {
              console.error(`Failed to process image for ${slug}`, imgErr);
-             // 🚨 THROW ERROR UP so it is caught by the main catch block and saved to DB
-             throw new Error(`Image Upload Failed for '${title}': ${imgErr.message}`);
+             throw new Error(`Image Upload Failed for '${mapped.title}': ${imgErr.message}`);
           }
       }
 
       // --- A. UPSERT PRODUCT ---
+      const maxDiscount = mapped.originalPrice > mapped.price 
+        ? Math.round(((mapped.originalPrice - mapped.price) / mapped.originalPrice) * 100) 
+        : 0;
+
       const productData: any = {
-        title,
-        brand,
-        category,
-        minPrice: price, 
-        maxRegularPrice: finalOriginal,
-        maxDiscount: finalOriginal > price ? Math.round(((finalOriginal - price) / finalOriginal) * 100) : 0
+        title: mapped.title,
+        brand: mapped.brand,
+        category: mapped.category,
+        minPrice: mapped.price, 
+        maxRegularPrice: mapped.originalPrice,
+        maxDiscount: maxDiscount
       };
 
       if (feed.retailer.role === 'MASTER') {
-        productData.description = description;
+        productData.description = mapped.description;
         if (finalBucketUrl) productData.image = finalBucketUrl;
-        if (incomingImage) productData.sourceImageUrl = incomingImage; 
+        if (mapped.image) productData.sourceImageUrl = mapped.image; 
       }
 
       const product = await prisma.product.upsert({
@@ -146,24 +149,24 @@ export async function POST(req: Request) {
           slug,
           ...productData,
           image: finalBucketUrl, 
-          sourceImageUrl: incomingImage
+          sourceImageUrl: mapped.image
         }
       });
 
       // --- B. UPSERT LISTING ---
       const listing = await prisma.listing.upsert({
-        where: { url: url },
+        where: { url: mapped.url },
         update: {
-          price,
-          originalPrice: finalOriginal,
+          price: mapped.price,
+          originalPrice: mapped.originalPrice,
           inStock: true,
           lastScraped: new Date(),
         },
         create: {
-          url,
-          title,
-          price,
-          originalPrice: finalOriginal,
+          url: mapped.url,
+          title: mapped.title,
+          price: mapped.price,
+          originalPrice: mapped.originalPrice,
           inStock: true,
           product: { connect: { id: product.id } },
           retailer: { connect: { id: feed.retailer.id } }
@@ -176,10 +179,10 @@ export async function POST(req: Request) {
         orderBy: { date: 'desc' }
       });
 
-      if (!lastHistory || Math.abs(lastHistory.price - price) > 0.01) {
+      if (!lastHistory || Math.abs(lastHistory.price - mapped.price) > 0.01) {
         await prisma.priceHistory.create({
           data: {
-            price,
+            price: mapped.price,
             listingId: listing.id
           }
         });
@@ -188,9 +191,10 @@ export async function POST(req: Request) {
       processed++;
     }
 
+    console.log(`✅ Sync Complete: Processed ${processed}, Skipped ${skipped} (Resource Saver Active)`);
+
     // --- 3. CLEANUP: REMOVE DELETED PRODUCTS ---
     if (feed.retailer.role === 'MASTER' && processedSlugs.length > 0) {
-        
         const productsToDelete = await prisma.product.findMany({
             where: {
                listings: { some: { retailerId: feed.retailer.id } },
@@ -206,7 +210,6 @@ export async function POST(req: Request) {
                 if (p.image && p.image.includes('storage.googleapis.com')) {
                     await deleteImageFromBucket(p.slug);
                 }
-
                 try {
                     await prisma.product.delete({ where: { id: p.id } });
                 } catch (delErr) {
@@ -219,18 +222,14 @@ export async function POST(req: Request) {
     // 4. Success!
     await prisma.feed.update({ 
       where: { id: feedId as string },
-      data: { 
-        status: 'SUCCESS', 
-        lastSyncedAt: new Date() 
-      }
+      data: { status: 'SUCCESS', lastSyncedAt: new Date() }
     });
 
-    return NextResponse.json({ success: true, processed });
+    return NextResponse.json({ success: true, processed, skipped });
 
   } catch (error: any) {
     console.error("Sync Error:", error);
     
-    // 🚨 UPDATE DB STATUS TO ERROR
     if (feedId) {
         try {
             await prisma.feed.update({

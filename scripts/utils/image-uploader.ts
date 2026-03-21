@@ -15,7 +15,7 @@ let bucketInstance: any = null;
 // ✅ LAZY INITIALIZATION FUNCTION
 // This function will only run when you actually click "Sync", 
 // ensuring the Build process doesn't crash.
-function getStorage() {
+export function getStorage() {
     if (storageInstance && bucketInstance) {
         return { storage: storageInstance, bucket: bucketInstance };
     }

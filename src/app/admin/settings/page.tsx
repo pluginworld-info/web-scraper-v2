@@ -6,7 +6,8 @@ import Image from 'next/image';
 
 // --- TYPES ---
 type NotificationType = 'success' | 'error';
-type ModalType = 'logout' | 'clear_cache' | null;
+// ⚡ NEW: Added 'garbage_collect' to ModalType
+type ModalType = 'logout' | 'clear_cache' | 'garbage_collect' | null;
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState({
     siteName: '',
     logoUrl: '',
-    faviconUrl: '', // ✅ ADDED FAVICON STATE
+    faviconUrl: '',
     primaryColor: '#2563eb',
     accentColor: '#ef4444'
   });
@@ -63,7 +64,7 @@ export default function SettingsPage() {
            const newSettings = {
              siteName: data.siteName || '',
              logoUrl: data.logoUrl || '',
-             faviconUrl: data.faviconUrl || '', // ✅ LOAD FAVICON
+             faviconUrl: data.faviconUrl || '',
              primaryColor: data.primaryColor || '#2563eb',
              accentColor: data.accentColor || '#ef4444'
            };
@@ -112,7 +113,6 @@ export default function SettingsPage() {
     }
   };
 
-  // ✅ FIXED: Clear Cache Logic (Preserves Login Token)
   const executeClearCache = () => {
     setProcessingAction(true);
     
@@ -138,9 +138,28 @@ export default function SettingsPage() {
     }, 800);
   };
 
+  // ⚡ NEW: Garbage Collection Executor
+  const executeGarbageCollection = async () => {
+    setProcessingAction(true);
+    try {
+      const res = await fetch('/api/admin/system/garbage-collect', { method: 'POST' });
+      const data = await res.json();
+      
+      if (res.ok) {
+        showToast(`Cleanup complete: ${data.stats.orphansDeleted} orphans removed.`, "success");
+      } else {
+        showToast(data.error || "Garbage collection failed.", "error");
+      }
+    } catch (e) {
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      setProcessingAction(false);
+      setActiveModal(null);
+    }
+  };
+
   // --- FILE HANDLING ---
   
-  // ✅ UPDATED: Accepts 'field' to know if it's logo or favicon
   const processFile = (file: File, field: 'logoUrl' | 'faviconUrl') => {
     if (!file.type.startsWith('image/')) return showToast("File must be an image.", "error");
     if (file.size > 2 * 1024 * 1024) return showToast("File too large (Max 2MB).", "error");
@@ -255,7 +274,7 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
-                        {/* ✅ FAVICON UPLOAD */}
+                        {/* Favicon Upload */}
                         <div>
                             <label className="block text-xs font-bold text-[#666] uppercase mb-2 tracking-wider">Browser Favicon</label>
                             <div 
@@ -268,7 +287,6 @@ export default function SettingsPage() {
                             >
                                 {formData.faviconUrl ? (
                                     <div className="relative w-full h-full p-4 flex items-center justify-center group">
-                                        {/* Display Favicon Small but Scaled */}
                                         <div className="relative w-16 h-16">
                                             <Image src={formData.faviconUrl} alt="Favicon" fill className="object-contain" unoptimized />
                                         </div>
@@ -346,13 +364,24 @@ export default function SettingsPage() {
                 </div>
                 <div className="p-6">
                     <p className="text-[#888] text-xs mb-5 leading-relaxed">
-                        If the dashboard UI looks broken or tables aren't updating, try clearing the local browser cache. This does <strong>not</strong> delete any data from the server.
+                        If the dashboard UI looks broken or tables aren't updating, try clearing the local browser cache. This does <strong>not</strong> delete any data.
                     </p>
                     <button 
                         onClick={() => setActiveModal('clear_cache')}
                         className="w-full bg-[#111] hover:bg-red-900/20 border border-red-900/30 text-red-400 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
                     >
                         Clear Local Cache
+                    </button>
+
+                    {/* ⚡ NEW: Garbage Collector Button */}
+                    <p className="text-[#888] text-xs mt-6 mb-3 leading-relaxed border-t border-red-900/20 pt-4">
+                        Reclaim Google Cloud Storage space by deleting orphaned product images that no longer exist in the database.
+                    </p>
+                    <button 
+                        onClick={() => setActiveModal('garbage_collect')}
+                        className="w-full bg-[#111] hover:bg-orange-900/20 border border-orange-900/30 text-orange-400 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+                    >
+                        Run Storage Cleanup
                     </button>
                 </div>
             </section>
@@ -370,21 +399,31 @@ export default function SettingsPage() {
             
             <div className="relative bg-[#222] border border-[#333] w-full max-w-md rounded-2xl p-8 shadow-2xl transform transition-all scale-100">
                 <div className="flex flex-col items-center text-center">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 ${activeModal === 'logout' ? 'bg-red-500/10 text-red-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 ${
+                        activeModal === 'logout' ? 'bg-red-500/10 text-red-500' : 
+                        activeModal === 'garbage_collect' ? 'bg-orange-500/10 text-orange-500' : 
+                        'bg-yellow-500/10 text-yellow-500'
+                    }`}>
                         {activeModal === 'logout' ? (
                              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                        ) : (
+                        ) : activeModal === 'garbage_collect' ? (
                              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        ) : (
+                             <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                         )}
                     </div>
 
                     <h3 className="text-2xl font-bold text-white mb-2">
-                        {activeModal === 'logout' ? 'Sign Out?' : 'Clear Cache?'}
+                        {activeModal === 'logout' ? 'Sign Out?' : 
+                         activeModal === 'garbage_collect' ? 'Run Storage Cleanup?' :
+                         'Clear Cache?'}
                     </h3>
                     
                     <p className="text-[#888] text-sm mb-8 leading-relaxed">
                         {activeModal === 'logout' 
                            ? 'You are about to end your secure session. You will need to sign in again to access the admin panel.' 
+                           : activeModal === 'garbage_collect'
+                           ? 'This will scan Google Cloud Storage and permanently delete any images that do not have a matching product in your database. This action cannot be undone.'
                            : 'This will reset your local dashboard preferences and view settings. Your data on the server will not be affected.'
                         }
                     </p>
@@ -398,14 +437,22 @@ export default function SettingsPage() {
                             Cancel
                         </button>
                         <button 
-                            onClick={activeModal === 'logout' ? executeLogout : executeClearCache}
+                            onClick={
+                                activeModal === 'logout' ? executeLogout : 
+                                activeModal === 'garbage_collect' ? executeGarbageCollection :
+                                executeClearCache
+                            }
                             disabled={processingAction}
                             className={`py-3 rounded-xl font-bold text-sm text-white shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
-                                activeModal === 'logout' ? 'bg-red-600 hover:bg-red-500' : 'bg-orange-600 hover:bg-orange-500'
+                                activeModal === 'logout' ? 'bg-red-600 hover:bg-red-500' : 
+                                activeModal === 'garbage_collect' ? 'bg-orange-600 hover:bg-orange-500' :
+                                'bg-yellow-600 hover:bg-yellow-500'
                             }`}
                         >
                             {processingAction && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
-                            {activeModal === 'logout' ? 'Sign Out' : 'Confirm Clear'}
+                            {activeModal === 'logout' ? 'Sign Out' : 
+                             activeModal === 'garbage_collect' ? 'Purge Storage' : 
+                             'Confirm Clear'}
                         </button>
                     </div>
                 </div>

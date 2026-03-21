@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
+
+  
   // 1. Establish the default response (allow the request to continue)
   let response = NextResponse.next();
 

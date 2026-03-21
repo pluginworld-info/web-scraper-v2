@@ -14,6 +14,7 @@ interface Feed {
   status: FeedStatus;
   lastSyncedAt: string | null;
   errorMessage: string | null;
+  affiliateTag: string | null; // ⚡ NEW: Added to interface
 }
 
 interface Retailer {
@@ -45,6 +46,7 @@ export default function AdminFeedsPage() {
   const [newFeedUrl, setNewFeedUrl] = useState('');
   const [newFeedType, setNewFeedType] = useState('JSON');
   const [isMaster, setIsMaster] = useState(false);
+  const [newAffiliateTag, setNewAffiliateTag] = useState(''); // ⚡ NEW: Form State for Tag
   const [submitting, setSubmitting] = useState(false);
 
   // 1. Fetch Feeds Data
@@ -171,13 +173,17 @@ export default function AdminFeedsPage() {
           name: newSiteName,
           url: newFeedUrl,
           type: newFeedType,
-          role: isMaster ? 'MASTER' : 'SPOKE'
+          role: isMaster ? 'MASTER' : 'SPOKE',
+          affiliateTag: newAffiliateTag || null // ⚡ NEW: Include in payload
         }),
       });
       await fetchFeeds(); 
       setIsAddModalOpen(false);
+      
+      // Reset Form
       setNewSiteName('');
       setNewFeedUrl('');
+      setNewAffiliateTag(''); // ⚡ NEW: Reset
       setIsMaster(false);
     } catch (error) {
       alert("Failed to add site");
@@ -198,7 +204,6 @@ export default function AdminFeedsPage() {
   const competitorRetailers = retailers.filter(r => r.role === 'SPOKE');
   const totalFeeds = retailers.flatMap(r => r.feeds).length;
 
-  // Check if ANY master exists to disable the checkbox
   const hasMaster = masterRetailers.length > 0;
 
   return (
@@ -210,7 +215,6 @@ export default function AdminFeedsPage() {
              <div className="flex items-center gap-4">
                 <h1 className="text-3xl font-black text-white tracking-tighter">Feed Monitor</h1>
                 
-                {/* TIMER BADGE */}
                 <div className="flex items-center gap-2 bg-[#1a1a1a] border border-[#333] px-3 py-1.5 rounded-lg">
                     <div className={`w-2 h-2 rounded-full ${schedulerState === 'ENABLED' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                     <span className="text-xs font-mono text-[#888] font-bold">
@@ -246,7 +250,6 @@ export default function AdminFeedsPage() {
 
             <button 
               onClick={() => setIsAddModalOpen(true)}
-              // ✅ DYNAMIC BUTTON
               className="bg-primary hover:opacity-90 text-white px-6 py-3 rounded-xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-primary/20 transition-all flex-1 md:flex-none text-center"
             >
               + Add Site
@@ -258,7 +261,6 @@ export default function AdminFeedsPage() {
         <div className="space-y-12">
             <div>
                 <h2 className="text-[#aaaaaa] font-black uppercase tracking-widest text-sm mb-4 flex items-center gap-2">
-                    {/* ✅ DYNAMIC PRIMARY INDICATOR */}
                     <span className="w-2 h-2 rounded-full bg-primary"></span>
                     Master Data Sources
                 </h2>
@@ -273,7 +275,6 @@ export default function AdminFeedsPage() {
 
             <div>
                 <h2 className="text-[#aaaaaa] font-black uppercase tracking-widest text-sm mb-4 flex items-center gap-2">
-                    {/* ✅ DYNAMIC ACCENT INDICATOR */}
                     <span className="w-2 h-2 rounded-full bg-accent"></span>
                     Competitor Sub-Sites
                 </h2>
@@ -295,13 +296,25 @@ export default function AdminFeedsPage() {
             <form onSubmit={handleAddSite} className="space-y-4">
               <div>
                 <label className="block text-[#666] text-xs font-bold uppercase mb-2">Site Name</label>
-                {/* ✅ DYNAMIC FOCUS BORDER */}
                 <input className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:outline-none focus:border-primary transition-colors" value={newSiteName} onChange={e => setNewSiteName(e.target.value)} required />
               </div>
+              
               <div>
                 <label className="block text-[#666] text-xs font-bold uppercase mb-2">Feed URL</label>
                 <input className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:outline-none focus:border-primary transition-colors" value={newFeedUrl} onChange={e => setNewFeedUrl(e.target.value)} required />
               </div>
+
+              {/* ⚡ NEW: Affiliate Tag Input */}
+              <div>
+                <label className="block text-[#666] text-xs font-bold uppercase mb-2">Affiliate Tag (Optional)</label>
+                <input 
+                  className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:outline-none focus:border-primary transition-colors font-mono text-sm placeholder:text-[#444]" 
+                  value={newAffiliateTag} 
+                  onChange={e => setNewAffiliateTag(e.target.value)} 
+                  placeholder="e.g. a_aid=12345" 
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                    <label className="block text-[#666] text-xs font-bold uppercase mb-2">Format</label>
@@ -311,7 +324,6 @@ export default function AdminFeedsPage() {
                      <option value="XML">XML</option>
                    </select>
                 </div>
-                {/* ✅ DYNAMIC CHECKBOX COLOR */}
                 <div className="pt-6">
                    <label className={`flex items-center gap-3 ${hasMaster ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                       <input 
@@ -332,7 +344,6 @@ export default function AdminFeedsPage() {
               </div>
               <div className="pt-6 flex gap-3">
                 <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold uppercase text-xs">Cancel</button>
-                {/* ✅ DYNAMIC SUBMIT BUTTON */}
                 <button disabled={submitting} className="flex-1 bg-primary hover:opacity-90 text-white py-3 rounded-xl font-bold uppercase text-xs disabled:opacity-50 transition-all">{submitting ? 'Saving...' : 'Add Feed'}</button>
               </div>
             </form>
@@ -381,11 +392,17 @@ function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed
                 {feed.status === 'ERROR' && <span className="text-[10px] bg-red-500 text-black font-black px-2 py-0.5 rounded uppercase">Error</span>}
                 {feed.status === 'SYNCING' && <span className="text-[10px] bg-yellow-500 text-black font-black px-2 py-0.5 rounded uppercase animate-pulse">Syncing</span>}
                 {feed.status === 'SUCCESS' && <span className="text-[10px] bg-green-500 text-black font-black px-2 py-0.5 rounded uppercase">Active</span>}
+                
+                {/* ⚡ NEW: Display the Affiliate Tag Badge if it exists */}
+                {feed.affiliateTag && (
+                  <span className="text-[10px] bg-blue-900/40 text-blue-400 font-mono font-bold px-2 py-0.5 rounded border border-blue-900/50" title="Affiliate Tag">
+                    {feed.affiliateTag}
+                  </span>
+                )}
              </div>
              <div className="flex items-center gap-2 text-xs text-[#666]">
                 <span className="uppercase font-bold">{feed.type}</span>
                 <span>•</span>
-                {/* ✅ DYNAMIC LINK COLOR */}
                 <a href={feed.url} className="text-primary hover:underline truncate max-w-[200px] block opacity-80">{feed.url}</a>
              </div>
              {feed.status === 'ERROR' && feed.errorMessage && <div className="mt-3 text-xs text-red-200 bg-red-500/10 border border-red-500/20 p-3 rounded-lg font-mono break-all"><strong className="text-red-400">DIAGNOSTICS:</strong> {feed.errorMessage}</div>}

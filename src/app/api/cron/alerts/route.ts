@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const token = searchParams.get('token');
   
-  if (process.env.CRON_SECRET && token !== process.env.CRON_SECRET) {
+  if (!token || token !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -73,7 +73,7 @@ export async function GET(req: Request) {
       success: true, 
       checked: activeAlerts.length, 
       sent: sentCount 
-    });
+    }); 
 
   } catch (error: any) {
     console.error("Cron Error:", error.message);
