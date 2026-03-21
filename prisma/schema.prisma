@@ -11,19 +11,19 @@ datasource db {
 // --- CORE PRODUCT DATA ---
 
 model Product {
-  id          String   @id @default(cuid())
+  id           String   @id @default(cuid())
    
   // Core Identity (Managed by MASTER retailers)
-  title       String
-  slug        String   @unique
-  description String?  // Only MASTER feeds can overwrite this
+  title        String
+  slug         String   @unique
+  description  String?  // Only MASTER feeds can overwrite this
    
   // DUAL IMAGE SYSTEM
   image          String?  // The PUBLIC Bucket URL (served to users)
   sourceImageUrl String?  // The HIDDEN Affiliate URL (used for diffing)
 
-  brand       String?  @default("Unknown")
-  category    String?  @default("Plugin")
+  brand        String?  @default("Unknown")
+  category     String?  @default("Plugin")
    
   // SMART PRICE CACHE
   minPrice        Float    @default(0)
@@ -31,24 +31,24 @@ model Product {
   maxDiscount     Int      @default(0)
 
   // NEW FIELDS FOR BADGE LOGIC
-  viewCount       Int      @default(0)  // Tracks "HOT" status (>25 views)
-  priceChangeCount Int     @default(0)  // Tracks "Volatile" status (fluctuations in last 30 days)
+  viewCount        Int      @default(0)  // Tracks "HOT" status (>25 views)
+  priceChangeCount Int      @default(0)  // Tracks "Volatile" status (fluctuations in last 30 days)
 
-  tags        String[]
+  tags         String[]
    
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
    
-  listings    Listing[]
-  reviews     Review[]
+  listings     Listing[]
+  reviews      Review[]
 
   // Analytics & Alerts
-  views       ProductView[]
-  clicks      ProductClick[] 
-  wishlisted  WishlistItem[]
+  views        ProductView[]
+  clicks       ProductClick[] 
+  wishlisted   WishlistItem[]
    
   // Link to Price Alerts
-  priceAlerts PriceAlert[] 
+  priceAlerts  PriceAlert[] 
 
   @@index([title])
   @@index([brand])
@@ -106,6 +106,10 @@ model Feed {
   status         FeedStatus    @default(IDLE)
   lastSyncedAt   DateTime?
   errorMessage   String?
+
+  // ⚡ NEW PROGRESS TRACKING FIELDS
+  totalItems     Int           @default(0)
+  processedItems Int           @default(0)
    
   retailer       Retailer      @relation(fields: [retailerId], references: [id], onDelete: Cascade)
   retailerId     String

@@ -14,7 +14,9 @@ interface Feed {
   status: FeedStatus;
   lastSyncedAt: string | null;
   errorMessage: string | null;
-  affiliateTag: string | null; // ⚡ NEW: Added to interface
+  affiliateTag: string | null; 
+  totalItems: number;      // ⚡ NEW
+  processedItems: number;  // ⚡ NEW
 }
 
 interface Retailer {
@@ -22,6 +24,34 @@ interface Retailer {
   name: string;
   role: 'MASTER' | 'SPOKE';
   feeds: Feed[];
+}
+
+// ⚡ NEW: Custom hook to poll for progress when syncing
+function useFeedProgress(feedId: string, isSyncing: boolean) {
+  const [progress, setProgress] = useState({ totalItems: 0, processedItems: 0 });
+
+  useEffect(() => {
+    if (!isSyncing) return;
+
+    const fetchProgress = async () => {
+      try {
+        const res = await fetch(`/api/admin/feeds/${feedId}/progress`);
+        if (res.ok) {
+          const data = await res.json();
+          setProgress({ totalItems: data.totalItems, processedItems: data.processedItems });
+        }
+      } catch (e) {
+        // Silently fail polling
+      }
+    };
+
+    // Poll every 2 seconds
+    fetchProgress();
+    const interval = setInterval(fetchProgress, 2000);
+    return () => clearInterval(interval);
+  }, [feedId, isSyncing]);
+
+  return progress;
 }
 
 export default function AdminFeedsPage() {
@@ -46,7 +76,7 @@ export default function AdminFeedsPage() {
   const [newFeedUrl, setNewFeedUrl] = useState('');
   const [newFeedType, setNewFeedType] = useState('JSON');
   const [isMaster, setIsMaster] = useState(false);
-  const [newAffiliateTag, setNewAffiliateTag] = useState(''); // ⚡ NEW: Form State for Tag
+  const [newAffiliateTag, setNewAffiliateTag] = useState(''); 
   const [submitting, setSubmitting] = useState(false);
 
   // 1. Fetch Feeds Data
@@ -60,7 +90,7 @@ export default function AdminFeedsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); 
 
   // 2. Fetch Real Cloud Scheduler Info
   const fetchSchedulerInfo = useCallback(async () => {
@@ -68,10 +98,8 @@ export default function AdminFeedsPage() {
         const res = await fetch(`/api/admin/system/scheduler?t=${Date.now()}`);
         const data = await res.json();
         
-        if (res.ok && data.lastRunTime) {
-            const lastRun = new Date(data.lastRunTime);
-            const nextRun = new Date(lastRun.getTime() + 15 * 60 * 1000);
-            setNextRunTime(nextRun);
+        if (res.ok && data.nextRunTime) {
+            setNextRunTime(new Date(data.nextRunTime));
             setSchedulerState(data.state);
         } else {
             if (timeDisplay === "Calculating...") {
@@ -174,7 +202,7 @@ export default function AdminFeedsPage() {
           url: newFeedUrl,
           type: newFeedType,
           role: isMaster ? 'MASTER' : 'SPOKE',
-          affiliateTag: newAffiliateTag || null // ⚡ NEW: Include in payload
+          affiliateTag: newAffiliateTag || null 
         }),
       });
       await fetchFeeds(); 
@@ -183,7 +211,7 @@ export default function AdminFeedsPage() {
       // Reset Form
       setNewSiteName('');
       setNewFeedUrl('');
-      setNewAffiliateTag(''); // ⚡ NEW: Reset
+      setNewAffiliateTag(''); 
       setIsMaster(false);
     } catch (error) {
       alert("Failed to add site");
@@ -304,7 +332,6 @@ export default function AdminFeedsPage() {
                 <input className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:outline-none focus:border-primary transition-colors" value={newFeedUrl} onChange={e => setNewFeedUrl(e.target.value)} required />
               </div>
 
-              {/* ⚡ NEW: Affiliate Tag Input */}
               <div>
                 <label className="block text-[#666] text-xs font-bold uppercase mb-2">Affiliate Tag (Optional)</label>
                 <input 
@@ -382,6 +409,18 @@ export default function AdminFeedsPage() {
 
 // FEED CARD COMPONENT
 function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void }) {
+  const isSyncing = feed.status === 'SYNCING';
+  
+  // ⚡ Use our new hook to get live progress ONLY when syncing
+  const liveProgress = useFeedProgress(feed.id, isSyncing);
+  
+  // Calculate percentage safely
+  const currentTotal = isSyncing ? Math.max(liveProgress.totalItems, feed.totalItems || 1) : 1;
+  const currentProcessed = isSyncing ? Math.max(liveProgress.processedItems, feed.processedItems || 0) : 0;
+  const percentComplete = isSyncing && currentTotal > 0 
+    ? Math.min(Math.round((currentProcessed / currentTotal) * 100), 100) 
+    : 0;
+
   return (
     <div className={`bg-[#1a1a1a] border rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between transition-colors group gap-4 ${feed.status === 'ERROR' ? 'border-red-900/50 bg-red-900/10' : 'border-[#333] hover:border-[#444]'}`}>
        <div className="flex items-start gap-4 flex-1 w-full">
@@ -393,7 +432,6 @@ function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed
                 {feed.status === 'SYNCING' && <span className="text-[10px] bg-yellow-500 text-black font-black px-2 py-0.5 rounded uppercase animate-pulse">Syncing</span>}
                 {feed.status === 'SUCCESS' && <span className="text-[10px] bg-green-500 text-black font-black px-2 py-0.5 rounded uppercase">Active</span>}
                 
-                {/* ⚡ NEW: Display the Affiliate Tag Badge if it exists */}
                 {feed.affiliateTag && (
                   <span className="text-[10px] bg-blue-900/40 text-blue-400 font-mono font-bold px-2 py-0.5 rounded border border-blue-900/50" title="Affiliate Tag">
                     {feed.affiliateTag}
@@ -406,6 +444,28 @@ function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed
                 <a href={feed.url} className="text-primary hover:underline truncate max-w-[200px] block opacity-80">{feed.url}</a>
              </div>
              {feed.status === 'ERROR' && feed.errorMessage && <div className="mt-3 text-xs text-red-200 bg-red-500/10 border border-red-500/20 p-3 rounded-lg font-mono break-all"><strong className="text-red-400">DIAGNOSTICS:</strong> {feed.errorMessage}</div>}
+             
+             {/* ⚡ NEW: SLEEK PROGRESS BAR (Only shows when syncing) */}
+             {isSyncing && (
+                <div className="mt-4 w-full max-w-md">
+                   <div className="flex justify-between text-[10px] text-[#888] font-bold uppercase mb-1.5 px-1">
+                      <span>Scanning Database...</span>
+                      <span>{percentComplete}%</span>
+                   </div>
+                   <div className="h-2.5 w-full bg-[#111] rounded-full border border-[#333] overflow-hidden relative">
+                      <div 
+                         className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full transition-all duration-500 ease-out relative"
+                         style={{ width: `${percentComplete}%` }}
+                      >
+                         {/* Glowing effect on the tip of the bar */}
+                         <div className="absolute top-0 right-0 bottom-0 w-4 bg-white/30 blur-[2px] rounded-full"></div>
+                      </div>
+                   </div>
+                   <div className="text-[9px] text-[#555] mt-1.5 px-1 font-mono">
+                      Processed {currentProcessed.toLocaleString()} of {currentTotal.toLocaleString()} items
+                   </div>
+                </div>
+             )}
           </div>
        </div>
        <div className="flex items-center gap-3 w-full md:w-auto pl-0 md:pl-4 border-t md:border-t-0 md:border-l border-[#333] pt-4 md:pt-0 mt-2 md:mt-0">

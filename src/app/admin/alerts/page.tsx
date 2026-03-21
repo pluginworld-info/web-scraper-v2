@@ -10,7 +10,7 @@ export default function AlertsDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
 
-  // --- NEW: SERVER-SYNCED TIMER STATE ---
+  // --- SERVER-SYNCED TIMER STATE ---
   const [schedulerState, setSchedulerState] = useState<string>("UNKNOWN");
   const [timeUntilNext, setTimeUntilNext] = useState<string>("Checking...");
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
@@ -32,27 +32,30 @@ export default function AlertsDashboard() {
   // 2. Fetch Real Scheduler Info (Sync with Server)
   const fetchSchedulerInfo = useCallback(async () => {
     try {
-        // We can reuse the same system endpoint, or assume the cron schedule
-        // Since we know the cron runs every 5 mins, we can calculate the next "bucket"
-        const now = new Date();
-        const minutes = now.getMinutes();
-        const remainder = 5 - (minutes % 5);
-        const nextRun = new Date(now.getTime() + remainder * 60 * 1000 - (now.getSeconds() * 1000));
+        // ⚡ FIX: Call the dynamic endpoint targeting the specific job
+        const res = await fetch(`/api/admin/system/scheduler?jobId=price-alert-checker&t=${Date.now()}`);
+        const data = await res.json();
         
-        setNextRunTime(nextRun);
-        setSchedulerState("ACTIVE");
+        if (res.ok && data.nextRunTime) {
+            setNextRunTime(new Date(data.nextRunTime));
+            setSchedulerState(data.state);
+        } else {
+            if (timeUntilNext === "Checking...") {
+               setTimeUntilNext(data.error || "Config Error");
+            }
+        }
     } catch (e) {
-        console.error("Timer Sync Failed");
+        if (timeUntilNext === "Checking...") {
+            setTimeUntilNext("API Error");
+        }
     }
-  }, []);
+  }, [timeUntilNext]);
 
   // 3. Force Run (Manual Button)
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     try {
-        // Trigger the check manually
         await fetch('/api/admin/alerts/check-all', { method: 'POST' });
-        // Reload table
         await loadData();
     } catch (e) {
         console.error("Manual trigger failed");
@@ -66,10 +69,7 @@ export default function AlertsDashboard() {
     loadData();
     fetchSchedulerInfo();
 
-    // Poll for data updates every 30 seconds (to see new "Sent" statuses)
     const dataInterval = setInterval(loadData, 30000);
-    
-    // Sync timer info every minute
     const syncInterval = setInterval(fetchSchedulerInfo, 60000);
 
     return () => {
@@ -88,19 +88,24 @@ export default function AlertsDashboard() {
 
         if (diff <= 0) {
             setTimeDisplay("Running...");
-            // Resync after a moment to get the next slot
             setTimeout(fetchSchedulerInfo, 2000);
         } else {
-            const m = Math.floor(diff / 60000);
-            const s = Math.floor((diff % 60000) / 1000);
-            setTimeUntilNext(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+            // Updated to handle hours/minutes/seconds securely for longer intervals
+            const h = Math.floor(diff / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            if (h > 0) {
+                setTimeUntilNext(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+            } else {
+                setTimeUntilNext(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+            }
         }
     }, 1000);
 
     return () => clearInterval(timer);
   }, [nextRunTime, fetchSchedulerInfo]);
 
-  // Helper for display
   const setTimeDisplay = (msg: string) => setTimeUntilNext(msg);
 
   const handleDelete = async (id: string) => {
@@ -126,7 +131,7 @@ export default function AlertsDashboard() {
                 
                 {/* ✅ DYNAMIC SERVER-SYNCED TIMER */}
                 <span className="text-[10px] font-mono bg-[#222] border border-[#333] px-2 py-0.5 rounded text-[#888] flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${schedulerState === 'ACTIVE' ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`}></span>
+                    <span className={`w-2 h-2 rounded-full ${schedulerState === 'ENABLED' || schedulerState === 'ACTIVE' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
                     <span className="font-bold text-white">Next Auto-Check: <span className="text-primary">{timeUntilNext}</span></span>
                 </span>
             </div>
@@ -284,4 +289,4 @@ function StatCard({ label, value, color, desc, isText = false }: any) {
        </div>
     </div>
   );
-}
+} 

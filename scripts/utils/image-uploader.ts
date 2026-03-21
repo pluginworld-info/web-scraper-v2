@@ -7,12 +7,12 @@ import fs from 'fs';
 // CONFIG
 const BUCKET_NAME = 'plugin-scraper-images'; 
 
-// 🛑 GLOBAL VARIABLES (Initialize as null)
+// GLOBAL VARIABLES (Initialize as null)
 // We do NOT create the connection here anymore to prevent Build crashes.
 let storageInstance: Storage | null = null;
 let bucketInstance: any = null; 
 
-// ✅ LAZY INITIALIZATION FUNCTION
+// LAZY INITIALIZATION FUNCTION
 // This function will only run when you actually click "Sync", 
 // ensuring the Build process doesn't crash.
 export function getStorage() {
@@ -24,12 +24,17 @@ export function getStorage() {
     if (process.env.GCLOUD_CREDENTIALS) {
         try {
             console.log("🔐 Authenticating via GCLOUD_CREDENTIALS...");
-            const credentials = JSON.parse(process.env.GCLOUD_CREDENTIALS);
+            
+            // THE FIX: Escape raw newlines before parsing
+            const sanitized = process.env.GCLOUD_CREDENTIALS.replace(/\n/g, '\\n');
+            const credentials = JSON.parse(sanitized);
+            
             storageInstance = new Storage({ credentials });
         } catch (e) {
-            throw new Error("Invalid GCLOUD_CREDENTIALS variable");
+            // Updated error message for better debugging
+            throw new Error(`Invalid GCLOUD_CREDENTIALS variable: ${e instanceof Error ? e.message : 'JSON Parse Error'}`);
         }
-    } 
+    }
     // 2. Check for Local File (Development)
     else {
         const keyPath = path.join(process.cwd(), 'service-account.json');
@@ -51,7 +56,7 @@ export async function processAndUploadImage(imageUrl: string, slug: string): Pro
     try {
         if (!imageUrl) return null;
 
-        // 🚀 CONNECT TO STORAGE NOW (Not at build time)
+        // CONNECT TO STORAGE NOW (Not at build time)
         const { bucket } = getStorage();
 
         // 1. Download
@@ -84,7 +89,7 @@ export async function processAndUploadImage(imageUrl: string, slug: string): Pro
 
 export async function deleteImageFromBucket(slug: string): Promise<boolean> {
     try {
-        // 🚀 CONNECT TO STORAGE NOW
+        // CONNECT TO STORAGE NOW
         const { bucket } = getStorage();
         
         const destination = `products/${slug}.webp`;
