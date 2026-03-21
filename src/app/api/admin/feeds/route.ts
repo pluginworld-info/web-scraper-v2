@@ -17,7 +17,8 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, url, type, role } = body;
+    // ⚡ FIX: Extract affiliateTag from the request body
+    const { name, url, type, role, affiliateTag } = body;
 
     let retailer = await prisma.retailer.findUnique({
       where: { name: name }
@@ -39,7 +40,9 @@ export async function POST(req: Request) {
         url,
         type: type || 'JSON',
         status: 'IDLE',
-        retailerId: retailer.id
+        retailerId: retailer.id,
+        // ⚡ FIX: Save the tag to the database
+        affiliateTag: affiliateTag || null
       }
     });
 
@@ -142,4 +145,4 @@ export async function DELETE(req: Request) {
     console.error("Delete Error:", error);
     return NextResponse.json({ error: "Failed to delete feed and data" }, { status: 500 });
   }
-} 
+}

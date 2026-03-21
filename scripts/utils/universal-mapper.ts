@@ -24,9 +24,12 @@ export function mapProductData(rawItem: any, affiliateTag: string | null) {
 
   let finalUrl = rawUrl;
   if (affiliateTag && rawUrl) {
+    // ⚡ FIX: Strip any leading ? or & from the tag just in case the user typed it in the UI
+    const cleanTag = affiliateTag.replace(/^[?&]+/, '');
+    
     finalUrl = rawUrl.includes('?') 
-      ? `${rawUrl}&${affiliateTag}` 
-      : `${rawUrl}?${affiliateTag}`;
+      ? `${rawUrl}&${cleanTag}` 
+      : `${rawUrl}?${cleanTag}`;
   }
 
   // Safely grab US Price, dropping EU Price completely
