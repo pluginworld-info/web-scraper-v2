@@ -437,7 +437,7 @@ function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed
                     {feed.affiliateTag}
                   </span>
                 )}
-             </div>
+             </div> 
              <div className="flex items-center gap-2 text-xs text-[#666]">
                 <span className="uppercase font-bold">{feed.type}</span>
                 <span>•</span>
@@ -445,11 +445,11 @@ function FeedCard({ retailer, feed, onDelete }: { retailer: Retailer, feed: Feed
              </div>
              {feed.status === 'ERROR' && feed.errorMessage && <div className="mt-3 text-xs text-red-200 bg-red-500/10 border border-red-500/20 p-3 rounded-lg font-mono break-all"><strong className="text-red-400">DIAGNOSTICS:</strong> {feed.errorMessage}</div>}
              
-             {/* ⚡ NEW: SLEEK PROGRESS BAR (Only shows when syncing) */}
+             {/* NEW: SLEEK PROGRESS BAR (Only shows when syncing) */}
              {isSyncing && (
                 <div className="mt-4 w-full max-w-md">
                    <div className="flex justify-between text-[10px] text-[#888] font-bold uppercase mb-1.5 px-1">
-                      <span>Scanning Database...</span>
+                      <span>Scanning Database & Feed...</span>
                       <span>{percentComplete}%</span>
                    </div>
                    <div className="h-2.5 w-full bg-[#111] rounded-full border border-[#333] overflow-hidden relative">

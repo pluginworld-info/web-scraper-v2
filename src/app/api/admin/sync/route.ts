@@ -118,8 +118,12 @@ export async function POST(req: Request) {
       // INTELLIGENT SKIP (Now includes Affiliate Tag check)
       if (existing) {
         const priceUnchanged = existing.price === mapped.price;
-        const imgUnchanged = existing.product.sourceImageUrl === mapped.image;
         
+        // ⚡ SPOKE FIX: Spokes shouldn't compare images because they don't upload them
+        const imgUnchanged = feed.retailer.role === 'MASTER' 
+            ? (existing.product.sourceImageUrl === mapped.image) 
+            : true; 
+            
         // ⚡ Check if the full URL in the DB is the same as the new tagged URL
         const urlUnchanged = existing.url === mapped.url;
 
@@ -172,31 +176,44 @@ export async function POST(req: Request) {
           ? Math.round(((mapped.originalPrice - mapped.price) / mapped.originalPrice) * 100) 
           : 0;
 
-        const productData: any = {
-          title: mapped.title,
-          brand: mapped.brand,
-          category: mapped.category,
-          minPrice: mapped.price, 
+        // ⚡ MASTER/SPOKE HIERARCHY LOCK ⚡
+        
+        // 1. Base prices update for EVERY feed (to keep the global cache accurate)
+        const updateData: any = {
+          minPrice: mapped.price,
           maxRegularPrice: mapped.originalPrice,
           maxDiscount: maxDiscount
         };
 
+        // 2. Only MASTER feeds are allowed to overwrite the global product identity
         if (feed.retailer.role === 'MASTER') {
-          productData.description = mapped.description;
-          if (finalBucketUrl) productData.image = finalBucketUrl;
-          if (mapped.image) productData.sourceImageUrl = mapped.image; 
+          updateData.title = mapped.title;
+          updateData.brand = mapped.brand;
+          updateData.category = mapped.category;
+          updateData.description = mapped.description;
+          if (finalBucketUrl) updateData.image = finalBucketUrl;
+          if (mapped.image) updateData.sourceImageUrl = mapped.image;
         }
 
-        // UPSERT PRODUCT
+        // 3. If a product doesn't exist yet, we must create it with basic info regardless of role
+        const createData: any = {
+          slug: targetSlug,
+          title: mapped.title,
+          brand: mapped.brand,
+          category: mapped.category,
+          minPrice: mapped.price,
+          maxRegularPrice: mapped.originalPrice,
+          maxDiscount: maxDiscount,
+          description: feed.retailer.role === 'MASTER' ? mapped.description : null,
+          image: feed.retailer.role === 'MASTER' ? finalBucketUrl : null,
+          sourceImageUrl: feed.retailer.role === 'MASTER' ? mapped.image : null,
+        };
+
+        // UPSERT PRODUCT (Using the protected payloads)
         const product = await prisma.product.upsert({
           where: { slug: targetSlug },
-          update: productData,
-          create: { 
-            slug: targetSlug, 
-            ...productData, 
-            image: finalBucketUrl, 
-            sourceImageUrl: mapped.image 
-          }
+          update: updateData,
+          create: createData
         });
 
         // ⚡ ROBUST UPSERT LISTING (Handles URL/Tag changes by finding the ID first)
