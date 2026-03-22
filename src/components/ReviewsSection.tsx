@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Turnstile } from '@marsidev/react-turnstile'; // ⚡ NEW
 
 export default function ReviewsSection({ productId, reviews }: { productId: string, reviews: any[] }) {
   const router = useRouter();
@@ -13,9 +14,16 @@ export default function ReviewsSection({ productId, reviews }: { productId: stri
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
+  // Security State
+  const [token, setToken] = useState<string | null>(null); // ⚡ NEW: Cloudflare Token
+  const [hpValue, setHpValue] = useState(''); // ⚡ NEW: Honeypot Trap
+
   const handleSubmit = async () => {
     if (rating === 0) return alert("Please select a star rating.");
     
+    // ⚡ NEW: Block if Turnstile hasn't finished
+    if (!token) return alert("Please complete the security check.");
+
     setIsSubmitting(true);
 
     try {
@@ -26,21 +34,28 @@ export default function ReviewsSection({ productId, reviews }: { productId: stri
           productId,
           rating,
           comment,
-          authorName: authorName.trim() || 'Guest'
+          authorName: authorName.trim() || 'Guest',
+          cf_token: token, // ⚡ NEW
+          hp_field: hpValue // ⚡ NEW
         })
       });
 
-      if (!res.ok) throw new Error('Failed to submit');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to submit');
+      }
 
+      // Reset
       setRating(0);
       setComment('');
       setAuthorName('');
+      setToken(null); 
       setShowForm(false);
       
       router.refresh(); 
 
-    } catch (error) {
-      alert("Failed to submit review. Please try again.");
+    } catch (error: any) {
+      alert(error.message || "Failed to submit review. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -56,7 +71,6 @@ export default function ReviewsSection({ productId, reviews }: { productId: stri
          </h3>
          <button 
            onClick={() => setShowForm(!showForm)}
-           // ✅ DYNAMIC: Text color uses Primary brand color
            className={`text-sm font-black uppercase tracking-wider transition-colors ${showForm ? 'text-red-500' : 'text-primary hover:opacity-80'}`}
          >
            {showForm ? 'Cancel' : 'Write a Review'}
@@ -72,26 +86,24 @@ export default function ReviewsSection({ productId, reviews }: { productId: stri
             <div key={review.id} className="border-b border-white/5 last:border-0 pb-8 last:pb-0">
               <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
-                    {/* ✅ DYNAMIC: Avatar border uses Primary */}
                     <div className="w-8 h-8 rounded-full bg-[#111] flex items-center justify-center font-bold text-xs text-white border border-primary/20">
-                       {review.authorName ? review.authorName.charAt(0).toUpperCase() : 'G'}
+                        {review.authorName ? review.authorName.charAt(0).toUpperCase() : 'G'}
                     </div>
                     <span className="font-bold text-sm text-white">
-                       {review.authorName || "Guest"}
+                        {review.authorName || "Guest"}
                     </span>
                   </div>
                   <span className="text-[10px] text-[#555] font-black uppercase tracking-tighter">
-                     {/* ✅ FIX: Stable Date Format to prevent Hydration Error */}
                      {new Date(review.createdAt).toISOString().split('T')[0]}
                   </span>
               </div>
               
               <div className="flex text-yellow-500 mb-2">
-                 {[...Array(5)].map((_, i) => (
+                  {[...Array(5)].map((_, i) => (
                     <svg key={i} className={`w-3.5 h-3.5 ${i < review.rating ? 'fill-current' : 'text-[#333] fill-current'}`} viewBox="0 0 20 20">
                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                     </svg>
-                 ))}
+                  ))}
               </div>
               
               <p className="text-[#888] text-sm leading-relaxed">{review.comment}</p>
@@ -100,16 +112,29 @@ export default function ReviewsSection({ productId, reviews }: { productId: stri
         )}
       </div>
 
-      {/* WRITE REVIEW FORM (Toggleable) */}
+      {/* WRITE REVIEW FORM */}
       {showForm && (
         <div className="bg-[#111] rounded-2xl p-6 border border-white/5 animate-in slide-in-from-top-2 duration-300">
+           
+           {/* ⚡ NEW: HONEYPOT TRAP (Invisible to humans) */}
+           <div className="hidden" aria-hidden="true">
+             <input 
+               type="text" 
+               name="confirm_email_field" 
+               value={hpValue} 
+               onChange={(e) => setHpValue(e.target.value)} 
+               tabIndex={-1} 
+               autoComplete="off" 
+             />
+           </div>
+
            <h4 className="font-black text-[10px] text-[#555] mb-4 uppercase tracking-[0.2em]">Add your rating</h4>
            
-           {/* Star Input */}
            <div className="flex gap-2 mb-6">
              {[1, 2, 3, 4, 5].map((star) => (
                 <button 
                   key={star} 
+                  type="button"
                   onClick={() => setRating(star)}
                   className={`w-8 h-8 ${rating >= star ? 'text-yellow-500' : 'text-[#333]'} hover:text-yellow-400 transition-colors`}
                 >
@@ -118,29 +143,39 @@ export default function ReviewsSection({ productId, reviews }: { productId: stri
              ))}
            </div>
 
-           {/* Name Input */}
            <input 
              type="text"
              value={authorName}
              onChange={(e) => setAuthorName(e.target.value)}
              placeholder="Your Name (Optional)"
-             // ✅ DYNAMIC: Focus ring uses Primary brand color
              className="w-full bg-[#1a1a1a] border border-white/5 rounded-xl p-4 text-sm text-white placeholder-[#444] focus:ring-2 focus:ring-primary outline-none mb-4 transition-all"
            />
 
-           {/* Comment Input */}
            <textarea 
              value={comment}
              onChange={(e) => setComment(e.target.value)}
              className="w-full bg-[#1a1a1a] border border-white/5 rounded-xl p-4 text-sm text-white placeholder-[#444] focus:ring-2 focus:ring-primary outline-none mb-6 transition-all" 
              rows={4}
-             placeholder="Share your experience with this plugin..."
+             placeholder="Share your experience..."
            ></textarea>
            
+           {/* ⚡ NEW: CLOUDFLARE TURNSTILE WIDGET */}
+           <div className="mb-6 flex justify-center">
+             <Turnstile 
+              siteKey={process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY!} 
+              onSuccess={(token) => setToken(token)}
+              onExpire={() => setToken(null)}
+              onError={() => setToken(null)}
+              // ⚡ FIX: Use the options prop if theme="dark" is throwing an error
+              options={{
+                theme: 'dark',
+              }}
+            />
+           </div>
+
            <button 
              onClick={handleSubmit}
-             disabled={isSubmitting}
-             // ✅ DYNAMIC: Button uses Primary brand color
+             disabled={isSubmitting || !token}
              className="bg-primary text-white px-6 py-4 rounded-full text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all w-full disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
            >
              {isSubmitting ? 'Submitting...' : 'Post Review'}

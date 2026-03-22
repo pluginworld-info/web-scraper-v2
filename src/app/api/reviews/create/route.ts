@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 
-// ⚡ SECURITY HELPER: Neutralizes HTML and Scripts (Prevents XSS / Malware)
+// ⚡ SECURITY HELPER: Neutralizes HTML and Scripts
 function sanitize(text: string) {
   if (!text) return '';
   return text
@@ -16,24 +16,48 @@ function sanitize(text: string) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { productId, rating, comment, authorName } = body;
+    const { productId, rating, comment, authorName, cf_token, hp_field } = body;
 
-    // 1. Basic Validation
+    // ⚡ 1. HONEYPOT CHECK: If field is filled, it's a bot.
+    if (hp_field && hp_field !== '') {
+        console.warn("🚫 Bot detected via Honeypot Trap.");
+        return NextResponse.json({ error: 'System busy. Please try again later.' }, { status: 403 });
+    }
+
+    // ⚡ 2. CLOUDFLARE TURNSTILE VERIFICATION
+    if (!cf_token) {
+        return NextResponse.json({ error: 'Security token missing' }, { status: 400 });
+    }
+
+    const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        secret: process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY!,
+        response: cf_token,
+      }),
+    });
+
+    const verifyData = await verifyRes.json();
+    if (!verifyData.success) {
+      return NextResponse.json({ error: 'Security check failed. Please refresh.' }, { status: 403 });
+    }
+
+    // 3. Validation
     if (!productId || rating === undefined || rating === null) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // 2. BOUNDS CHECKING: Ensure rating is strictly between 1 and 5
     const numericRating = Number(rating);
     if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
         return NextResponse.json({ error: 'Rating must be between 1 and 5' }, { status: 400 });
     }
 
-    // 3. SANITIZATION & LIMITS: Neutralize scripts and cap lengths to stop database bloat
-    const safeComment = sanitize(comment).substring(0, 1000); // Max 1000 characters
-    const safeAuthorName = sanitize(authorName || 'Guest').substring(0, 50); // Max 50 characters
+    // 4. Sanitization
+    const safeComment = sanitize(comment).substring(0, 1000);
+    const safeAuthorName = sanitize(authorName || 'Guest').substring(0, 50);
 
-    // 4. Save to Database securely
+    // 5. Save to Database
     const review = await prisma.review.create({
       data: {
         rating: numericRating,
