@@ -610,7 +610,7 @@ function FeedCard({ retailer, feed, onDelete, onAbort, onEdit }: { retailer: Ret
                          <div className="absolute top-0 right-0 bottom-0 w-4 bg-white/30 blur-[2px] rounded-full"></div>
                       </div>
                    </div>
-                   <div className="text-[9px] text-[#555] mt-1.5 px-1 font-mono">
+                   <div className="text-[10px] text-[#555] mt-1.5 px-1 font-mono">
                       Processed {currentProcessed.toLocaleString()} of {currentTotal.toLocaleString()} items
                    </div>
                 </div>

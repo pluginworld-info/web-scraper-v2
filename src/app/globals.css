@@ -59,3 +59,84 @@ html {
   background-color: var(--primary); /* Uses dynamic primary color */
   animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
+
+/* ==========================================================================
+   ⚡ CUSTOM SCROLLBARS (The Chrome WebKit Override)
+   ========================================================================== */
+
+/* 🚨 We intentionally do NOT use scrollbar-color or scrollbar-width here.
+   If Chrome sees them, it deletes our custom code below and forces the 
+   default Windows 11 "thin-to-thick" overlay scrollbar.
+*/
+
+/* Firefox Fallback (Isolated so Chrome ignores it) */
+@-moz-document url-prefix() {
+  * {
+    scrollbar-width: auto !important; 
+    scrollbar-color: #666666 transparent !important;
+  }
+}
+
+/* WebKit support (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 14px !important;  /* Locks the track width permanently */
+  height: 14px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+/* The Draggable Thumb */
+::-webkit-scrollbar-thumb {
+  background-color: #666666 !important; /* Solid grey normal state */
+  border-radius: 8px !important;
+  border: none !important; /* Forces it to fill the entire 14px width always */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #ffffff !important; /* Bright white hover state */
+}
+
+/* --- The Up/Down/Left/Right Buttons --- */
+::-webkit-scrollbar-button:single-button {
+  background-color: transparent !important;
+  display: block !important;
+  height: 14px !important;
+  width: 14px !important;
+  background-size: 10px !important; 
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* Up Arrow */
+::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='18 15 12 9 6 15'></polyline></svg>") !important;
+}
+::-webkit-scrollbar-button:single-button:vertical:decrement:hover {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='18 15 12 9 6 15'></polyline></svg>") !important;
+}
+
+/* Down Arrow */
+::-webkit-scrollbar-button:single-button:vertical:increment {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>") !important;
+}
+::-webkit-scrollbar-button:single-button:vertical:increment:hover {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>") !important;
+}
+
+/* Left Arrow */
+::-webkit-scrollbar-button:single-button:horizontal:decrement {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='15 18 9 12 15 6'></polyline></svg>") !important;
+}
+::-webkit-scrollbar-button:single-button:horizontal:decrement:hover {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='15 18 9 12 15 6'></polyline></svg>") !important;
+}
+
+/* Right Arrow */
+::-webkit-scrollbar-button:single-button:horizontal:increment {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 18 15 12 9 6'></polyline></svg>") !important;
+}
+::-webkit-scrollbar-button:single-button:horizontal:increment:hover {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 18 15 12 9 6'></polyline></svg>") !important;
+}
