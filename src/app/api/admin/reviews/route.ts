@@ -10,6 +10,7 @@ export async function GET() {
       by: ['productId'],
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
+      take: 50, // ⚡ FIX: Limit to top 50 reviewed products to save memory
     });
 
     // 2. Fetch Product Details for those groups
@@ -23,9 +24,9 @@ export async function GET() {
       })
     );
 
-    // 3. Fetch All Actual Reviews (For the Main Table)
-    // We fetch them all sorted by date so the UI can filter them locally without spamming the API
+    // 3. Fetch Actual Reviews (For the Main Table)
     const reviews = await prisma.review.findMany({
+      take: 500, // ⚡ CRITICAL FIX: Prevent Out-Of-Memory crashes!
       orderBy: { createdAt: 'desc' },
       include: {
         product: { select: { title: true, image: true } }

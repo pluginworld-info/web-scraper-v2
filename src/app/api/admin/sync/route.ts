@@ -97,10 +97,7 @@ export async function POST(req: Request) {
     // 4. PRE-PROCESS & DEDUPLICATE (Identifying changes & tag updates)
     for (const rawItem of rawItems) {
       const mapped = mapProductData(rawItem, feed.affiliateTag);
-      if (!mapped.title || !mapped.url) continue;
-
-      // ⚡ TEMPORARY LOG: Check if the mapper attached the tag!
-      console.log(`URL CHECK: ${mapped.url}`);
+      if (!mapped.title || !mapped.url) continue;    
 
       // Identify existing product via Base URL comparison
       const existing = existingMap.get(getBaseUrl(mapped.url));

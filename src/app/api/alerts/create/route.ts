@@ -11,15 +11,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
-    // Save to PostgreSQL (Prisma)
-    await prisma.priceAlert.create({
-      data: {
-        email,
-        targetPrice: Number(targetPrice),
-        productId, 
-        isTriggered: false
-      }
+    // ⚡ UPGRADE: Check for an existing untriggered alert for this user and product
+    const existingAlert = await prisma.priceAlert.findFirst({
+        where: {
+            email: email,
+            productId: productId,
+            isTriggered: false
+        }
     });
+
+    if (existingAlert) {
+        // Update the existing alert with the new target price
+        await prisma.priceAlert.update({
+            where: { id: existingAlert.id },
+            data: { targetPrice: Number(targetPrice) }
+        });
+    } else {
+        // Save new alert to PostgreSQL (Prisma)
+        await prisma.priceAlert.create({
+          data: {
+            email,
+            targetPrice: Number(targetPrice),
+            productId, 
+            isTriggered: false
+          }
+        });
+    }
 
     return NextResponse.json({ success: true });
 

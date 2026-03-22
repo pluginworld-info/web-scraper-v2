@@ -15,8 +15,8 @@ interface Feed {
   lastSyncedAt: string | null;
   errorMessage: string | null;
   affiliateTag: string | null; 
-  totalItems: number;      // ⚡ NEW
-  processedItems: number;  // ⚡ NEW
+  totalItems: number;      
+  processedItems: number;  
 }
 
 interface Retailer {
@@ -26,7 +26,7 @@ interface Retailer {
   feeds: Feed[];
 }
 
-// ⚡ NEW: Custom hook to poll for progress when syncing
+// ⚡ Custom hook to poll for progress when syncing
 function useFeedProgress(feedId: string, isSyncing: boolean) {
   const [progress, setProgress] = useState({ totalItems: 0, processedItems: 0 });
 
@@ -61,9 +61,9 @@ export default function AdminFeedsPage() {
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
-  const [feedToDelete, setFeedToDelete] = useState<string | null>(null); // ⚡ NEW: Tracks which feed to delete
+  const [feedToDelete, setFeedToDelete] = useState<string | null>(null); 
   
-  // ⚡ NEW: Edit Modal State
+  // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [feedToEdit, setFeedToEdit] = useState<Feed | null>(null);
 
@@ -97,7 +97,7 @@ export default function AdminFeedsPage() {
     }
   }, []); 
 
-  // 2. Fetch Real Cloud Scheduler Info
+  // 2. Fetch Real Cloud Scheduler Info (⚡ FIX: Stabilized to stop DB drain)
   const fetchSchedulerInfo = useCallback(async () => {
     try {
         const res = await fetch(`/api/admin/system/scheduler?t=${Date.now()}`);
@@ -107,27 +107,23 @@ export default function AdminFeedsPage() {
             setNextRunTime(new Date(data.nextRunTime));
             setSchedulerState(data.state);
         } else {
-            if (timeDisplay === "Calculating...") {
-               const errorMsg = data.error || "Config Error";
-               setTimeDisplay(errorMsg.length > 20 ? "Check Logs" : errorMsg);
-            }
+            // Uses functional update to prevent React from re-triggering the loop
+            setTimeDisplay(prev => prev === "Calculating..." ? (data.error?.length > 20 ? "Check Logs" : (data.error || "Config Error")) : prev);
         }
     } catch (e) {
-        if (timeDisplay === "Calculating...") {
-            setTimeDisplay("API Error");
-        }
+        setTimeDisplay(prev => prev === "Calculating..." ? "API Error" : prev);
     }
-  }, [timeDisplay]);
+  }, []); // <-- Empty dependency array keeps it completely stable
 
   // Initial Load
   useEffect(() => {
     fetchFeeds();
     fetchSchedulerInfo();
-    const interval = setInterval(fetchFeeds, 5000); 
+    const interval = setInterval(fetchFeeds, 15000); 
     return () => clearInterval(interval);
   }, [fetchFeeds, fetchSchedulerInfo]);
 
-  // 3. Live Countdown Logic
+  // 3. Live Countdown Logic (⚡ FIX: Stopped zero-second spam)
   useEffect(() => {
     if (!nextRunTime) return;
 
@@ -137,14 +133,8 @@ export default function AdminFeedsPage() {
 
         if (diff <= 0) {
             setTimeDisplay("Running Now...");
-            
-            if (diff > -2000) { 
-                 fetchFeeds(); 
-            }
-
-            if (diff < -5000) {
-                 fetchSchedulerInfo();
-            }
+            // Removed aggressive API fetching here. 
+            // The 5-second interval above handles it safely now!
         } else {
             const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
             const minutes = Math.floor((diff / (1000 * 60)) % 60);
@@ -154,7 +144,7 @@ export default function AdminFeedsPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [nextRunTime, fetchSchedulerInfo, fetchFeeds]);
+  }, [nextRunTime]); // <-- Removed fetch dependencies to keep it stable
 
   // 4. SYNC ALL LOGIC (Robust Sequential Polling)
   const executeSyncAll = async () => {
@@ -270,7 +260,7 @@ export default function AdminFeedsPage() {
     }
   };
 
-  // ⚡ NEW: Edit Site Logic
+  // Edit Site Logic
   const initiateEdit = (feed: Feed, retailerName: string) => {
     setFeedToEdit(feed);
     setNewSiteName(retailerName);
@@ -312,12 +302,12 @@ export default function AdminFeedsPage() {
     }
   };
 
-  // ⚡ NEW: Opens the styled modal instead of the ugly browser alert
+  // Opens the styled modal instead of the ugly browser alert
   const initiateDelete = (feedId: string) => {
     setFeedToDelete(feedId);
   };
 
-  // ⚡ NEW: Actually executes the delete when they click "Confirm" in the modal
+  // Actually executes the delete when they click "Confirm" in the modal
   const confirmDelete = async () => {
     if (!feedToDelete) return;
     try {
@@ -330,7 +320,7 @@ export default function AdminFeedsPage() {
     }
   };
 
-  // ⚡ NEW: Safely aborts a running sync
+  // Safely aborts a running sync
   const handleAbort = async (feedId: string) => {
     try {
       await fetch(`/api/admin/feeds/${feedId}/abort`, { method: 'POST' });
@@ -537,7 +527,7 @@ export default function AdminFeedsPage() {
         </div>
       )}
 
-      {/* ⚡ NEW: SLEEK DELETE CONFIRMATION MODAL */}
+      {/* SLEEK DELETE CONFIRMATION MODAL */}
       {feedToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setFeedToDelete(null)}></div>
@@ -569,7 +559,7 @@ export default function AdminFeedsPage() {
 function FeedCard({ retailer, feed, onDelete, onAbort, onEdit }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void, onAbort: (id: string) => void, onEdit: (feed: Feed, retailerName: string) => void }) {
   const isSyncing = feed.status === 'SYNCING';
   
-  // ⚡ Use our new hook to get live progress ONLY when syncing
+  // Use our new hook to get live progress ONLY when syncing
   const liveProgress = useFeedProgress(feed.id, isSyncing);
   
   // Calculate percentage safely
@@ -590,7 +580,7 @@ function FeedCard({ retailer, feed, onDelete, onAbort, onEdit }: { retailer: Ret
                 {feed.status === 'SYNCING' && <span className="text-[10px] bg-yellow-500 text-black font-black px-2 py-0.5 rounded uppercase animate-pulse">Syncing</span>}
                 {feed.status === 'SUCCESS' && <span className="text-[10px] bg-green-500 text-black font-black px-2 py-0.5 rounded uppercase">Active</span>}
                 
-                {/* ⚡ THE BLUE BADGE - Proof that the tag is saved in the DB */}
+                {/* THE BLUE BADGE - Proof that the tag is saved in the DB */}
                 {feed.affiliateTag && (
                   <span className="text-[10px] bg-blue-900/40 text-blue-400 font-mono font-bold px-2 py-0.5 rounded border border-blue-900/50" title="Affiliate Tag">
                     {feed.affiliateTag}
@@ -604,7 +594,7 @@ function FeedCard({ retailer, feed, onDelete, onAbort, onEdit }: { retailer: Ret
              </div>
              {feed.status === 'ERROR' && feed.errorMessage && <div className="mt-3 text-xs text-red-200 bg-red-500/10 border border-red-500/20 p-3 rounded-lg font-mono break-all"><strong className="text-red-400">DIAGNOSTICS:</strong> {feed.errorMessage}</div>}
              
-             {/* NEW: SLEEK PROGRESS BAR (Only shows when syncing) */}
+             {/* SLEEK PROGRESS BAR (Only shows when syncing) */}
              {isSyncing && (
                 <div className="mt-4 w-full max-w-md">
                    <div className="flex justify-between text-[10px] text-[#888] font-bold uppercase mb-1.5 px-1">
@@ -641,7 +631,7 @@ function FeedCard({ retailer, feed, onDelete, onAbort, onEdit }: { retailer: Ret
              </button>
           )}
 
-          {/* ⚡ NEW: EDIT BUTTON (Disabled while syncing) */}
+          {/* EDIT BUTTON (Disabled while syncing) */}
           <button 
               onClick={() => !isSyncing && onEdit(feed, retailer.name)} 
               disabled={isSyncing}

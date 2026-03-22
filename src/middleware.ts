@@ -2,34 +2,40 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-
-  
-  // 1. Establish the default response (allow the request to continue)
-  let response = NextResponse.next();
-
-  // 2. Parse the requested URL
+  // 1. Parse the requested URL
   const pathname = request.nextUrl.pathname;
-  const isAdminPath = pathname.startsWith('/admin');
+  
+  // ⚡ FIX: Differentiate between frontend UI paths and backend API paths
+  const isUiAdminPath = pathname.startsWith('/admin');
+  const isApiAdminPath = pathname.startsWith('/api/admin');
   const isLoginPath = pathname === '/admin/login';
 
-  // --- 3. ADMIN AUTHENTICATION LOGIC ---
-  // We only run these checks if the user is attempting to access an admin route
-  if (isAdminPath) {
-    const authToken = request.cookies.get('admin_session')?.value;
+  const authToken = request.cookies.get('admin_session')?.value;
 
-    // LOGIC A: If trying to access Admin but NOT logged in -> Overwrite response to Redirect to Login
+  // --- 2. API ADMIN AUTHENTICATION LOGIC ---
+  // If trying to access a secure API route without a token, instantly block it.
+  if (isApiAdminPath && !authToken) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // --- 3. UI ADMIN AUTHENTICATION LOGIC ---
+  if (isUiAdminPath) {
+    // LOGIC A: If trying to access Admin but NOT logged in -> Redirect to Login
     if (!isLoginPath && !authToken) {
       const loginUrl = new URL('/admin/login', request.url);
-      response = NextResponse.redirect(loginUrl);
+      return NextResponse.redirect(loginUrl);
     } 
-    // LOGIC B: If already logged in but trying to access Login -> Overwrite response to Redirect to Dashboard
+    // LOGIC B: If already logged in but trying to access Login -> Redirect to Dashboard
     else if (isLoginPath && authToken) {
       const dashboardUrl = new URL('/admin', request.url);
-      response = NextResponse.redirect(dashboardUrl);
+      return NextResponse.redirect(dashboardUrl);
     }
   }
 
-  // --- 4. GUEST SESSION LOGIC ---
+  // 4. Establish the default response (allow the request to continue)
+  const response = NextResponse.next();
+
+  // --- 5. GUEST SESSION LOGIC ---
   // We run this on ALL routes to ensure frontend tracking works perfectly
   const guestSessionId = request.cookies.get('guest_session_id')?.value;
 
@@ -46,7 +52,7 @@ export function middleware(request: NextRequest) {
     });
   }
 
-  // 5. Return the single, final response to Next.js
+  // 6. Return the single, final response to Next.js
   return response;
 }
 

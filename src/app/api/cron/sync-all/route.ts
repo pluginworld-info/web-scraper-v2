@@ -67,8 +67,8 @@ export async function GET(req: Request) {
                if (elapsedSeconds % 15 === 0) {
                    console.log(`   ⏳ Still syncing ${feed.name}... (${check.processedItems}/${check.totalItems})`);
                }
-               // Wait 5 seconds before checking the database again
-               await new Promise(resolve => setTimeout(resolve, 5000)); 
+               // Wait 15 seconds before checking the database again
+               await new Promise(resolve => setTimeout(resolve, 15000)); 
                elapsedSeconds += 5;
            }
         }

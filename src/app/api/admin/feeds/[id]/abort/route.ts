@@ -3,10 +3,10 @@ import { prisma } from '@/lib/db/prisma';
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // ⚡ FIX: Added Promise wrapper
 ) {
   try {
-    const feedId = params.id;
+    const feedId = (await params).id; // ⚡ FIX: Awaited params before reading ID
 
     // Flip the status back to IDLE. 
     // The running sync engine will catch this flag and safely break its loop.

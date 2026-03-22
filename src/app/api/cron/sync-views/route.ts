@@ -5,6 +5,14 @@ import { Redis } from '@upstash/redis';
 const redis = Redis.fromEnv();
 
 export async function GET(req: Request) {
+  // ⚡ NEW: Security Check to prevent random people or bots from wiping your view counts
+  const { searchParams } = new URL(req.url);
+  const token = searchParams.get('token');
+  
+  if (!token || token !== process.env.CRON_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     // 1. Grab all the pending views from Redis
     // This returns an object like: { "productId-1": 45, "productId-2": 12 }

@@ -28,6 +28,7 @@ export async function GET(req: Request) {
     });
 
     let sentCount = 0;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://scraper-engine-v2-776546486462.us-central1.run.app';
 
     // 3. Loop and Check Conditions
     for (const alert of activeAlerts) {
@@ -44,7 +45,9 @@ export async function GET(req: Request) {
         
         // Find best URL
         const bestListing = alert.product.listings.sort((a, b) => a.price - b.price)[0];
-        const url = bestListing ? bestListing.url : `https://yourdomain.com/product/${alert.product.slug}`;
+        
+        // ⚡ FIX: Use the dynamic base URL instead of a hardcoded string
+        const url = bestListing ? bestListing.url : `${baseUrl}/product/${alert.product.slug}`;
 
         try {
             await sendPriceAlertEmail(

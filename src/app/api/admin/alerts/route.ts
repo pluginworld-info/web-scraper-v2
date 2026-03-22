@@ -43,7 +43,7 @@ export async function GET() {
 
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch alerts" }, { status: 500 });
-  }
+  } 
 }
 
 // 2. DELETE: Remove an Alert
