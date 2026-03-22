@@ -15,7 +15,20 @@ export async function GET() {
       primaryColor: "#2563eb",
       accentColor: "#ef4444",
       logoUrl: "",
-      faviconUrl: "" // ✅ ADDED: Return default if none exists
+      faviconUrl: "",
+      // ⚡ ADDED: Hero Fallbacks
+      heroBgUrl: "",
+      heroTagline: "Live Price Tracking From Around The World",
+      heroTitle: "Compare Plugin Deals",
+      heroSubtitle: "Real-time Price Monitoring From The World's Best Audio Software Sellers. Compare Thousands Of Plugins And Buy Smart.",
+      heroOverlayColor: "rgba(0, 0, 0, 0.7)",
+      // ⚡ NEW: Hero Style & SEO Fallbacks
+      heroOverlayBlur: 2,
+      heroBorderColor: "rgba(255, 255, 255, 0.05)",
+      heroBorderThickness: 1,
+      metaTitle: "Plugin Deals & VST Sales",
+      metaDescription: "Real-time price monitoring from the world's best audio software sellers.",
+      metaKeywords: "audio plugins, vst plugins, plugin deals, music production, synthesizers"
     });
 
   } catch (error) {
@@ -28,29 +41,53 @@ export async function POST(req: Request) {
     const body = await req.json();
     
     // Upsert: Update if exists, Create if not
-    // We use a fixed ID or findFirst to ensure we only have one settings row
     const firstSetting = await prisma.siteSettings.findFirst();
     
-    // ✅ ADDED: 'faviconUrl' to both update and create blocks
     const settings = await prisma.siteSettings.upsert({
       where: { id: firstSetting?.id || "default-id" },
       update: {
         siteName: body.siteName,
         logoUrl: body.logoUrl,
-        faviconUrl: body.faviconUrl, // <--- WAS MISSING
+        faviconUrl: body.faviconUrl,
         primaryColor: body.primaryColor,
-        accentColor: body.accentColor
+        accentColor: body.accentColor,
+        // ⚡ ADDED: Map the Hero fields to update
+        heroBgUrl: body.heroBgUrl,
+        heroTagline: body.heroTagline,
+        heroTitle: body.heroTitle,
+        heroSubtitle: body.heroSubtitle,
+        heroOverlayColor: body.heroOverlayColor,
+        // ⚡ NEW: Map new style & SEO fields
+        heroOverlayBlur: body.heroOverlayBlur ? parseInt(body.heroOverlayBlur.toString()) : 0,
+        heroBorderColor: body.heroBorderColor,
+        heroBorderThickness: body.heroBorderThickness ? parseInt(body.heroBorderThickness.toString()) : 0,
+        metaTitle: body.metaTitle,
+        metaDescription: body.metaDescription,
+        metaKeywords: body.metaKeywords
       },
       create: {
         siteName: body.siteName,
         logoUrl: body.logoUrl,
-        faviconUrl: body.faviconUrl, // <--- WAS MISSING
+        faviconUrl: body.faviconUrl,
         primaryColor: body.primaryColor,
-        accentColor: body.accentColor
+        accentColor: body.accentColor,
+        // ⚡ ADDED: Map the Hero fields to create
+        heroBgUrl: body.heroBgUrl,
+        heroTagline: body.heroTagline,
+        heroTitle: body.heroTitle,
+        heroSubtitle: body.heroSubtitle,
+        heroOverlayColor: body.heroOverlayColor,
+        // ⚡ NEW: Map new style & SEO fields
+        heroOverlayBlur: body.heroOverlayBlur ? parseInt(body.heroOverlayBlur.toString()) : 0,
+        heroBorderColor: body.heroBorderColor,
+        heroBorderThickness: body.heroBorderThickness ? parseInt(body.heroBorderThickness.toString()) : 0,
+        metaTitle: body.metaTitle,
+        metaDescription: body.metaDescription,
+        metaKeywords: body.metaKeywords
       }
     });
 
-    // Purge the cache so the new logo/colors show up immediately on the homepage
+    // Purge the cache so the new logo/colors/hero show up immediately on the homepage
     revalidatePath('/', 'layout');
 
     return NextResponse.json({ success: true, settings });

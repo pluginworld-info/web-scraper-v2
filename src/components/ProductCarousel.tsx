@@ -37,7 +37,6 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
       {/* --- LEFT BUTTON --- */}
       <button
         onClick={() => scroll('left')}
-        // ✅ DYNAMIC: Switched var() to Tailwind primary classes
         className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 border border-[#333] text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:border-primary -ml-5 shadow-2xl backdrop-blur-sm"
         aria-label="Scroll Left"
       >
@@ -49,17 +48,18 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
       {/* --- SCROLL CONTAINER --- */}
       <div 
         ref={containerRef}
-        className="flex gap-6 overflow-x-hidden scroll-smooth pb-4"
+        // ⚡ Explicitly added items-stretch to force the grid to align
+        className="flex gap-6 overflow-x-hidden scroll-smooth pb-4 items-stretch"
       >
         {products.map((p) => (
           <Link
             href={`/product/${p.slug}`}
             key={p.id}
-            // ✅ UPDATED: Matches ProductCard background and hover border
-            className="min-w-[240px] lg:min-w-[calc(20%-19.2px)] bg-[#1a1a1a] border border-white/5 rounded-2xl p-4 hover:shadow-2xl hover:border-primary/30 transition-all group/card flex-shrink-0"
+            // ⚡ Added flex and flex-col to enable internal alignment
+            className="min-w-[240px] lg:min-w-[calc(20%-19.2px)] bg-[#1a1a1a] border border-white/5 rounded-2xl p-4 hover:shadow-2xl hover:border-primary/30 transition-all group/card flex-shrink-0 flex flex-col"
           >
             {/* Image Container */}
-            <div className="relative h-40 w-full bg-[#111] mb-4 rounded-xl overflow-hidden">
+            <div className="relative h-40 w-full bg-[#111] mb-4 rounded-xl overflow-hidden shrink-0">
               {p.image ? (
                 <Image
                   src={p.image}
@@ -74,7 +74,6 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
                 </div>
               )}
 
-              {/* ✅ DYNAMIC: Discount Badge uses Accent color */}
               {p.discount > 0 && (
                 <div className="absolute top-2 right-2 bg-accent text-white text-[10px] font-black px-2 py-1 rounded shadow-lg z-10">
                   {p.discount}% OFF
@@ -82,13 +81,16 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
               )}
             </div>
 
-            {/* ✅ DYNAMIC: Hover title turns Primary */}
-            <h4 className="font-bold text-white text-sm mb-3 line-clamp-2 h-10 group-hover/card:text-primary transition-colors">
+            {/* ⚡ TITLE FIX: min-h-[40px] forces exactly 2 lines of space regardless of text length */}
+            <h4 
+               className="font-bold text-white text-sm mb-3 line-clamp-2 min-h-[40px] group-hover/card:text-primary transition-colors"
+               title={p.title}
+            >
               {p.title}
             </h4>
 
-            <div className="flex items-center gap-3">
-              {/* ✅ DYNAMIC: Price uses Accent color */}
+            {/* ⚡ PRICE FIX: mt-auto guarantees it is pushed to the absolute bottom of the card */}
+            <div className="flex items-center gap-3 mt-auto">
               <span className="text-accent font-black text-lg tracking-tighter">
                 ${p.price.toFixed(2)}
               </span>
@@ -105,7 +107,6 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
       {/* --- RIGHT BUTTON --- */}
       <button
         onClick={() => scroll('right')}
-        // ✅ DYNAMIC: Switched var() to Tailwind primary classes
         className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 border border-[#333] text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:border-primary -mr-5 shadow-2xl backdrop-blur-sm"
         aria-label="Scroll Right"
       >

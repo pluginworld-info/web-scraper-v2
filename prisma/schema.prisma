@@ -265,6 +265,21 @@ model SiteSettings {
    
   primaryColor     String   @default("#ffa600") 
   accentColor      String   @default("#ff0059") 
+  
+  // HERO STYLING UPDATES
+  heroBgUrl        String?
+  heroTagline      String?
+  heroTitle        String?
+  heroSubtitle     String?
+  heroOverlayColor String?
+  heroOverlayBlur     Int?    
+  heroBorderColor     String? 
+  heroBorderThickness Int?  
+  
+  // NEW: GLOBAL SEO
+  metaTitle           String?
+  metaDescription     String?
+  metaKeywords        String?
    
   updatedAt        DateTime @updatedAt
 }

@@ -6,16 +6,39 @@ import Image from 'next/image';
 
 // --- TYPES ---
 type NotificationType = 'success' | 'error';
-// ⚡ NEW: Added 'db_cleanup' for our new Zombie Product cleaner
 type ModalType = 'logout' | 'clear_cache' | 'garbage_collect' | 'db_cleanup' | null;
+
+// RGBA Parser Helper
+const parseColor = (colorStr: string) => {
+  if (!colorStr) return { hex: '#000000', opacity: 0.7 };
+  if (colorStr.startsWith('rgba')) {
+      const parts = colorStr.match(/[\d.]+/g);
+      if (parts && parts.length === 4) {
+          const r = parseInt(parts[0]);
+          const g = parseInt(parts[1]);
+          const b = parseInt(parts[2]);
+          const a = parseFloat(parts[3]);
+          const hex = '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+          return { hex, opacity: a };
+      }
+  }
+  if (colorStr.startsWith('#')) {
+      if (colorStr.length === 9) {
+          const hex = colorStr.slice(0, 7);
+          const alpha = parseInt(colorStr.slice(7, 9), 16) / 255;
+          return { hex, opacity: alpha };
+      }
+      return { hex: colorStr.slice(0, 7), opacity: 1 };
+  }
+  return { hex: '#000000', opacity: 0.7 };
+};
 
 export default function SettingsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
-  // Track which field is being dragged over ('logo' | 'favicon' | null)
-  const [dragActive, setDragActive] = useState<'logo' | 'favicon' | null>(null);
+  const [dragActive, setDragActive] = useState<'logo' | 'favicon' | 'heroBg' | null>(null);
   
   // Modal State
   const [activeModal, setActiveModal] = useState<ModalType>(null);
@@ -28,14 +51,45 @@ export default function SettingsPage() {
     type: NotificationType;
   }>({ show: false, message: '', type: 'success' });
 
-  // Form State
+  // ⚡ UPDATED: Form State (Added Blur, Border, and SEO fields)
   const [formData, setFormData] = useState({
     siteName: '',
     logoUrl: '',
     faviconUrl: '',
     primaryColor: '#2563eb',
-    accentColor: '#ef4444'
+    accentColor: '#ef4444',
+    // HERO FIELDS
+    heroBgUrl: '',
+    heroTagline: '',
+    heroTitle: '',
+    heroSubtitle: '',
+    heroOverlayColor: 'rgba(0, 0, 0, 0.7)',
+    heroOverlayBlur: 2,
+    heroBorderColor: 'rgba(255, 255, 255, 0.05)',
+    heroBorderThickness: 1,
+    // GLOBAL SEO
+    metaTitle: '',
+    metaDescription: '',
+    metaKeywords: ''
   });
+
+  // Extract parsed hex and opacity for the UI sliders
+  const { hex: overlayHex, opacity: overlayOpacity } = parseColor(formData.heroOverlayColor);
+  const { hex: borderHex, opacity: borderOpacity } = parseColor(formData.heroBorderColor);
+
+  const handleOverlayChange = (newHex: string, newOpacity: number) => {
+    const r = parseInt(newHex.slice(1, 3), 16);
+    const g = parseInt(newHex.slice(3, 5), 16);
+    const b = parseInt(newHex.slice(5, 7), 16);
+    setFormData({ ...formData, heroOverlayColor: `rgba(${r}, ${g}, ${b}, ${newOpacity})` });
+  };
+
+  const handleBorderColorChange = (newHex: string, newOpacity: number) => {
+    const r = parseInt(newHex.slice(1, 3), 16);
+    const g = parseInt(newHex.slice(3, 5), 16);
+    const b = parseInt(newHex.slice(5, 7), 16);
+    setFormData({ ...formData, heroBorderColor: `rgba(${r}, ${g}, ${b}, ${newOpacity})` });
+  };
 
   // --- HELPERS ---
 
@@ -66,7 +120,20 @@ export default function SettingsPage() {
              logoUrl: data.logoUrl || '',
              faviconUrl: data.faviconUrl || '',
              primaryColor: data.primaryColor || '#2563eb',
-             accentColor: data.accentColor || '#ef4444'
+             accentColor: data.accentColor || '#ef4444',
+             // LOAD HERO FIELDS
+             heroBgUrl: data.heroBgUrl || '',
+             heroTagline: data.heroTagline || '',
+             heroTitle: data.heroTitle || '',
+             heroSubtitle: data.heroSubtitle || '',
+             heroOverlayColor: data.heroOverlayColor || 'rgba(0, 0, 0, 0.7)',
+             // ⚡ LOAD NEW HERO STYLE & SEO FIELDS
+             heroOverlayBlur: data.heroOverlayBlur ?? 2,
+             heroBorderColor: data.heroBorderColor || 'rgba(255, 255, 255, 0.05)',
+             heroBorderThickness: data.heroBorderThickness ?? 1,
+             metaTitle: data.metaTitle || '',
+             metaDescription: data.metaDescription || '',
+             metaKeywords: data.metaKeywords || ''
            };
            setFormData(newSettings);
            applyThemeColors(newSettings.primaryColor, newSettings.accentColor);
@@ -115,36 +182,25 @@ export default function SettingsPage() {
 
   const executeClearCache = () => {
     setProcessingAction(true);
-    
-    // 1. Save the login token
     const authSession = sessionStorage.getItem('admin_authenticated');
-
     setTimeout(() => {
-        // 2. Clear everything
         localStorage.clear();
         sessionStorage.clear();
-
-        // 3. Restore the login token immediately
         if (authSession) {
             sessionStorage.setItem('admin_authenticated', authSession);
         }
-
         showToast("Local cache purged successfully.", "success");
         setActiveModal(null);
         setProcessingAction(false);
-        
-        // 4. Reload (Sidebar will stay visible now)
         window.location.reload();
     }, 800);
   };
 
-  // Your EXISTING Cloud Storage GC
   const executeGarbageCollection = async () => {
     setProcessingAction(true);
     try {
       const res = await fetch('/api/admin/system/garbage-collect', { method: 'POST' });
       const data = await res.json();
-      
       if (res.ok) {
         showToast(`Cleanup complete: ${data.stats.orphansDeleted} orphans removed.`, "success");
       } else {
@@ -158,13 +214,11 @@ export default function SettingsPage() {
     }
   };
 
-  // ⚡ NEW: Database GC (Zombie Products)
   const executeDbCleanup = async () => {
     setProcessingAction(true);
     try {
       const res = await fetch('/api/admin/system/cleanup', { method: 'POST' });
       const data = await res.json();
-      
       if (res.ok) {
         showToast(`Database clean: ${data.deletedCount} zombie products removed.`, "success");
       } else {
@@ -180,20 +234,21 @@ export default function SettingsPage() {
 
   // --- FILE HANDLING ---
   
-  const processFile = (file: File, field: 'logoUrl' | 'faviconUrl') => {
+  const processFile = (file: File, field: 'logoUrl' | 'faviconUrl' | 'heroBgUrl') => {
     if (!file.type.startsWith('image/')) return showToast("File must be an image.", "error");
-    if (file.size > 2 * 1024 * 1024) return showToast("File too large (Max 2MB).", "error");
+    const maxSize = field === 'heroBgUrl' ? 5 : 2;
+    if (file.size > maxSize * 1024 * 1024) return showToast(`File too large (Max ${maxSize}MB).`, "error");
 
     const reader = new FileReader();
     reader.onload = (e) => {
         const result = e.target?.result as string;
         setFormData(prev => ({ ...prev, [field]: result }));
-        showToast(`${field === 'logoUrl' ? 'Logo' : 'Favicon'} ready to save.`, "success");
+        showToast(`Image ready to save.`, "success");
     };
     reader.readAsDataURL(file);
   };
 
-  const handleDrop = (e: React.DragEvent, field: 'logoUrl' | 'faviconUrl') => {
+  const handleDrop = (e: React.DragEvent, field: 'logoUrl' | 'faviconUrl' | 'heroBgUrl') => {
     e.preventDefault();
     setDragActive(null);
     if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0], field);
@@ -208,7 +263,7 @@ export default function SettingsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-[#333] pb-6">
         <div>
            <h1 className="text-3xl font-black text-white tracking-tight">System Settings</h1>
-           <p className="text-[#888] font-medium mt-2">Manage branding, theme, and admin session.</p>
+           <p className="text-[#888] font-medium mt-2">Manage branding, theme, SEO, and admin session.</p>
         </div>
         <div className="flex items-center gap-3">
              <button 
@@ -235,8 +290,10 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* LEFT COLUMN: BRANDING */}
+        {/* LEFT COLUMN: BRANDING, HERO & SEO */}
         <div className="lg:col-span-2 space-y-8">
+            
+            {/* 1. IDENTITY & BRANDING */}
             <section className="bg-[#1a1a1a] border border-[#333] rounded-2xl overflow-hidden shadow-sm">
                 <div className="px-6 py-4 border-b border-[#333] bg-[#222]/50 flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -246,7 +303,6 @@ export default function SettingsPage() {
                 </div>
                 
                 <div className="p-8 space-y-8">
-                    {/* Site Name */}
                     <div>
                         <label className="block text-xs font-bold text-[#666] uppercase mb-2 tracking-wider">Platform Name</label>
                         <input 
@@ -331,7 +387,193 @@ export default function SettingsPage() {
                             </div>
                         </div>
                     </div>
+                </div>
+            </section>
 
+            {/* ⚡ 2. HERO BANNER CONFIGURATION */}
+            <section className="bg-[#1a1a1a] border border-[#333] rounded-2xl overflow-hidden shadow-sm">
+                <div className="px-6 py-4 border-b border-[#333] bg-[#222]/50 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-400">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </div>
+                        <h2 className="text-white font-bold text-lg">Home Page Hero Banner</h2>
+                    </div>
+                </div>
+                
+                <div className="p-8 space-y-8">
+                    
+                    {/* Background Image Upload */}
+                    <div>
+                        <label className="block text-xs font-bold text-[#666] uppercase mb-2 tracking-wider">Background Image</label>
+                        <div 
+                            onDragOver={(e) => { e.preventDefault(); setDragActive('heroBg'); }}
+                            onDragLeave={(e) => { e.preventDefault(); setDragActive(null); }}
+                            onDrop={(e) => handleDrop(e, 'heroBgUrl')}
+                            className={`relative w-full h-48 border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all overflow-hidden ${
+                                dragActive === 'heroBg' ? 'border-primary bg-primary/10' : 'border-[#333] bg-[#111] hover:border-[#444]'
+                            }`}
+                        >
+                            {formData.heroBgUrl ? (
+                                <div className="relative w-full h-full p-4 flex items-center justify-center group">
+                                    <Image src={formData.heroBgUrl} alt="Hero Background" fill className="object-cover" unoptimized />
+                                    {/* Show a preview of the tint and border! */}
+                                    <div className="absolute inset-0 transition-colors" style={{ backgroundColor: formData.heroOverlayColor, backdropFilter: `blur(${formData.heroOverlayBlur}px)` }}></div>
+                                    <div className="absolute inset-0 border" style={{ borderColor: formData.heroBorderColor, borderWidth: `${formData.heroBorderThickness}px` }}></div>
+                                    
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-sm">
+                                        <button 
+                                            onClick={() => setFormData({...formData, heroBgUrl: ''})}
+                                            className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-xl transform hover:scale-105 transition-all"
+                                        >
+                                            Remove Background
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <label className="flex flex-col items-center cursor-pointer p-4 w-full h-full justify-center group">
+                                    <div className="w-10 h-10 rounded-full bg-[#222] flex items-center justify-center mb-3 group-hover:bg-[#333] transition-colors border border-[#333]">
+                                        <svg className="w-5 h-5 text-[#666]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    </div>
+                                    <span className="text-[#888] font-medium text-xs group-hover:text-white transition-colors">Upload Background Image</span>
+                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0], 'heroBgUrl')} />
+                                </label>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ⚡ NEW: Overlay & Blur Controls */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-[#111] rounded-xl border border-[#333]">
+                        {/* Tint Color */}
+                        <div>
+                            <label className="block text-xs font-bold text-white uppercase mb-4 tracking-wider">Tint Color & Opacity</label>
+                            <div className="flex items-center gap-4">
+                                <div className="relative w-10 h-10 rounded-lg shadow-inner ring-1 ring-white/10 overflow-hidden shrink-0">
+                                    <input type="color" value={overlayHex} onChange={(e) => handleOverlayChange(e.target.value, overlayOpacity)} className="absolute -inset-2 w-14 h-14 cursor-pointer" />
+                                </div>
+                                <input type="range" min="0" max="1" step="0.05" value={overlayOpacity} onChange={(e) => handleOverlayChange(overlayHex, parseFloat(e.target.value))} className="flex-1 accent-primary h-1 bg-[#333] rounded-lg appearance-none cursor-pointer" />
+                                <span className="text-xs text-white font-mono w-10 text-right">{Math.round(overlayOpacity * 100)}%</span>
+                            </div>
+                        </div>
+
+                        {/* Blur Slider */}
+                        <div>
+                            <label className="block text-xs font-bold text-white uppercase mb-4 tracking-wider">Backdrop Blur Strength</label>
+                            <div className="flex items-center gap-4 h-10">
+                                <input type="range" min="0" max="20" step="1" value={formData.heroOverlayBlur} onChange={(e) => setFormData({...formData, heroOverlayBlur: parseInt(e.target.value)})} className="flex-1 accent-primary h-1 bg-[#333] rounded-lg appearance-none cursor-pointer" />
+                                <span className="text-xs text-white font-mono w-10 text-right">{formData.heroOverlayBlur}px</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ⚡ NEW: Border Controls */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-[#111] rounded-xl border border-[#333]">
+                        {/* Border Color */}
+                        <div>
+                            <label className="block text-xs font-bold text-white uppercase mb-4 tracking-wider">Border Color & Opacity</label>
+                            <div className="flex items-center gap-4">
+                                <div className="relative w-10 h-10 rounded-lg shadow-inner ring-1 ring-white/10 overflow-hidden shrink-0">
+                                    <input type="color" value={borderHex} onChange={(e) => handleBorderColorChange(e.target.value, borderOpacity)} className="absolute -inset-2 w-14 h-14 cursor-pointer" />
+                                </div>
+                                <input type="range" min="0" max="1" step="0.05" value={borderOpacity} onChange={(e) => handleBorderColorChange(borderHex, parseFloat(e.target.value))} className="flex-1 accent-primary h-1 bg-[#333] rounded-lg appearance-none cursor-pointer" />
+                                <span className="text-xs text-white font-mono w-10 text-right">{Math.round(borderOpacity * 100)}%</span>
+                            </div>
+                        </div>
+
+                        {/* Border Thickness */}
+                        <div>
+                            <label className="block text-xs font-bold text-white uppercase mb-4 tracking-wider">Border Thickness</label>
+                            <div className="flex items-center gap-4 h-10">
+                                <input type="range" min="0" max="10" step="1" value={formData.heroBorderThickness} onChange={(e) => setFormData({...formData, heroBorderThickness: parseInt(e.target.value)})} className="flex-1 accent-primary h-1 bg-[#333] rounded-lg appearance-none cursor-pointer" />
+                                <span className="text-xs text-white font-mono w-10 text-right">{formData.heroBorderThickness}px</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         {/* Tagline */}
+                         <div>
+                             <label className="block text-xs font-bold text-[#666] uppercase mb-2 tracking-wider">Top Tagline</label>
+                             <input 
+                                 type="text" 
+                                 value={formData.heroTagline}
+                                 onChange={(e) => setFormData({...formData, heroTagline: e.target.value})}
+                                 className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder-[#444]"
+                                 placeholder="e.g. Live Price Tracking"
+                             />
+                         </div>
+
+                         {/* Title */}
+                         <div>
+                             <label className="block text-xs font-bold text-[#666] uppercase mb-2 tracking-wider">Main Title (HTML Allowed)</label>
+                             <input 
+                                 type="text" 
+                                 value={formData.heroTitle}
+                                 onChange={(e) => setFormData({...formData, heroTitle: e.target.value})}
+                                 className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder-[#444]"
+                                 placeholder="e.g. Compare <span class='text-primary'>Deals</span>"
+                             />
+                         </div>
+                    </div>
+
+                    {/* Subtitle */}
+                    <div>
+                        <label className="block text-xs font-bold text-[#666] uppercase mb-2 tracking-wider">Bottom Subtitle</label>
+                        <textarea 
+                            value={formData.heroSubtitle}
+                            onChange={(e) => setFormData({...formData, heroSubtitle: e.target.value})}
+                            className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder-[#444] resize-none h-24"
+                            placeholder="e.g. Real-time price monitoring from the best audio software sellers..."
+                        />
+                    </div>
+
+                </div>
+            </section>
+
+            {/* ⚡ 3. GLOBAL SEO CONFIGURATION */}
+            <section className="bg-[#1a1a1a] border border-[#333] rounded-2xl overflow-hidden shadow-sm">
+                <div className="px-6 py-4 border-b border-[#333] bg-[#222]/50 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </div>
+                    <h2 className="text-white font-bold text-lg">Global SEO & Metadata</h2>
+                </div>
+                <div className="p-8 space-y-6">
+                    <p className="text-sm text-[#888] leading-relaxed">
+                        These tags are injected into the head of your Home Page to improve Google Search rankings and control how your site appears when shared on social media.
+                    </p>
+                    
+                    <div>
+                        <label className="block text-xs font-bold text-[#666] uppercase mb-2 tracking-wider">Meta Title (Max 60 chars)</label>
+                        <input 
+                            type="text" 
+                            value={formData.metaTitle} 
+                            onChange={(e) => setFormData({...formData, metaTitle: e.target.value})} 
+                            placeholder="e.g. PluginWorld | VST & Audio Software Deals" 
+                            className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-all placeholder-[#444]" 
+                        />
+                    </div>
+                    
+                    <div>
+                        <label className="block text-xs font-bold text-[#666] uppercase mb-2 tracking-wider">Meta Description (Max 160 chars)</label>
+                        <textarea 
+                            value={formData.metaDescription} 
+                            onChange={(e) => setFormData({...formData, metaDescription: e.target.value})} 
+                            placeholder="e.g. Find the best deals and lowest prices on VSTs, synths, and audio software..." 
+                            className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-all placeholder-[#444] h-20 resize-none" 
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-[#666] uppercase mb-2 tracking-wider">Keywords (Comma separated)</label>
+                        <input 
+                            type="text" 
+                            value={formData.metaKeywords} 
+                            onChange={(e) => setFormData({...formData, metaKeywords: e.target.value})} 
+                            placeholder="e.g. audio plugins, vst deals, music production software, synths" 
+                            className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-all placeholder-[#444]" 
+                        />
+                    </div>
                 </div>
             </section>
         </div>
@@ -393,7 +635,6 @@ export default function SettingsPage() {
                         Clear Local Cache
                     </button>
 
-                    {/* EXISTING: Cloud Garbage Collector Button */}
                     <p className="text-[#888] text-xs mt-6 mb-3 leading-relaxed border-t border-red-900/20 pt-4">
                         Reclaim Google Cloud Storage space by deleting orphaned images that do not have a matching database product.
                     </p>
@@ -404,7 +645,6 @@ export default function SettingsPage() {
                         Run Storage Cleanup
                     </button>
 
-                    {/* ⚡ NEW: Database Zombie Cleanup Button */}
                     <p className="text-[#888] text-xs mt-6 mb-3 leading-relaxed border-t border-red-900/20 pt-4">
                         Clean database by removing "Zombie Products" (products with 0 active store listings) caused by aborted syncs.
                     </p>

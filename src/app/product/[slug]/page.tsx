@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; 
 
+import { Metadata } from 'next'; 
 import { prisma } from '@/lib/db/prisma';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -12,8 +13,39 @@ import ReviewsSection from '@/components/ReviewsSection';
 import TrackedLink from '@/components/TrackedLink';
 import ProductViewTracker from '@/components/ProductViewTracker';
 
-export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
-  const slug = params?.slug;
+// ⚡ FIXED: params is now a Promise that we must await
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params; // <--- Await the params here!
+  
+  const product = await prisma.product.findUnique({
+    where: { slug: slug },
+    select: { title: true, brand: true, category: true, description: true, image: true }
+  });
+
+  if (!product) return { title: 'Product Not Found' };
+
+  // Clean the description for Google (Strip HTML tags, max 155 chars)
+  const cleanDescription = product.description 
+    ? product.description.replace(/<[^>]*>?/gm, '').substring(0, 155) + '...'
+    : `Compare prices and find the best deals for ${product.title} by ${product.brand || 'Premium Brand'}.`;
+
+  const pageTitle = `${product.title} by ${product.brand || 'Premium Brand'} | Lowest Price Deals`;
+
+  return {
+    title: pageTitle,
+    description: cleanDescription,
+    keywords: `${product.title}, ${product.brand}, ${product.category}, buy ${product.title}, cheap ${product.title}, audio plugin deal`,
+    openGraph: {
+      title: pageTitle,
+      description: cleanDescription,
+      images: product.image ? [product.image] : [],
+    }
+  };
+}
+
+// ⚡ FIXED: params is now a Promise here as well
+export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params; // <--- Await the params here!
 
   if (!slug) return notFound();
 
@@ -190,11 +222,11 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
 
             <div className="flex items-center gap-3 mb-6">
                <div className="flex text-yellow-500 gap-0.5">
-                  {[...Array(5)].map((_, i) => (
-                      <svg key={i} className={`w-5 h-5 ${i < Math.round(averageRating) ? "fill-current" : "text-[#333] fill-current"}`} viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                  ))}
+                 {[...Array(5)].map((_, i) => (
+                     <svg key={i} className={`w-5 h-5 ${i < Math.round(averageRating) ? "fill-current" : "text-[#333] fill-current"}`} viewBox="0 0 20 20">
+                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                     </svg>
+                 ))}
                </div>
                <span className="text-xs font-black text-[#555] uppercase tracking-widest">
                   {reviewCount} Verified Reviews
@@ -300,7 +332,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
         {/* --- RELATED DEALS --- */}
         {product.category && (
           <div className="mt-32">
-            <RelatedProducts currentId={product.id} category={product.category} />
+            <RelatedProducts currentId={product.id} category={product.category} brand={product.brand || ""} />
           </div>
         )}
 
