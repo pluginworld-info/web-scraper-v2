@@ -50,7 +50,9 @@ export function mapProductData(rawItem: any, affiliateTag: string | null) {
     // ⚡ FIX: Uses the Keyword Router if the CSV/JSON doesn't provide a category
     category: rawItem.category || guessCategory(title),
     
-    description: rawItem.description || null,
+    // ⚡ FIX: Massive fallback net to catch standard Affiliate CSV description columns
+    description: rawItem.description || rawItem.Description || rawItem['Product Description'] || rawItem.desc || rawItem.shortDescription || rawItem.longDescription || null,
+    
     image: rawItem.image || rawItem['Product Image URL'] || rawItem.imageUrl || null,
     url: finalUrl
   };

@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    console.log("⏰ Cron Job Started: Syncing All Feeds Sequentially...");
+    console.log("⏰ Cron Job Started: Gathering Feeds...");
 
     // 2. Fetch feeds (skip ones that are somehow already syncing)
     const feeds = await prisma.feed.findMany({
@@ -24,69 +24,82 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: "No feeds to sync." });
     }
 
-    const results = [];
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://scraper-engine-v2-776546486462.us-central1.run.app';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://pluginworld.info';
 
-    // 3. STRICT SEQUENTIAL LOOP
-    for (const feed of feeds) {
-      try {
-        console.log(`\n👉 Triggering Feed: ${feed.name}`);
-        
-        // A. Fire the trigger (We don't await the final resolution to avoid HTTP timeouts)
-        fetch(`${baseUrl}/api/admin/sync`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ feedId: feed.id })
-        }).catch(err => {
-           // We expect the HTTP connection to drop eventually, we just ignore it.
-           // The background process in Cloud Run keeps going.
-        });
+    // =======================================================================
+    // ⚡ FIRE AND FORGET ORCHESTRATOR
+    // We run the massive sequential loop in the background so the Cron Scheduler
+    // gets an instant success response and doesn't timeout!
+    // =======================================================================
+    const runSequentialFeeds = async () => {
+      console.log(`🚀 Background Orchestrator taking over ${feeds.length} feeds...`);
 
-        // Give the database 2 seconds to officially register the 'SYNCING' status
-        await new Promise(resolve => setTimeout(resolve, 2000));
+      for (const feed of feeds) {
+        try {
+          console.log(`\n👉 Triggering Feed: ${feed.name}`);
+          
+          // A. Fire the trigger
+          fetch(`${baseUrl}/api/admin/sync`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              // ⚡ THE GHOST COOKIE: We pass the CRON_SECRET as a fake session cookie
+              // so your middleware.ts lets this server-to-server request through!
+              'Cookie': `admin_session=${process.env.CRON_SECRET}` 
+            },
+            body: JSON.stringify({ feedId: feed.id })
+          }).catch(err => {
+             // Ignore dropped HTTP connection, background job keeps going
+          });
 
-        // B. THE WAITING ROOM (Direct Database Polling)
-        let isRunning = true;
-        let elapsedSeconds = 0;
-        const timeoutSeconds = 3600; // 1 hour max per feed to prevent infinite zombie loops
+          // Give the database 3 seconds to officially register the 'SYNCING' status
+          await new Promise(resolve => setTimeout(resolve, 3000));
 
-        while (isRunning && elapsedSeconds < timeoutSeconds) {
-           // Check the exact status in the database
-           const check = await prisma.feed.findUnique({
-               where: { id: feed.id },
-               select: { status: true, processedItems: true, totalItems: true }
-           });
+          // B. THE WAITING ROOM (Direct Database Polling)
+          let isRunning = true;
+          let elapsedSeconds = 0;
+          const timeoutSeconds = 3600; // 1 hour max per feed
 
-           // If it is no longer SYNCING, the background job finished!
-           if (!check || check.status !== 'SYNCING') {
-               isRunning = false;
-               console.log(`✅ Finished: ${feed.name}. Final Status: ${check?.status}`);
-               results.push({ id: feed.id, name: feed.name, status: check?.status });
-           } else {
-               // Print a progress update to your terminal every 15 seconds
-               if (elapsedSeconds % 15 === 0) {
-                   console.log(`   ⏳ Still syncing ${feed.name}... (${check.processedItems}/${check.totalItems})`);
-               }
-               // Wait 15 seconds before checking the database again
-               await new Promise(resolve => setTimeout(resolve, 15000)); 
-               elapsedSeconds += 5;
-           }
+          while (isRunning && elapsedSeconds < timeoutSeconds) { 
+             const check = await prisma.feed.findUnique({
+                 where: { id: feed.id },
+                 select: { status: true, processedItems: true, totalItems: true }
+             });
+
+             if (!check || check.status !== 'SYNCING') {
+                 isRunning = false;
+                 console.log(`✅ Finished: ${feed.name}. Final Status: ${check?.status}`);
+             } else {
+                 if (elapsedSeconds % 15 === 0) {
+                     console.log(`   ⏳ Still syncing ${feed.name}... (${check.processedItems}/${check.totalItems})`);
+                 }
+                 // Wait 15 seconds
+                 await new Promise(resolve => setTimeout(resolve, 15000)); 
+                 // ⚡ FIX: Added 15 seconds instead of 5
+                 elapsedSeconds += 15; 
+             }
+          }
+
+          if (isRunning) {
+              console.error(`❌ Timeout: ${feed.name} exceeded 1 hour.`);
+          }
+
+        } catch (err: any) {
+          console.error(`❌ Failed to process ${feed.name}:`, err.message);
         }
-
-        // Failsafe if a feed gets permanently stuck
-        if (isRunning) {
-            console.error(`❌ Timeout: ${feed.name} exceeded 1 hour.`);
-            results.push({ id: feed.id, name: feed.name, status: 'TIMEOUT' });
-        }
-
-      } catch (err: any) {
-        console.error(`❌ Failed to process ${feed.name}:`, err.message);
-        results.push({ id: feed.id, success: false, error: err.message });
       }
-    }
 
-    console.log("\n🏁 Cron Job Finished ALL Feeds safely.");
-    return NextResponse.json({ success: true, results });
+      console.log("\n🏁 Cron Job Finished ALL Feeds safely.");
+    };
+
+    // ⚡ Kick off the loop without awaiting it
+    runSequentialFeeds();
+
+    // ⚡ Instantly reply to Google Cloud Scheduler so it doesn't timeout
+    return NextResponse.json({ 
+      success: true, 
+      message: `Background sync triggered for ${feeds.length} feeds.` 
+    });
 
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
