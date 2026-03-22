@@ -14,37 +14,55 @@ export default function AIRecommendations({ initialProducts }: AIRecommendations
   const [insight, setInsight] = useState("Curating best value deals...");
   const [isPersonalized, setIsPersonalized] = useState(false);
 
-  const generateRecommendations = useCallback((isRefresh = false) => {
+  const generateRecommendations = useCallback(async (isRefresh = false) => {
     if (loading) return;
 
-    const history = typeof window !== 'undefined' ? localStorage.getItem('plugin_history') : null;
-    const lastSearch = typeof window !== 'undefined' ? localStorage.getItem('last_search') : null;
-    const wishlist = typeof window !== 'undefined' ? localStorage.getItem('wishlist_items') : null;
+    // Safely parse local storage data
+    let history = [];
+    let wishlist = [];
+    let lastSearch = "";
 
-    if (history || lastSearch || wishlist || isRefresh) {
+    if (typeof window !== 'undefined') {
+      try { history = JSON.parse(localStorage.getItem('plugin_history') || '[]'); } catch (e) {}
+      try { wishlist = JSON.parse(localStorage.getItem('wishlist_items') || '[]'); } catch (e) {}
+      lastSearch = localStorage.getItem('last_search') || '';
+    }
+
+    // Only run the API call if we actually have user signals
+    if (history.length > 0 || wishlist.length > 0 || lastSearch || isRefresh) {
       setLoading(true);
-      setInsight(isRefresh ? "Re-calibrating model with latest signals..." : "Cross-referencing your wishlist...");
+      setInsight(isRefresh ? "Re-calibrating model with latest signals..." : "Analyzing your preferences...");
 
-      setTimeout(() => {
-        if (isRefresh) {
-             setProducts(prev => [...prev].sort(() => Math.random() - 0.5));
+      try {
+        const res = await fetch('/api/recommendations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ history, wishlist, search: lastSearch })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          
+          if (data.products && data.products.length > 0) {
+            setProducts(data.products);
+            setIsPersonalized(true);
+            
+            // Set accurate insight text based on what data was used
+            if (wishlist.length > 0) {
+              setInsight(`Found similar deals based on your ${wishlist.length} wishlist items`);
+            } else if (lastSearch) {
+              setInsight(`Found top rated deals matching "${lastSearch}"`);
+            } else if (history.length > 0) {
+              setInsight("Personalized based on your recent viewing habits");
+            }
+          }
         }
-
-        let newInsight = "Selected based on your interest in Audio Plugins"; 
-        
-        if (wishlist && JSON.parse(wishlist).length > 0) {
-            const count = JSON.parse(wishlist).length;
-            newInsight = `Found similar deals based on your ${count} wishlist items`;
-        } else if (lastSearch) {
-            newInsight = `Found top rated deals matching "${lastSearch}"`;
-        } else if (history) {
-             newInsight = "Personalized based on your recent viewing habits";
-        }
-
-        setInsight(newInsight);
-        setIsPersonalized(true);
+      } catch (error) {
+        console.error("Failed to fetch recommendations", error);
+        setInsight("Showing trending deals instead.");
+      } finally {
         setLoading(false);
-      }, 1500);
+      }
     }
   }, [loading]);
 
@@ -116,7 +134,6 @@ export default function AIRecommendations({ initialProducts }: AIRecommendations
               <Link 
                 key={product.id} 
                 href={`/product/${product.slug}`}
-                // ✅ ADDED: transform-gpu, translate-y-0 (explicit start), ease-out
                 className="group relative bg-[#111] hover:bg-[#151515] border border-white/5 hover:border-primary/40 rounded-[32px] p-6 transition-all duration-500 ease-out flex flex-col transform-gpu translate-y-0 hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary/10"
               >
                 <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-all duration-500 ease-out translate-y-2 group-hover:translate-y-0">
@@ -132,7 +149,6 @@ export default function AIRecommendations({ initialProducts }: AIRecommendations
                       alt={product.title} 
                       fill 
                       unoptimized 
-                      // ✅ ADDED: transform-gpu, scale-100 (explicit start), ease-out
                       className="object-contain transition-all duration-500 ease-out grayscale group-hover:grayscale-0 opacity-60 group-hover:opacity-100 transform-gpu scale-100 group-hover:scale-110" 
                     />
                   ) : (
