@@ -1,20 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Turnstile } from '@marsidev/react-turnstile'; // ⚡ NEW
+import { Turnstile } from '@marsidev/react-turnstile';
 
 export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [token, setToken] = useState<string | null>(null); // ⚡ NEW
+  const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
+
+  // 🔍 DIAGNOSTIC LOG: This helps find why the widget is missing
+  useEffect(() => {
+    const siteKey = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY;
+    
+    if (!siteKey) {
+      console.error("🚨 [DEBUG] NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY is undefined in the browser.");
+      // Ping the backend so the error shows up in your Cloud Run / Terminal logs
+      fetch('/api/admin/auth', { 
+        method: 'POST', 
+        body: JSON.stringify({ debug_issue: "Missing Site Key on Frontend" }) 
+      }).catch(() => {});
+    } else {
+      console.log("✅ [DEBUG] Turnstile Site Key detected.");
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // ⚡ NEW: Security check
+    // Block if Turnstile isn't ready
     if (!token) {
       setError("Please complete the security check.");
       return;
@@ -29,25 +45,21 @@ export default function AdminLogin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           password,
-          cf_token: token // ⚡ NEW: Send token to backend
+          cf_token: token 
         }),
       });
 
       if (res.ok) {
-        // ✅ 1. Set the session flag for the Layout
+        // ✅ Preserve your existing auth logic
         sessionStorage.setItem('admin_authenticated', 'true');
-
-        // ✅ 2. Fire the event to instantly unblur the Sidebar
         window.dispatchEvent(new Event('admin-auth-change'));
 
-        // 3. Success: Redirect to Dashboard
         router.push('/admin');
         router.refresh(); 
       } else {
         const data = await res.json();
         setError(data.error || 'Invalid Security PIN');
-        // Reset token on failure so they have to prove humanity again
-        setToken(null); 
+        setToken(null); // Reset Turnstile on failure
       }
     } catch (err) {
       setError('Login failed. Please try again.');
@@ -82,12 +94,14 @@ export default function AdminLogin() {
              />
            </div>
 
-           {/* ⚡ NEW: CLOUDFLARE TURNSTILE */}
-           <div className="flex justify-center py-2">
+           {/* ⚡ CLOUDFLARE TURNSTILE WIDGET */}
+           <div className="flex justify-center py-2 min-h-[65px]">
              <Turnstile 
                siteKey={process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY!} 
                onSuccess={(token) => setToken(token)}
-               options={{ theme: 'dark' }} // Safe way to pass theme
+               onExpire={() => setToken(null)}
+               onError={() => setToken(null)}
+               options={{ theme: 'dark' }}
              />
            </div>
 
@@ -99,7 +113,7 @@ export default function AdminLogin() {
 
            <button
              type="submit"
-             disabled={loading || !password || !token} // Disabled if no token
+             disabled={loading || !password || !token}
              className="w-full bg-primary text-white font-bold py-4 rounded-xl hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
            >
              {loading ? 'Verifying...' : 'Unlock Dashboard'}

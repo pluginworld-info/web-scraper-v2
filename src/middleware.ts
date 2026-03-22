@@ -9,12 +9,13 @@ export function middleware(request: NextRequest) {
   const isUiAdminPath = pathname.startsWith('/admin');
   const isApiAdminPath = pathname.startsWith('/api/admin');
   const isLoginPath = pathname === '/admin/login';
+  const isApiAuthRoute = pathname === '/api/admin/auth'; // ⚡ NEW: Identify the login API route
 
   const authToken = request.cookies.get('admin_session')?.value;
 
   // --- 2. API ADMIN AUTHENTICATION LOGIC ---
-  // If trying to access a secure API route without a token, instantly block it.
-  if (isApiAdminPath && !authToken) {
+  // ⚡ FIX: Block if it's an admin API path AND it's NOT the login route AND there's no token.
+  if (isApiAdminPath && !isApiAuthRoute && !authToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
