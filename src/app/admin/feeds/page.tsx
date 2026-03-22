@@ -63,6 +63,10 @@ export default function AdminFeedsPage() {
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [feedToDelete, setFeedToDelete] = useState<string | null>(null); // ⚡ NEW: Tracks which feed to delete
   
+  // ⚡ NEW: Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [feedToEdit, setFeedToEdit] = useState<Feed | null>(null);
+
   // Real Scheduler State
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [timeDisplay, setTimeDisplay] = useState("Calculating...");
@@ -152,7 +156,7 @@ export default function AdminFeedsPage() {
     return () => clearInterval(timer);
   }, [nextRunTime, fetchSchedulerInfo, fetchFeeds]);
 
-  // 4. SYNC ALL LOGIC
+  // 4. SYNC ALL LOGIC (Robust Sequential Polling)
   const executeSyncAll = async () => {
     setIsSyncModalOpen(false); 
     setIsSyncingAll(true);
@@ -163,6 +167,7 @@ export default function AdminFeedsPage() {
 
     for (const feed of allFeeds) {
         try {
+            // Optimistically update UI to show syncing state for the current feed
             setRetailers(currentRetailers => 
               currentRetailers.map(r => ({
                 ...r,
@@ -172,18 +177,62 @@ export default function AdminFeedsPage() {
               }))
             );
 
-            await fetch('/api/admin/sync', {
+            // 1. Trigger the sync process for the current feed
+            // We use 'no-store' to ensure we don't get a cached response,
+            // but we don't 'await' its full completion here to avoid browser timeouts.
+            fetch('/api/admin/sync', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Cache-Control': 'no-store'
+                },
                 body: JSON.stringify({ feedId: feed.id }),
-            });
+            }).catch(e => console.error(`Trigger failed for ${feed.name}:`, e));
+
+            // 2. Start polling to check when the database marks it as finished
+            let isCurrentFeedDone = false;
+            let pollingAttempts = 0;
+            const MAX_POLLING_ATTEMPTS = 600; // 30 minutes total (600 attempts * 3 seconds)
+
+            while (!isCurrentFeedDone && pollingAttempts < MAX_POLLING_ATTEMPTS) {
+                // Wait for 3 seconds before checking status
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                pollingAttempts++;
+
+                try {
+                    // Fetch fresh feed data to check the status column
+                    const checkRes = await fetch('/api/admin/feeds', { cache: 'no-store' });
+                    if (checkRes.ok) {
+                        const freshRetailers: Retailer[] = await checkRes.json();
+                        
+                        // Find our specific feed in the fresh data
+                        for (const r of freshRetailers) {
+                            const freshFeed = r.feeds.find(f => f.id === feed.id);
+                            if (freshFeed) {
+                                // If status is no longer SYNCING (e.g., SUCCESS, ERROR, or IDLE via abort), it's done.
+                                if (freshFeed.status !== 'SYNCING') {
+                                    isCurrentFeedDone = true;
+                                }
+                                break; // Found the feed, break out of the retailer loop
+                            }
+                        }
+                    }
+                } catch (pollError) {
+                    console.warn(`Polling attempt ${pollingAttempts} failed, retrying...`, pollError);
+                }
+            }
+
+            if (!isCurrentFeedDone) {
+                 console.error(`Feed sync timed out waiting for completion: ${feed.name}`);
+                 // Optionally handle timeout failure (e.g., mark as error in UI)
+            }
 
         } catch (e) {
-            console.error(`Failed to sync ${feed.name}`);
+            console.error(`Unexpected error handling feed ${feed.name}:`, e);
         } finally {
             completed++;
             setSyncProgress(Math.round((completed / allFeeds.length) * 100));
-            await fetchFeeds(); 
+            await fetchFeeds(); // Refresh the final UI state for this feed
         }
     }
 
@@ -218,6 +267,48 @@ export default function AdminFeedsPage() {
       alert("Failed to add site");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // ⚡ NEW: Edit Site Logic
+  const initiateEdit = (feed: Feed, retailerName: string) => {
+    setFeedToEdit(feed);
+    setNewSiteName(retailerName);
+    setNewFeedUrl(feed.url);
+    setNewFeedType(feed.type);
+    setNewAffiliateTag(feed.affiliateTag || '');
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!feedToEdit) return;
+    
+    setSubmitting(true);
+    try {
+        await fetch('/api/admin/feeds', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: feedToEdit.id,
+                name: newSiteName, 
+                url: newFeedUrl,
+                type: newFeedType,
+                affiliateTag: newAffiliateTag || null 
+            }),
+        });
+        await fetchFeeds();
+        setIsEditModalOpen(false);
+        setFeedToEdit(null);
+        
+        // Reset fields
+        setNewSiteName('');
+        setNewFeedUrl('');
+        setNewAffiliateTag('');
+    } catch (error) {
+        alert("Failed to update feed");
+    } finally {
+        setSubmitting(false);
     }
   };
 
@@ -303,7 +394,12 @@ export default function AdminFeedsPage() {
             </button>
 
             <button 
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={() => {
+                setNewSiteName('');
+                setNewFeedUrl('');
+                setNewAffiliateTag('');
+                setIsAddModalOpen(true);
+              }}
               className="bg-primary hover:opacity-90 text-white px-6 py-3 rounded-xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-primary/20 transition-all flex-1 md:flex-none text-center"
             >
               + Add Site
@@ -321,7 +417,7 @@ export default function AdminFeedsPage() {
                 <div className="grid grid-cols-1 gap-4">
                     {masterRetailers.map(retailer => (
                         retailer.feeds.map(feed => (
-                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={initiateDelete} onAbort={handleAbort} />
+                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={initiateDelete} onAbort={handleAbort} onEdit={initiateEdit} />
                         ))
                     ))}
                 </div>
@@ -335,22 +431,31 @@ export default function AdminFeedsPage() {
                 <div className="grid grid-cols-1 gap-4">
                     {competitorRetailers.map(retailer => (
                         retailer.feeds.map(feed => (
-                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={initiateDelete} onAbort={handleAbort} />
+                        <FeedCard key={feed.id} retailer={retailer} feed={feed} onDelete={initiateDelete} onAbort={handleAbort} onEdit={initiateEdit} />
                         ))
                     ))}
                 </div>
             </div>
         </div>
 
-      {/* ADD SITE MODAL */}
-      {isAddModalOpen && (
+      {/* ADD/EDIT SITE MODAL */}
+      {(isAddModalOpen || isEditModalOpen) && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-[#222] border border-[#333] rounded-2xl w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <h2 className="text-2xl font-black text-white mb-6">Add New Source</h2>
-            <form onSubmit={handleAddSite} className="space-y-4">
+            <h2 className="text-2xl font-black text-white mb-6">
+                {isEditModalOpen ? 'Edit Data Source' : 'Add New Source'}
+            </h2>
+            <form onSubmit={isEditModalOpen ? handleEditSave : handleAddSite} className="space-y-4">
               <div>
                 <label className="block text-[#666] text-xs font-bold uppercase mb-2">Site Name</label>
-                <input className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:outline-none focus:border-primary transition-colors" value={newSiteName} onChange={e => setNewSiteName(e.target.value)} required />
+                <input 
+                    className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:outline-none focus:border-primary transition-colors disabled:opacity-50" 
+                    value={newSiteName} 
+                    onChange={e => setNewSiteName(e.target.value)} 
+                    required 
+                    disabled={isEditModalOpen} 
+                />
+                {isEditModalOpen && <p className="text-[10px] text-[#666] mt-1">Site name cannot be changed while editing.</p>}
               </div>
               
               <div>
@@ -377,28 +482,30 @@ export default function AdminFeedsPage() {
                      <option value="XML">XML</option>
                    </select>
                 </div>
-                <div className="pt-6">
-                   <label className={`flex items-center gap-3 ${isMasterLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-                      <input 
-                          type="checkbox" 
-                          // Auto-checks the box if they type the master's name to prevent demotion
-                          checked={isMaster || (isTypingExistingMaster || false)} 
-                          onChange={e => !isMasterLocked && setIsMaster(e.target.checked)} 
-                          disabled={isMasterLocked} 
-                          className="w-5 h-5 rounded bg-[#111] border border-[#333] accent-primary disabled:opacity-50" 
-                      />
-                      <span className="text-white font-bold text-sm">Is Master?</span>
-                   </label>
-                   {isMasterLocked && (
-                       <p className="text-[#666] text-[10px] font-bold uppercase tracking-widest mt-2 pl-8">
-                           Master already assigned
-                       </p>
-                   )}
-                </div>
+                {!isEditModalOpen && (
+                    <div className="pt-6">
+                       <label className={`flex items-center gap-3 ${isMasterLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                          <input 
+                              type="checkbox" 
+                              // Auto-checks the box if they type the master's name to prevent demotion
+                              checked={isMaster || (isTypingExistingMaster || false)} 
+                              onChange={e => !isMasterLocked && setIsMaster(e.target.checked)} 
+                              disabled={isMasterLocked} 
+                              className="w-5 h-5 rounded bg-[#111] border border-[#333] accent-primary disabled:opacity-50" 
+                          />
+                          <span className="text-white font-bold text-sm">Is Master?</span>
+                       </label>
+                       {isMasterLocked && (
+                           <p className="text-[#666] text-[10px] font-bold uppercase tracking-widest mt-2 pl-8">
+                               Master already assigned
+                           </p>
+                       )}
+                    </div>
+                )}
               </div>
               <div className="pt-6 flex gap-3">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold uppercase text-xs">Cancel</button>
-                <button disabled={submitting} className="flex-1 bg-primary hover:opacity-90 text-white py-3 rounded-xl font-bold uppercase text-xs disabled:opacity-50 transition-all">{submitting ? 'Saving...' : 'Add Feed'}</button>
+                <button type="button" onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); setFeedToEdit(null); }} className="flex-1 bg-[#333] hover:bg-[#444] text-white py-3 rounded-xl font-bold uppercase text-xs">Cancel</button>
+                <button disabled={submitting} className="flex-1 bg-primary hover:opacity-90 text-white py-3 rounded-xl font-bold uppercase text-xs disabled:opacity-50 transition-all">{submitting ? 'Saving...' : (isEditModalOpen ? 'Save Changes' : 'Add Feed')}</button>
               </div>
             </form>
           </div>
@@ -459,7 +566,7 @@ export default function AdminFeedsPage() {
 }
 
 // FEED CARD COMPONENT
-function FeedCard({ retailer, feed, onDelete, onAbort }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void, onAbort: (id: string) => void }) {
+function FeedCard({ retailer, feed, onDelete, onAbort, onEdit }: { retailer: Retailer, feed: Feed, onDelete: (id: string) => void, onAbort: (id: string) => void, onEdit: (feed: Feed, retailerName: string) => void }) {
   const isSyncing = feed.status === 'SYNCING';
   
   // ⚡ Use our new hook to get live progress ONLY when syncing
@@ -483,6 +590,7 @@ function FeedCard({ retailer, feed, onDelete, onAbort }: { retailer: Retailer, f
                 {feed.status === 'SYNCING' && <span className="text-[10px] bg-yellow-500 text-black font-black px-2 py-0.5 rounded uppercase animate-pulse">Syncing</span>}
                 {feed.status === 'SUCCESS' && <span className="text-[10px] bg-green-500 text-black font-black px-2 py-0.5 rounded uppercase">Active</span>}
                 
+                {/* ⚡ THE BLUE BADGE - Proof that the tag is saved in the DB */}
                 {feed.affiliateTag && (
                   <span className="text-[10px] bg-blue-900/40 text-blue-400 font-mono font-bold px-2 py-0.5 rounded border border-blue-900/50" title="Affiliate Tag">
                     {feed.affiliateTag}
@@ -519,24 +627,35 @@ function FeedCard({ retailer, feed, onDelete, onAbort }: { retailer: Retailer, f
              )}
           </div>
        </div>
-       <div className="flex items-center gap-3 w-full md:w-auto pl-0 md:pl-4 border-t md:border-t-0 md:border-l border-[#333] pt-4 md:pt-0 mt-2 md:mt-0">
-          <div className="flex-1 md:flex-none"><FeedSyncButton feed={feed} /></div>
+       <div className="flex items-center gap-2 w-full md:w-auto pl-0 md:pl-4 border-t md:border-t-0 md:border-l border-[#333] pt-4 md:pt-0 mt-2 md:mt-0">
+          <div className="flex-1 md:flex-none mr-2"><FeedSyncButton feed={feed} /></div>
           
-          {/* ⚡ NEW: ABORT BUTTON (Only shows when syncing) */}
+          {/* ABORT BUTTON (Only shows when syncing) */}
           {isSyncing && (
              <button 
                  onClick={() => onAbort(feed.id)} 
                  title="Abort Sync"
                  className="p-3 text-yellow-500 hover:text-white hover:bg-yellow-600/20 rounded-lg transition-colors"
              >
-                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-                 </svg>
+                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" /></svg>
              </button>
           )}
 
-          {/* ⚡ UPDATED: DELETE BUTTON (Disabled while syncing) */}
+          {/* ⚡ NEW: EDIT BUTTON (Disabled while syncing) */}
+          <button 
+              onClick={() => !isSyncing && onEdit(feed, retailer.name)} 
+              disabled={isSyncing}
+              title={isSyncing ? "Cannot edit while syncing" : "Edit Feed"}
+              className={`p-3 rounded-lg transition-colors ${
+                  isSyncing 
+                      ? 'text-[#444] cursor-not-allowed opacity-50' 
+                      : 'text-[#666] hover:text-blue-500 hover:bg-[#333]'
+              }`}
+          >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+          </button>
+
+          {/* DELETE BUTTON */}
           <button 
               onClick={() => !isSyncing && onDelete(feed.id)} 
               disabled={isSyncing}

@@ -99,6 +99,9 @@ export async function POST(req: Request) {
       const mapped = mapProductData(rawItem, feed.affiliateTag);
       if (!mapped.title || !mapped.url) continue;
 
+      // ⚡ TEMPORARY LOG: Check if the mapper attached the tag!
+      console.log(`URL CHECK: ${mapped.url}`);
+
       // Identify existing product via Base URL comparison
       const existing = existingMap.get(getBaseUrl(mapped.url));
       const targetSlug = existing ? existing.product.slug : slugify(mapped.title);

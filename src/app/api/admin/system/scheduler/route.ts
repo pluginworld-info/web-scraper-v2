@@ -57,4 +57,4 @@ export async function GET(req: Request) {
     console.error("Scheduler API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+} 

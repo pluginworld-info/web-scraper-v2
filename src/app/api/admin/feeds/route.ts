@@ -133,7 +133,7 @@ export async function DELETE(req: Request) {
                 deleteImageFromBucket(img.slug).catch(err => console.error(err));
             }
         }
-    }
+    } 
 
     return NextResponse.json({ 
         success: true, 
@@ -144,5 +144,32 @@ export async function DELETE(req: Request) {
   } catch (error: any) {
     console.error("Delete Error:", error);
     return NextResponse.json({ error: "Failed to delete feed and data" }, { status: 500 });
+  }
+}
+
+// ⚡ NEW: PUT Method for editing an existing feed's affiliate tag without deleting it
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+    const { id, name, url, type, affiliateTag } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Feed ID is required" }, { status: 400 });
+    }
+
+    const updatedFeed = await prisma.feed.update({
+      where: { id },
+      data: {
+        name: `${name} ${type} Feed`, // Keeps the naming convention consistent
+        url,
+        type,
+        affiliateTag: affiliateTag || null,
+      }
+    });
+
+    return NextResponse.json(updatedFeed);
+  } catch (error) {
+    console.error("Update Feed Error:", error);
+    return NextResponse.json({ error: "Failed to update feed" }, { status: 500 });
   }
 }
