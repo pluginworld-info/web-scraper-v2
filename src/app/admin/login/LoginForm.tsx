@@ -11,9 +11,14 @@ export default function LoginForm({ siteKey }: { siteKey: string }) {
   const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
 
+  // 🔍 DIAGNOSTIC LOG: Now checks the prop passed from the server
   useEffect(() => {
     if (!siteKey) {
-      console.error("🚨 [DEBUG] Site Key was not passed from the Server Component.");
+      console.error("🚨 [DEBUG] TURNSTILE_SITE_KEY is missing. Check Cloud Run variables.");
+      fetch('/api/admin/auth', { 
+        method: 'POST', 
+        body: JSON.stringify({ debug_issue: "Missing Site Key on Frontend" }) 
+      }).catch(() => {});
     } else {
       console.log("✅ [DEBUG] Turnstile Site Key injected successfully at runtime.");
     }
@@ -22,6 +27,7 @@ export default function LoginForm({ siteKey }: { siteKey: string }) {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Block if Turnstile isn't ready
     if (!token) {
       setError("Please complete the security check.");
       return;
@@ -41,14 +47,16 @@ export default function LoginForm({ siteKey }: { siteKey: string }) {
       });
 
       if (res.ok) {
+        // ✅ Preserve your existing auth logic
         sessionStorage.setItem('admin_authenticated', 'true');
         window.dispatchEvent(new Event('admin-auth-change'));
+
         router.push('/admin');
         router.refresh(); 
       } else {
         const data = await res.json();
         setError(data.error || 'Invalid Security PIN');
-        setToken(null); 
+        setToken(null); // Reset Turnstile on failure
       }
     } catch (err) {
       setError('Login failed. Please try again.');
@@ -61,6 +69,7 @@ export default function LoginForm({ siteKey }: { siteKey: string }) {
     <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-[#111] border border-[#333] rounded-2xl p-8 shadow-2xl relative z-50">
         
+        {/* Header */}
         <div className="text-center mb-8">
            <div className="w-12 h-12 bg-primary rounded-xl mx-auto flex items-center justify-center font-black text-2xl text-white mb-4 shadow-lg shadow-primary/40">
              P
@@ -69,6 +78,7 @@ export default function LoginForm({ siteKey }: { siteKey: string }) {
            <p className="text-[#666] text-sm mt-2">Enter your security PIN to continue.</p>
         </div>
 
+        {/* Form */}
         <form onSubmit={handleLogin} className="space-y-4">
            <div className="relative">
              <input
@@ -81,9 +91,10 @@ export default function LoginForm({ siteKey }: { siteKey: string }) {
              />
            </div>
 
+           {/* ⚡ CLOUDFLARE TURNSTILE WIDGET */}
            <div className="flex justify-center py-2 min-h-[65px]">
-             {/* ⚡ Pass the runtime prop into the widget */}
-             {siteKey && (
+             {/* Only render if the server successfully passed the key */}
+             {siteKey ? (
                <Turnstile 
                  siteKey={siteKey} 
                  onSuccess={(token) => setToken(token)}
@@ -91,6 +102,8 @@ export default function LoginForm({ siteKey }: { siteKey: string }) {
                  onError={() => setToken(null)}
                  options={{ theme: 'dark' }}
                />
+             ) : (
+               <div className="text-red-500 text-xs">Waiting for Security Module...</div>
              )}
            </div>
 
@@ -108,6 +121,10 @@ export default function LoginForm({ siteKey }: { siteKey: string }) {
              {loading ? 'Verifying...' : 'Unlock Dashboard'}
            </button>
         </form>
+
+        <p className="text-center text-[#333] text-xs mt-8">
+          Restricted Area. Authorized Personnel Only.
+        </p>
       </div>
     </div>
   );
