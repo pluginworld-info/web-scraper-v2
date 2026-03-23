@@ -73,14 +73,14 @@ html {
 @-moz-document url-prefix() {
   * {
     scrollbar-width: auto !important; 
-    scrollbar-color: #666666 transparent !important;
+    scrollbar-color: #555555 transparent !important;
   }
 }
 
 /* WebKit support (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {
-  width: 14px !important;  /* Locks the track width permanently */
-  height: 14px !important;
+  width: 8px !important;  /* Locks the track width permanently */
+  height: 8px !important;
 }
 
 ::-webkit-scrollbar-track {
@@ -89,7 +89,7 @@ html {
 
 /* The Draggable Thumb */
 ::-webkit-scrollbar-thumb {
-  background-color: #666666 !important; /* Solid grey normal state */
+  background-color: #555555 !important; /* Solid grey normal state */
   border-radius: 8px !important;
   border: none !important; /* Forces it to fill the entire 14px width always */
 }
@@ -102,9 +102,9 @@ html {
 ::-webkit-scrollbar-button:single-button {
   background-color: transparent !important;
   display: block !important;
-  height: 14px !important;
-  width: 14px !important;
-  background-size: 10px !important; 
+  height: 8px !important;
+  width: 8px !important;
+  background-size: 8px !important; 
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
