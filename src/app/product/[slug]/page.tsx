@@ -13,9 +13,10 @@ import ReviewsSection from '@/components/ReviewsSection';
 import TrackedLink from '@/components/TrackedLink';
 import ProductViewTracker from '@/components/ProductViewTracker';
 
-// ⚡ FIXED: params is now a Promise that we must await
+const turnstileSiteKey = process.env.TURNSTILE_SITE_KEY || '';
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params; // <--- Await the params here!
+  const { slug } = await params;
   
   const product = await prisma.product.findUnique({
     where: { slug: slug },
@@ -24,7 +25,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   if (!product) return { title: 'Product Not Found' };
 
-  // Clean the description for Google (Strip HTML tags, max 155 chars)
   const cleanDescription = product.description 
     ? product.description.replace(/<[^>]*>?/gm, '').substring(0, 155) + '...'
     : `Compare prices and find the best deals for ${product.title} by ${product.brand || 'Premium Brand'}.`;
@@ -43,9 +43,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-// ⚡ FIXED: params is now a Promise here as well
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params; // <--- Await the params here!
+  const { slug } = await params; 
 
   if (!slug) return notFound();
 
@@ -69,12 +68,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   if (!product) return notFound();
 
   // ---------------------------------------------------------
-  // ✅ 2. SMART PRICE LOGIC (STRICTER "HISTORIC" CHECK)
+  // ✅ 2. SMART PRICE LOGIC 
   // ---------------------------------------------------------
   const bestListing = product.listings[0]; 
   const currentBestPrice = bestListing ? bestListing.price : 0;
   
-  // Calculate Anchor (MSRP)
   const anchorPrice = product.maxRegularPrice > 0 
     ? product.maxRegularPrice 
     : (bestListing?.originalPrice || currentBestPrice);
@@ -87,38 +85,28 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     : 0;
 
   // --- 🔎 HISTORY ANALYSIS ---
-  // 1. Get pool of all prices (History + Current)
   const allHistoryPrices = product.listings.flatMap(l => l.history.map(h => h.price));
   const allLivePrices = product.listings.map(l => l.price);
   const fullPricePool = [...allHistoryPrices, ...allLivePrices].filter(p => p > 0);
   
-  // 2. Calculate Extremes
   const lowestEverRecorded = fullPricePool.length > 0 ? Math.min(...fullPricePool) : currentBestPrice;
   const highestEverRecorded = fullPricePool.length > 0 ? Math.max(...fullPricePool) : currentBestPrice;
 
-  // 3. Volatility Check: Has the price actually moved?
-  // If High == Low, the price is static. Static prices cannot be "Historic Lows".
   const hasFluctuated = highestEverRecorded > lowestEverRecorded;
   
-  // 4. Drop from Peak: How much lower is this than the highest price seen?
   const dropFromPeak = highestEverRecorded > 0 
     ? ((highestEverRecorded - currentBestPrice) / highestEverRecorded) * 100
     : 0;
 
   // --- DEAL STRENGTH CALCULATION ---
   let dealStrength = "Standard Price";
-  let dealColor = "bg-white/5 text-[#888] border border-white/10"; // Default Gray
-  
-  // ✅ STRICTER LOGIC:
-  // 1. HISTORIC LOW: Must be bottom price + Must have dropped at least 10% from its peak (proof of deal).
-  // 2. GREAT PRICE: Must be > 40% off MSRP (regardless of history).
-  // 3. GOOD DEAL: Any discount > 0.
+  let dealColor = "bg-white/5 text-[#888] border border-white/10"; 
   
   const isHistoricLow = 
       currentBestPrice > 0 && 
-      currentBestPrice <= lowestEverRecorded && // It is the bottom
-      hasFluctuated &&                          // It is not static
-      dropFromPeak >= 10;                       // It dropped at least 10% from the high
+      currentBestPrice <= lowestEverRecorded &&
+      hasFluctuated &&                          
+      dropFromPeak >= 10;                       
 
   if (isHistoricLow) {
     dealStrength = "🔥 Historic Low";
@@ -161,25 +149,28 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         {/* --- AI DEAL INSIGHT --- */}
         <div className="mb-12 bg-[#1a1a1a] rounded-[32px] p-1 border border-white/5">
             <div className="bg-[#222] p-6 md:p-8 rounded-[28px] flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-6">
-                    {/* DYNAMIC CAPSULE */}
-                    <div className={`px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg transition-all duration-300 ${dealColor}`}>
+                
+                {/* Left Side: Badge & Seller Count */}
+                <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 w-full md:w-auto text-center md:text-left">
+                    <div className={`px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg transition-all duration-300 w-fit mx-auto md:mx-0 ${dealColor}`}>
                         {dealStrength}
                     </div>
-                    <span className="text-[#888] text-sm font-medium hidden lg:inline-block">
+                    <span className="text-[#888] text-xs md:text-sm font-medium">
                         We found {product.listings.length} verified sellers offering this plugin.
                     </span>
                 </div>
-                <div className="flex items-center gap-10">
-                    <div className="text-right hidden md:block">
+                
+                {/* Right Side: Prices */}
+                <div className="flex flex-wrap md:flex-nowrap justify-center md:justify-end items-center gap-6 md:gap-10 w-full md:w-auto mt-2 md:mt-0 pt-4 md:pt-0 border-t border-white/5 md:border-none">
+                    <div className="text-center md:text-right">
                         <span className="block text-[#666] text-[10px] font-black uppercase mb-1 tracking-widest">Global Best Price</span>
                         <span className="text-white font-black text-3xl tracking-tighter">${currentBestPrice.toFixed(2)}</span>
                     </div>
                     
                     {hasDiscount && (
                       <>
-                        <div className="h-12 w-px bg-white/10 hidden md:block"></div>
-                        <div className="text-right">
+                        <div className="h-8 md:h-12 w-px bg-white/10 hidden sm:block"></div>
+                        <div className="text-center md:text-right">
                               <span className="block text-[#666] text-[10px] font-black uppercase mb-1 tracking-widest">Total Savings</span>
                               <span className="text-green-500 font-black text-3xl tracking-tighter">${savingsAmount.toFixed(2)}</span>
                         </div>
@@ -187,7 +178,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     )}
                 </div>
             </div>
-        </div> 
+        </div>
 
         {/* --- MAIN HEADER SECTION --- */}
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 mb-20 items-start">
@@ -326,7 +317,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
         {/* --- REVIEWS SECTION --- */}
         <div className="mb-20">
-           <ReviewsSection productId={product.id} reviews={product.reviews || []} />
+           <ReviewsSection 
+              productId={product.id} 
+              reviews={product.reviews || []} 
+              siteKey={turnstileSiteKey} 
+            />
         </div>
 
         {/* --- RELATED DEALS --- */}

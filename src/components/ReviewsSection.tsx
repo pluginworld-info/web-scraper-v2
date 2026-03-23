@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Turnstile } from '@marsidev/react-turnstile'; // ⚡ NEW
 
-export default function ReviewsSection({ productId, reviews }: { productId: string, reviews: any[] }) {
+// ⚡ ADDED: siteKey to the props interface
+export default function ReviewsSection({ productId, reviews, siteKey }: { productId: string, reviews: any[], siteKey: string }) {
   const router = useRouter();
   
   // Form State
@@ -61,16 +62,27 @@ export default function ReviewsSection({ productId, reviews }: { productId: stri
     }
   };
 
+  const handleToggleForm = () => {
+    setShowForm(!showForm);
+    // Reset state if they cancel
+    if (showForm) {
+       setRating(0);
+       setComment('');
+       setAuthorName('');
+       setToken(null);
+    }
+  };
+
   return (
     <div className="bg-[#1a1a1a] rounded-2xl shadow-xl border border-white/5 p-8 mb-16">
       
       {/* HEADER */}
       <div className="flex items-center justify-between mb-8">
          <h3 className="font-black text-sm uppercase tracking-widest text-[#888]">
-            User Reviews ({reviews.length})
+           User Reviews ({reviews.length})
          </h3>
          <button 
-           onClick={() => setShowForm(!showForm)}
+           onClick={handleToggleForm}
            className={`text-sm font-black uppercase tracking-wider transition-colors ${showForm ? 'text-red-500' : 'text-primary hover:opacity-80'}`}
          >
            {showForm ? 'Cancel' : 'Write a Review'}
@@ -159,18 +171,19 @@ export default function ReviewsSection({ productId, reviews }: { productId: stri
              placeholder="Share your experience..."
            ></textarea>
            
-           {/* ⚡ NEW: CLOUDFLARE TURNSTILE WIDGET */}
-           <div className="mb-6 flex justify-center">
-             <Turnstile 
-              siteKey={process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY!} 
-              onSuccess={(token) => setToken(token)}
-              onExpire={() => setToken(null)}
-              onError={() => setToken(null)}
-              // ⚡ FIX: Use the options prop if theme="dark" is throwing an error
-              options={{
-                theme: 'dark',
-              }}
-            />
+           {/* ⚡ FIXED: Using the dynamically injected siteKey prop */}
+           <div className="mb-6 flex justify-center min-h-[65px]">
+              {siteKey ? (
+                 <Turnstile 
+                  siteKey={siteKey} 
+                  onSuccess={(token) => setToken(token)}
+                  onExpire={() => setToken(null)}
+                  onError={() => setToken(null)}
+                  options={{ theme: 'dark' }}
+                />
+              ) : (
+                <div className="text-red-500 text-xs py-4">Security Module Unavailable</div>
+              )}
            </div>
 
            <button 

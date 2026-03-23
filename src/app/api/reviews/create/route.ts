@@ -66,7 +66,7 @@ export async function POST(req: Request) {
         product: { connect: { id: productId } }
       }
     });
-
+ 
     return NextResponse.json({ success: true, review });
 
   } catch (error: any) {

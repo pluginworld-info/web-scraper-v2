@@ -34,10 +34,10 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
   return (
     <div className="relative group">
       
-      {/* --- LEFT BUTTON --- */}
+      {/* --- LEFT BUTTON (Hidden on mobile) --- */}
       <button
         onClick={() => scroll('left')}
-        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 border border-[#333] text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:border-primary -ml-5 shadow-2xl backdrop-blur-sm"
+        className="hidden md:block absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 border border-[#333] text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:border-primary -ml-5 shadow-2xl backdrop-blur-sm"
         aria-label="Scroll Left"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -48,15 +48,14 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
       {/* --- SCROLL CONTAINER --- */}
       <div 
         ref={containerRef}
-        // ⚡ Explicitly added items-stretch to force the grid to align
-        className="flex gap-6 overflow-x-hidden scroll-smooth pb-4 items-stretch"
+        className="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 items-stretch [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       >
         {products.map((p) => (
           <Link
             href={`/product/${p.slug}`}
             key={p.id}
-            // ⚡ Added flex and flex-col to enable internal alignment
-            className="min-w-[240px] lg:min-w-[calc(20%-19.2px)] bg-[#1a1a1a] border border-white/5 rounded-2xl p-4 hover:shadow-2xl hover:border-primary/30 transition-all group/card flex-shrink-0 flex flex-col"
+            // ⚡ FIXED: min-w-full makes it 1 item per view on mobile, md:min-w-[240px] brings it back to a grid on tablet+
+            className="min-w-full md:min-w-[240px] lg:min-w-[calc(20%-19.2px)] snap-start bg-[#1a1a1a] border border-white/5 rounded-2xl p-4 hover:shadow-2xl hover:border-primary/30 transition-all group/card flex-shrink-0 flex flex-col"
           >
             {/* Image Container */}
             <div className="relative h-40 w-full bg-[#111] mb-4 rounded-xl overflow-hidden shrink-0">
@@ -81,7 +80,7 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
               )}
             </div>
 
-            {/* ⚡ TITLE FIX: min-h-[40px] forces exactly 2 lines of space regardless of text length */}
+            {/* TITLE */}
             <h4 
                className="font-bold text-white text-sm mb-3 line-clamp-2 min-h-[40px] group-hover/card:text-primary transition-colors"
                title={p.title}
@@ -89,7 +88,7 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
               {p.title}
             </h4>
 
-            {/* ⚡ PRICE FIX: mt-auto guarantees it is pushed to the absolute bottom of the card */}
+            {/* PRICE */}
             <div className="flex items-center gap-3 mt-auto">
               <span className="text-accent font-black text-lg tracking-tighter">
                 ${p.price.toFixed(2)}
@@ -104,10 +103,10 @@ export default function ProductCarousel({ products }: { products: Product[] }) {
         ))}
       </div>
 
-      {/* --- RIGHT BUTTON --- */}
+      {/* --- RIGHT BUTTON (Hidden on mobile) --- */}
       <button
         onClick={() => scroll('right')}
-        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 border border-[#333] text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:border-primary -mr-5 shadow-2xl backdrop-blur-sm"
+        className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 border border-[#333] text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:border-primary -mr-5 shadow-2xl backdrop-blur-sm"
         aria-label="Scroll Right"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
