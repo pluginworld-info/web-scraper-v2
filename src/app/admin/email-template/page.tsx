@@ -249,7 +249,7 @@ export default function EmailTemplatePage() {
                  <div className="flex items-center gap-3 mt-3">
                     <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs">P</div>
                     <div className="flex flex-col">
-                       <span className="text-xs font-bold text-gray-900">Plugin Deals Alerts</span>
+                       <span className="text-xs font-bold text-gray-900">Plugin World Info - Price Alert Triggered</span>
                        <span className="text-[10px] text-gray-500">to me</span>
                     </div>
                  </div>
@@ -272,7 +272,8 @@ export default function EmailTemplatePage() {
                    />
 
                    <div className="mt-8 text-center">
-                      <span className="inline-block bg-primary text-white px-8 py-3 rounded-full font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary/30">
+                      {/* ⚡ FIXED: Button now uses a black background so it always pops */}
+                      <span className="inline-block bg-black text-white px-8 py-3 rounded-full font-bold text-xs uppercase tracking-widest shadow-lg shadow-black/30">
                         View Deal Now
                       </span>
                    </div>
@@ -285,7 +286,7 @@ export default function EmailTemplatePage() {
                  )}
                  
                  <div className="pb-10 text-center text-[10px] text-gray-400 px-6 mt-4">
-                   © 2024 Plugin Deals Tracker. <br/>You are receiving this because you subscribed to price alerts.
+                   © {new Date().getFullYear()} Plugin World Info. <br/>You are receiving this because you subscribed to price alerts.
                  </div>
               </div>
            </div>
